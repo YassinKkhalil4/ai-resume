@@ -1,7 +1,0 @@
-John Doe
-Software Engineer
-Company: Tech Corp
-Experience:
-- Developed React applications
-- Worked with Node.js
-- Used TypeScript extensively
