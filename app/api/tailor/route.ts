@@ -30,6 +30,11 @@ export async function POST(req: NextRequest) {
     hasFormData: !!req.formData
   })
   
+  // Declare variables outside try block for error handling
+  let resume_file: File | null = null
+  let jd_text_raw = ''
+  let tone: Tone = 'professional'
+  
   try {
     console.log('Starting guard check...')
     const guard = enforceGuards(req)
@@ -62,9 +67,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-  const resume_file = form.get('resume_file') as unknown as File | null
-  const jd_text_raw = form.get('jd_text')?.toString() || ''
-  const tone = (form.get('tone')?.toString() as Tone) || 'professional'
+  resume_file = form.get('resume_file') as unknown as File | null
+  jd_text_raw = form.get('jd_text')?.toString() || ''
+  tone = (form.get('tone')?.toString() as Tone) || 'professional'
 
   console.log('Processing request:', { 
     hasResumeFile: !!resume_file, 
