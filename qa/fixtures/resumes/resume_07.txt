@@ -1,0 +1,7 @@
+John Doe
+Experience
+- Built dashboards in Tableau and Excel tracking KPIs.
+- Wrote SQL for ETL pipelines on AWS.
+- Collaborated with stakeholders to define metrics.
+Skills: SQL, Tableau, Excel, AWS, Python
+Education: BS Data Science

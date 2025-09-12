@@ -1,0 +1,25 @@
+John Doe
+Software Engineer
+john.doe@email.com
+(555) 123-4567
+
+SUMMARY
+Experienced software engineer with 5+ years of experience in React, Node.js, and TypeScript. Passionate about building scalable web applications and implementing CI/CD pipelines.
+
+EXPERIENCE
+Senior Software Engineer | Tech Corp | 2020-Present
+• Developed and maintained React applications serving 100k+ users
+• Implemented CI/CD pipelines using GitHub Actions
+• Led a team of 3 developers on multiple projects
+
+Software Engineer | StartupXYZ | 2018-2020
+• Built full-stack applications using Node.js and React
+• Collaborated with cross-functional teams to deliver features
+• Optimized application performance resulting in 40% faster load times
+
+SKILLS
+React, Node.js, TypeScript, JavaScript, HTML, CSS, Git, Docker, AWS, CI/CD
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of Technology | 2018

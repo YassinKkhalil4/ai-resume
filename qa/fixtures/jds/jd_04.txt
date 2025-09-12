@@ -1,0 +1,2 @@
+Responsibilities: Build KPI dashboards, write SQL, manage ETL, collaborate with stakeholders, present insights.
+Requirements: SQL, Tableau, Excel, Python preferred. AWS or GCP a plus. Strong communication.
