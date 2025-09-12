@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
   let resume_file: File | null = null
   let jd_text_raw = ''
   let tone: Tone = 'professional'
+  let trace: any = null
   
   try {
     console.log('Starting guard check...')
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     console.log('Guard check passed')
 
     console.log('Starting trace...')
-    const trace = startTrace({ route: 'tailor' })
+    trace = startTrace({ route: 'tailor' })
     console.log('Trace started')
 
       console.log('Parsing form data...')
@@ -175,7 +176,7 @@ export async function POST(req: NextRequest) {
       }
     })
     
-    trace.end(false, { error: String(error) })
+    if (trace) trace.end(false, { error: String(error) })
     
     return NextResponse.json({ 
       error: 'Internal server error', 
