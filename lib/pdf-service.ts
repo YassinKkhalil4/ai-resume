@@ -256,8 +256,7 @@ async function generatePDFWithAPI(html: string): Promise<Buffer> {
       margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
       printBackground: true,
       preferCSSPageSize: true
-    }),
-    timeout: 30000
+    })
   })
 
   if (!response.ok) {
