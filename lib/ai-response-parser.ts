@@ -87,8 +87,7 @@ export async function getTailoredResume(
         messages,
         temperature: 0.2,
         response_format: { type: 'json_object' },
-        max_tokens: 4000, // Ensure we don't get truncated responses
-        timeout: 30000 // 30 second timeout
+        max_tokens: 4000 // Ensure we don't get truncated responses
       })
 
       const raw = chat.choices[0]?.message?.content || '{}'
