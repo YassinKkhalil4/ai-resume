@@ -1,9 +1,9 @@
-import { TailoredResultSchema, type TailoredResult } from './schemas'
+import { TailoredResultSchema, type TailoredResultType } from './schemas'
 import { ResumeJSON } from './types'
 import { logAIResponse, logError } from './telemetry'
 import { extractKeywords } from './jd'
 
-export async function parseAIResponse(raw: string, maxRetries: number = 3): Promise<TailoredResult> {
+export async function parseAIResponse(raw: string, maxRetries: number = 3): Promise<TailoredResultType> {
   let lastError: Error | null = null
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -71,7 +71,7 @@ export async function getTailoredResume(
   original: ResumeJSON, 
   jdText: string, 
   tone: 'professional' | 'concise' | 'impact-heavy'
-): Promise<TailoredResult> {
+): Promise<TailoredResultType> {
   const maxRetries = 3
   let lastError: Error | null = null
   
@@ -131,7 +131,7 @@ export async function getTailoredResume(
   return createFallbackResponse(original, jdText)
 }
 
-function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredResult {
+function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredResultType {
   // Extract keywords from job description
   const keywords = extractKeywords(jdText, 10)
   
