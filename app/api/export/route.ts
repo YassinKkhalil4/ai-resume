@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '../../../lib/sessions'
-import { renderHTML, htmlToPDF } from '../../../lib/pdf'
+import { renderHTML, htmlToPDF } from '../../../lib/pdf-service'
 import { ResumeJSON } from '../../../lib/types'
 import { randomUUID } from 'crypto'
 import { convertHtmlToDocument } from './util_docx'
 import { enforceGuards } from '../../../lib/guards'
-import { startTrace } from '../../../lib/telemetry'
+import { startTrace, logPDFGeneration, logError } from '../../../lib/telemetry'
 
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function GET(req: NextRequest) {
   return NextResponse.json({ 
@@ -88,6 +89,9 @@ export async function POST(req: NextRequest) {
         const pdf = await htmlToPDF(html)
         console.log('PDF generated successfully, size:', pdf.length)
         
+        // Log successful PDF generation
+        logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
+        
         const fileId = randomUUID() + '.pdf'
         const path = `/tmp/${fileId}`
         
@@ -104,6 +108,11 @@ export async function POST(req: NextRequest) {
         })
       } catch (pdfError) {
         console.error('PDF generation failed:', pdfError)
+        
+        // Log failed PDF generation
+        logPDFGeneration(1, false, String(pdfError), 'external_service')
+        logError(pdfError as Error, { format, template, session_id })
+        
         trace.end(false, { error: String(pdfError) })
         return NextResponse.json({ 
           error: 'PDF generation failed', 

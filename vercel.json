@@ -1,8 +1,12 @@
 {
-    "functions": {
-      "api/**": {
-        "memory": 1024,
-        "maxDuration": 30
-      }
+  "functions": {
+    "app/api/export/route": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "app/api/**/route": {
+      "memory": 512,
+      "maxDuration": 20
     }
   }
+}

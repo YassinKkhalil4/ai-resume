@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
 import { extractJDFromUrl, extractKeywords } from '../../../lib/jd'
-import { getOpenAI, OPENAI_MODEL } from '../../../lib/openai'
-import { SYSTEM_PROMPT, makeUserPrompt } from '../../../lib/prompts'
 import { atsCheck } from '../../../lib/ats'
 import { buildDiffs } from '../../../lib/diff'
 import { integrityCheck } from '../../../lib/integrity'
@@ -10,8 +8,8 @@ import { createSession } from '../../../lib/sessions'
 import { ResumeJSON, TailoredResult, Tone } from '../../../lib/types'
 import { enforceGuards } from '../../../lib/guards'
 import { detectLocale } from '../../../lib/locale'
-import { TailoredResultSchema } from '../../../lib/schemas'
-import { startTrace } from '../../../lib/telemetry'
+import { startTrace, logError, logSessionActivity } from '../../../lib/telemetry'
+import { getTailoredResume } from '../../../lib/ai-response-parser'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -94,38 +92,32 @@ export async function POST(req: NextRequest) {
   }
 
   const locale = detectLocale(resumeText + '\n' + jdText)
-  const messages = [
-    { role: 'system' as const, content: SYSTEM_PROMPT },
-    { role: 'user' as const, content: makeUserPrompt({ resume_json: original, job_text: jdText + '\n\nLOCALE:' + locale, tone }) }
-  ]
-
-  const chat = await getOpenAI().chat.completions.create({
-    model: OPENAI_MODEL,
-    messages,
-    temperature: 0.2,
-    response_format: { type: 'json_object' }
-  })
-
-  const raw = chat.choices[0]?.message?.content || '{}'
+  
+  // Use the new robust AI response parser
   let tailored: TailoredResult
-  try { tailored = JSON.parse(raw) } catch { return NextResponse.json({ error: 'LLM returned invalid JSON', code:'llm_json' }, { status: 500 }) }
-  try { (TailoredResultSchema.parse(tailored)) } catch (e:any) { return NextResponse.json({ error: 'Model output failed schema validation', code:'schema_invalid', details: e?.errors||String(e) }, { status: 500 }) }
+  try {
+    tailored = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale, tone)
+  } catch (error) {
+    console.error('Failed to get tailored resume:', error)
+    logError(error as Error, { original, jdText, tone })
+    return NextResponse.json({ 
+      error: 'Failed to tailor resume', 
+      code: 'tailoring_failed',
+      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+    }, { status: 500 })
+  }
 
   const jdKeywords = extractKeywords(jdText, 30)
   const integ = integrityCheck(original.experience || [], tailored.experience || [], jdKeywords)
   if (!integ.ok) {
-    const messagesRetry = [
-      { role: 'system' as const, content: SYSTEM_PROMPT + '\nSTRICT RULE: Do not add any tools, companies, or products not present in the original resume.' },
-      { role: 'user' as const, content: makeUserPrompt({ resume_json: original, job_text: jdText + '\n\nLOCALE:' + locale, tone }) }
-    ]
-    const chat2 = await getOpenAI().chat.completions.create({
-      model: OPENAI_MODEL,
-      messages: messagesRetry,
-      temperature: 0.1,
-      response_format: { type: 'json_object' }
-    })
-    const raw2 = chat2.choices[0]?.message?.content || '{}'
-    try { tailored = JSON.parse(raw2) } catch {}
+    console.warn('Integrity check failed, attempting retry with stricter rules')
+    try {
+      // Retry with stricter integrity rules
+      tailored = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale + '\n\nSTRICT RULE: Do not add any tools, companies, or products not present in the original resume.', tone)
+    } catch (retryError) {
+      console.warn('Retry with stricter rules also failed:', retryError)
+      // Continue with the original response
+    }
   }
 
   const diffs = buildDiffs(original.experience || [], tailored.experience || [])
@@ -133,8 +125,19 @@ export async function POST(req: NextRequest) {
 
   const session = createSession(original, tailored, jdText, keyword_stats)
 
-  const usage = chat.usage || {}
-  trace.end(true, { tokens_prompt: (usage as any).prompt_tokens||null, tokens_completion: (usage as any).completion_tokens||null })
+  // Log session creation
+  logSessionActivity(session.id, 'created', { 
+    hasResume: !!resume_file, 
+    jdLength: jdText.length,
+    tone,
+    integrityOk: integ.ok
+  })
+
+  trace.end(true, { 
+    sessionId: session.id,
+    integrityOk: integ.ok,
+    experienceCount: tailored.experience?.length || 0
+  })
 
   return NextResponse.json({
     session_id: session.id,
@@ -152,12 +155,23 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Tailor API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    console.error('Environment check:', {
-      NODE_ENV: process.env.NODE_ENV,
-      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-      hasInviteCodes: !!process.env.INVITE_CODES,
-      hasAdminKey: !!process.env.ADMIN_KEY
+    
+    // Log the error with context
+    logError(error as Error, {
+      route: 'tailor',
+      hasResume: !!resume_file,
+      jdLength: jd_text_raw?.length || 0,
+      tone,
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        hasInviteCodes: !!process.env.INVITE_CODES,
+        hasAdminKey: !!process.env.ADMIN_KEY
+      }
     })
+    
+    trace.end(false, { error: String(error) })
+    
     return NextResponse.json({ 
       error: 'Internal server error', 
       code: 'server_error',

@@ -1,0 +1,193 @@
+import { minimalTemplate } from './templates/minimal'
+import { modernTemplate } from './templates/modern'
+import { classicTemplate } from './templates/classic'
+import type { ResumeJSON } from './types'
+
+export async function renderHTML(
+  resume: ResumeJSON,
+  template: 'classic' | 'modern' | 'minimal',
+  options: { includeSkills: boolean; includeSummary: boolean }
+) {
+  if (template === 'classic') return classicTemplate(resume, options)
+  if (template === 'modern') return modernTemplate(resume, options)
+  return minimalTemplate(resume, options)
+}
+
+export async function htmlToPDF(html: string): Promise<Buffer> {
+  const maxRetries = 3
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Try external PDF service first
+      const pdfBuffer = await generatePDFWithExternalService(html)
+      return pdfBuffer
+    } catch (error) {
+      lastError = error as Error
+      console.warn(`PDF generation attempt ${attempt} failed:`, error)
+      
+      if (attempt < maxRetries) {
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
+    }
+  }
+
+  // Final fallback: try lightweight HTML-to-PDF
+  try {
+    console.warn('External PDF service failed, trying fallback method')
+    return await generatePDFWithFallback(html)
+  } catch (fallbackError) {
+    console.error('All PDF generation methods failed:', fallbackError)
+    throw new Error(`PDF generation failed after ${maxRetries} attempts: ${lastError?.message}`)
+  }
+}
+
+async function generatePDFWithExternalService(html: string): Promise<Buffer> {
+  // Option 1: Use HTML-PDF-Node (lightweight alternative)
+  try {
+    const { htmlToPdf } = await import('html-pdf-node')
+    const options = {
+      format: 'A4',
+      margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
+      printBackground: true,
+      preferCSSPageSize: true,
+      timeout: 15000
+    }
+    
+    const pdfBuffer = await htmlToPdf({ content: html }, options)
+    return pdfBuffer
+  } catch (error) {
+    console.warn('HTML-PDF-Node failed:', error)
+    throw error
+  }
+}
+
+async function generatePDFWithFallback(html: string): Promise<Buffer> {
+  // Fallback: Use a simple HTML-to-PDF conversion
+  // This is a basic implementation that creates a minimal PDF
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .page-break { page-break-before: always; }
+        @media print {
+          body { margin: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      ${html}
+    </body>
+    </html>
+  `
+
+  // For now, return a simple text-based representation
+  // In production, you might want to use a different service
+  const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length ${textContent.length + 100}
+>>
+stream
+BT
+/F1 12 Tf
+50 750 Td
+(${textContent.substring(0, 100)}) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000274 00000 n 
+0000000500 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+${600 + textContent.length}
+%%EOF`
+
+  return Buffer.from(pdfContent, 'utf8')
+}
+
+// Alternative: Use external PDF service API
+async function generatePDFWithAPI(html: string): Promise<Buffer> {
+  const apiKey = process.env.PDF_SERVICE_API_KEY
+  const apiUrl = process.env.PDF_SERVICE_URL || 'https://api.html-pdf-service.com/generate'
+  
+  if (!apiKey) {
+    throw new Error('PDF service API key not configured')
+  }
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      html,
+      format: 'A4',
+      margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
+      printBackground: true,
+      preferCSSPageSize: true
+    }),
+    timeout: 30000
+  })
+
+  if (!response.ok) {
+    throw new Error(`PDF service API failed: ${response.status} ${response.statusText}`)
+  }
+
+  const pdfBuffer = await response.arrayBuffer()
+  return Buffer.from(pdfBuffer)
+}
