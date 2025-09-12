@@ -44,21 +44,97 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
 }
 
 async function generatePDFWithExternalService(html: string): Promise<Buffer> {
-  // Option 1: Use HTML-PDF-Node (lightweight alternative)
+  // Use Puppeteer with Chromium for Vercel compatibility
   try {
-    const { htmlToPdf } = await import('html-pdf-node')
-    const options = {
-      format: 'A4',
-      margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
-      printBackground: true,
-      preferCSSPageSize: true,
-      timeout: 15000
-    }
+    const useLambda = process.env.USE_LAMBDA_CHROMIUM === '1' || process.env.VERCEL === '1'
     
-    const pdfBuffer = await htmlToPdf({ content: html }, options)
-    return pdfBuffer
+    if (useLambda) {
+      // Vercel/Lambda path: puppeteer-core + @sparticuz/chromium
+      const chromium = (await import('@sparticuz/chromium')).default
+      const puppeteerCore = (await import('puppeteer-core')).default
+
+      let browser: import('puppeteer-core').Browser | undefined
+      try {
+        browser = await puppeteerCore.launch({
+          args: [
+            ...chromium.args,
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu'
+          ],
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+          timeout: 30000
+        })
+
+        const page = await browser.newPage()
+        await page.setCacheEnabled(false)
+        await page.emulateMediaType('screen')
+        
+        await page.setContent(html, { 
+          waitUntil: 'domcontentloaded',
+          timeout: 10000 
+        })
+
+        const pdf = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          preferCSSPageSize: true,
+          margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
+          timeout: 15000
+        })
+        
+        return pdf
+      } finally {
+        if (browser) {
+          try {
+            await browser.close()
+          } catch (e) {
+            console.warn('Failed to close browser:', e)
+          }
+        }
+      }
+    } else {
+      // Local development path
+      const puppeteer = (await import('puppeteer')).default
+      let browser: import('puppeteer').Browser | undefined
+      try {
+        browser = await puppeteer.launch({
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        })
+
+        const page = await browser.newPage()
+        await page.setCacheEnabled(false)
+        await page.emulateMediaType('screen')
+        await page.setContent(html, { waitUntil: 'domcontentloaded' })
+
+        const pdf = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          preferCSSPageSize: true,
+          margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }
+        })
+        
+        return pdf
+      } finally {
+        if (browser) {
+          try {
+            await browser.close()
+          } catch (e) {
+            console.warn('Failed to close browser:', e)
+          }
+        }
+      }
+    }
   } catch (error) {
-    console.warn('HTML-PDF-Node failed:', error)
+    console.warn('Puppeteer PDF generation failed:', error)
     throw error
   }
 }

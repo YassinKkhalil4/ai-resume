@@ -4,9 +4,16 @@
       "memory": 1024,
       "maxDuration": 30
     },
+    "app/api/tailor/route": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
     "app/api/**/route": {
       "memory": 512,
       "maxDuration": 20
     }
+  },
+  "env": {
+    "USE_LAMBDA_CHROMIUM": "1"
   }
 }
