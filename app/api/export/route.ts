@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   // Declare variables outside try block for error handling
   let session_id: string | undefined
   let format: string | undefined
-  let template: string | undefined
+  let template: 'classic' | 'modern' | 'minimal' = 'minimal'
 
   try {
     const guard = enforceGuards(req)
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const bodyData = body || {}
     session_id = bodyData.session_id
-    template = bodyData.template || 'minimal'
+    template = (bodyData.template as 'classic' | 'modern' | 'minimal') || 'minimal'
     format = bodyData.format || 'pdf'
     const options = bodyData.options || { includeSummary: true, includeSkills: true }
     
