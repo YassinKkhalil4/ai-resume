@@ -26,6 +26,11 @@ export async function POST(req: NextRequest) {
     timestamp: new Date().toISOString()
   })
 
+  // Declare variables outside try block for error handling
+  let session_id: string | undefined
+  let format: string | undefined
+  let template: string | undefined
+
   try {
     const guard = enforceGuards(req)
     if (!guard.ok) {
@@ -41,7 +46,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     console.log('Request body parsed successfully')
 
-    const { session_id, template='minimal', format='pdf', options={ includeSummary:true, includeSkills:true } } = body || {}
+    const bodyData = body || {}
+    session_id = bodyData.session_id
+    template = bodyData.template || 'minimal'
+    format = bodyData.format || 'pdf'
+    const options = bodyData.options || { includeSummary: true, includeSkills: true }
     
     console.log('Export parameters:', {
       session_id: session_id ? 'present' : 'missing',
