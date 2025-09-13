@@ -14,13 +14,22 @@ export async function renderHTML(
 }
 
 export async function htmlToPDF(html: string): Promise<Buffer> {
-  const maxRetries = 3
+  const maxRetries = 2
   let lastError: Error | null = null
+
+  console.log('Starting PDF generation with HTML length:', html.length)
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`PDF generation attempt ${attempt}/${maxRetries}`)
       // Try external PDF service first
       const pdfBuffer = await generatePDFWithExternalService(html)
+      
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('PDF generation returned empty buffer')
+      }
+      
+      console.log(`PDF generation successful on attempt ${attempt}, size:`, pdfBuffer.length)
       return pdfBuffer
     } catch (error) {
       lastError = error as Error
@@ -28,14 +37,16 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
       
       if (attempt < maxRetries) {
         // Wait before retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+        const delay = 1000 * attempt
+        console.log(`Waiting ${delay}ms before retry...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
   }
 
   // Final fallback: try lightweight HTML-to-PDF
   try {
-    console.warn('External PDF service failed, trying fallback method')
+    console.warn('All PDF service attempts failed, trying fallback method')
     return await generatePDFWithFallback(html)
   } catch (fallbackError) {
     console.error('All PDF generation methods failed:', fallbackError)
@@ -47,6 +58,8 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
   // Use Puppeteer with Chromium for Vercel compatibility
   try {
     const useLambda = process.env.USE_LAMBDA_CHROMIUM === '1' || process.env.VERCEL === '1'
+    
+    console.log('Using PDF generation method:', useLambda ? 'Lambda/Chromium' : 'Local Puppeteer')
     
     if (useLambda) {
       // Vercel/Lambda path: puppeteer-core + @sparticuz/chromium
@@ -73,15 +86,18 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
           timeout: 30000
         })
 
+        console.log('Browser launched, creating new page...')
         const page = await browser.newPage()
         await page.setCacheEnabled(false)
         await page.emulateMediaType('screen')
         
+        console.log('Setting page content...')
         await page.setContent(html, { 
           waitUntil: 'domcontentloaded',
           timeout: 10000 
         })
 
+        console.log('Generating PDF...')
         const pdf = await page.pdf({
           format: 'A4',
           printBackground: true,
@@ -90,6 +106,7 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
           timeout: 15000
         })
         
+        console.log('PDF generated successfully, size:', pdf.length)
         return pdf
       } finally {
         if (browser) {

@@ -85,9 +85,14 @@ export async function POST(req: NextRequest) {
 
     if (format === 'pdf') {
       console.log('Generating PDF...')
+      console.log('HTML length:', html.length)
       try {
         const pdf = await htmlToPDF(html)
         console.log('PDF generated successfully, size:', pdf.length)
+        
+        if (!pdf || pdf.length === 0) {
+          throw new Error('PDF generation returned empty buffer')
+        }
         
         // Log successful PDF generation
         logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
@@ -108,10 +113,11 @@ export async function POST(req: NextRequest) {
         })
       } catch (pdfError) {
         console.error('PDF generation failed:', pdfError)
+        console.error('PDF error stack:', pdfError instanceof Error ? pdfError.stack : 'No stack trace')
         
         // Log failed PDF generation
         logPDFGeneration(1, false, String(pdfError), 'external_service')
-        logError(pdfError as Error, { format, template, session_id })
+        logError(pdfError as Error, { format, template, session_id, htmlLength: html.length })
         
         trace.end(false, { error: String(pdfError) })
         return NextResponse.json({ 
@@ -153,11 +159,27 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Export API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      code: 'server_error',
-      details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
+    
+    // Log the error with context
+    logError(error as Error, {
+      route: 'export',
+      session_id: session_id || 'unknown',
+      format: format || 'unknown',
+      template: template || 'unknown'
+    })
+    
+    // Ensure we always return a proper JSON response
+    try {
+      return NextResponse.json({ 
+        error: 'Internal server error', 
+        code: 'server_error',
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
+        timestamp: new Date().toISOString()
+      }, { status: 500 })
+    } catch (jsonError) {
+      console.error('Failed to create JSON response:', jsonError)
+      // Fallback to plain text response if JSON fails
+      return new NextResponse('Internal server error', { status: 500 })
+    }
   }
 }
