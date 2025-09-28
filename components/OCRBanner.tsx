@@ -13,11 +13,11 @@ export default function OCRBanner({ onText }: { onText: (text: string) => void }
       if (!isPdf) throw new Error('OCR is only for scanned PDFs')
 
       // light client-side OCR using tesseract.js on first page preview; warn users
-      const { createWorker } = await import('tesseract.js')
+      const Tesseract: any = (await import('tesseract.js')).default || (await import('tesseract.js'))
       const arr = await file.arrayBuffer()
       // render first page to image using pdf.js (client) for demo
       const pdfjsLib: any = await import('pdfjs-dist')
-      const pdf = await pdfjsLib.getDocument({ data: arr }).promise
+      const pdf = await (pdfjsLib as any).getDocument({ data: arr }).promise
       const page = await pdf.getPage(1)
       const viewport = page.getViewport({ scale: 1.5 })
       const canvas = document.createElement('canvas')
@@ -27,11 +27,7 @@ export default function OCRBanner({ onText }: { onText: (text: string) => void }
       await page.render({ canvasContext: ctx, viewport }).promise
       const dataUrl = canvas.toDataURL('image/png')
 
-      const worker = await createWorker()
-      await worker.loadLanguage('eng')
-      await worker.initialize('eng')
-      const { data: { text } } = await worker.recognize(dataUrl)
-      await worker.terminate()
+      const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng')
 
       if (!text || text.trim().length < 30) throw new Error('OCR produced too little text')
       onText(text)
