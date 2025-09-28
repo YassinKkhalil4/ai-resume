@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '../../../lib/sessions'
 import { renderHTML, htmlToPDF } from '../../../lib/pdf-service'
 import { ResumeJSON } from '../../../lib/types'
-import { randomUUID } from 'crypto'
 import { convertHtmlToDocument } from './util_docx'
 import { enforceGuards } from '../../../lib/guards'
 import { startTrace, logPDFGeneration, logError } from '../../../lib/telemetry'
@@ -108,7 +107,7 @@ export async function POST(req: NextRequest) {
         if (!pdf || pdf.length === 0) throw new Error('PDF generation returned empty buffer')
         logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
         trace.end(true, { size: pdf.length })
-        return new NextResponse(pdf, {
+        return new NextResponse(new Blob([pdf]), {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': 'attachment; filename="resume.pdf"',
@@ -129,7 +128,7 @@ export async function POST(req: NextRequest) {
           const docxBuffer = await convertHtmlToDocument(html)
           logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
           trace.end(true, { size: docxBuffer.length, fallback: 'docx' })
-          return new NextResponse(docxBuffer, {
+          return new NextResponse(new Blob([docxBuffer]), {
             headers: {
               'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'Content-Disposition': 'attachment; filename="resume.docx"',
@@ -151,7 +150,7 @@ export async function POST(req: NextRequest) {
         const docxBuffer = await convertHtmlToDocument(html)
         console.log('DOCX generated successfully, size:', docxBuffer.length)
         trace.end(true, { size: docxBuffer.length })
-        return new NextResponse(docxBuffer, {
+        return new NextResponse(new Blob([docxBuffer]), {
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': 'attachment; filename="resume.docx"',
