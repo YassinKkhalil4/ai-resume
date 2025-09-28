@@ -14,8 +14,7 @@ export type OcrOptions = {
 }
 
 export async function ocrExtractText(file: Blob, options: OcrOptions = {}): Promise<string> {
-  const endpoint = process.env.OCR_ENDPOINT || ''
-  if (!endpoint) throw new Error('OCR endpoint not configured')
+  const endpoint = process.env.OCR_ENDPOINT || '/api/ocr'
 
   const fd = new FormData()
   const filename = (file as any).name || 'upload.pdf'
