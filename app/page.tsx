@@ -47,6 +47,14 @@ export default function Home() {
     if (!jdText) return alert('Paste a job description.')
     setLoading(true)
     try {
+      // Proactive client OCR for scanned PDFs: attempt once before server call
+      if (resumeFile && (resumeFile.type?.includes('pdf') || resumeFile.name?.toLowerCase().endsWith('.pdf')) && !attemptedOCRRef.current) {
+        attemptedOCRRef.current = true
+        const text = await runClientOCR(resumeFile)
+        if (text && text.length > 50) {
+          setOcrText(text)
+        }
+      }
       const fd = new FormData()
       if (resumeFile) fd.append('resume_file', resumeFile)
       if (!resumeFile && ocrText) fd.append('resume_text', ocrText)
@@ -73,7 +81,37 @@ export default function Home() {
             return
           }
         }
+        // Also handle a 200 OK with scanned_pdf code (if server returns non-error for this)
+        if (data?.code === 'scanned_pdf' && resumeFile) {
+          const text = await runClientOCR(resumeFile)
+          if (text && text.length > 50) {
+            const fd2 = new FormData()
+            fd2.append('resume_text', text)
+            fd2.append('jd_text', jdText)
+            fd2.append('tone', tone)
+            const res2 = await fetch('/api/tailor', { method: 'POST', body: fd2 })
+            const data2 = await res2.json()
+            if (!res2.ok) throw new Error(data2?.error || 'Tailoring failed.')
+            setSession(data2)
+            return
+          }
+        }
         throw new Error(data?.error || 'Tailoring failed.')
+      }
+      // If server responded ok but signalled scanned_pdf, still attempt OCR
+      if (data?.code === 'scanned_pdf' && resumeFile) {
+        const text = await runClientOCR(resumeFile)
+        if (text && text.length > 50) {
+          const fd2 = new FormData()
+          fd2.append('resume_text', text)
+          fd2.append('jd_text', jdText)
+          fd2.append('tone', tone)
+          const res2 = await fetch('/api/tailor', { method: 'POST', body: fd2 })
+          const data2 = await res2.json()
+          if (!res2.ok) throw new Error(data2?.error || 'Tailoring failed.')
+          setSession(data2)
+          return
+        }
       }
       setSession(data)
     } catch (e:any) {
