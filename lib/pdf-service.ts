@@ -75,52 +75,29 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
 
       let browser: import('puppeteer-core').Browser | undefined
       try {
+        // Minimal, stable launch flags for serverless
         browser = await puppeteerCore.launch({
-          args: [
-            ...chromium.args,
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
-          ],
+          args: chromium.args,
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
-          timeout: 30000
+          headless: chromium.headless
         })
 
-        console.log('Browser launched, creating new page...')
         const page = await browser.newPage()
         await page.setCacheEnabled(false)
         await page.emulateMediaType('screen')
-        
-        console.log('Setting page content...')
-        await page.setContent(html, { 
-          waitUntil: 'domcontentloaded',
-          timeout: 10000 
-        })
+        await page.setContent(html, { waitUntil: 'domcontentloaded' })
 
-        console.log('Generating PDF...')
         const pdf = await page.pdf({
           format: 'A4',
           printBackground: true,
           preferCSSPageSize: true,
           margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }
         })
-        
-        console.log('PDF generated successfully, size:', pdf.length)
         return pdf
       } finally {
         if (browser) {
-          try {
-            await browser.close()
-          } catch (e) {
-            console.warn('Failed to close browser:', e)
-          }
+          try { await browser.close() } catch {}
         }
       }
     } else {
