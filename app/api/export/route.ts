@@ -105,27 +105,15 @@ export async function POST(req: NextRequest) {
       try {
         const pdf = await htmlToPDF(html)
         console.log('PDF generated successfully, size:', pdf.length)
-        
-        if (!pdf || pdf.length === 0) {
-          throw new Error('PDF generation returned empty buffer')
-        }
-        
-        // Log successful PDF generation
+        if (!pdf || pdf.length === 0) throw new Error('PDF generation returned empty buffer')
         logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
-        
-        const fileId = randomUUID() + '.pdf'
-        const path = `/tmp/${fileId}`
-        
-        console.log('Writing PDF to file:', path)
-        const fs = await import('fs')
-        fs.writeFileSync(path, pdf)
-        console.log('PDF file written successfully')
-        
         trace.end(true, { size: pdf.length })
-        return NextResponse.json({ 
-          download_url: `/api/export/${fileId}`,
-          format: 'pdf',
-          file_id: fileId
+        return new NextResponse(pdf, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="resume.pdf"',
+            'Content-Length': String(pdf.length)
+          }
         })
       } catch (pdfError) {
         console.error('PDF generation failed:', pdfError)
@@ -136,20 +124,17 @@ export async function POST(req: NextRequest) {
         logError(pdfError as Error, { format, template, session_id, htmlLength: html.length })
         
         trace.end(false, { error: String(pdfError) })
-        // Attempt DOCX fallback
+        // Attempt DOCX fallback (single-shot)
         try {
           const docxBuffer = await convertHtmlToDocument(html)
-          const fileId = randomUUID() + '.docx'
-          const path = `/tmp/${fileId}`
-          const fs = await import('fs')
-          fs.writeFileSync(path, docxBuffer)
           logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
           trace.end(true, { size: docxBuffer.length, fallback: 'docx' })
-          return NextResponse.json({ 
-            download_url: `/api/export/${fileId}`,
-            format: 'docx',
-            file_id: fileId,
-            note: 'PDF failed; returned DOCX fallback'
+          return new NextResponse(docxBuffer, {
+            headers: {
+              'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'Content-Disposition': 'attachment; filename="resume.docx"',
+              'Content-Length': String(docxBuffer.length)
+            }
           })
         } catch (docxFallbackError) {
           console.error('DOCX fallback failed:', docxFallbackError)
@@ -165,20 +150,13 @@ export async function POST(req: NextRequest) {
       try {
         const docxBuffer = await convertHtmlToDocument(html)
         console.log('DOCX generated successfully, size:', docxBuffer.length)
-        
-        const fileId = randomUUID() + '.docx'
-        const path = `/tmp/${fileId}`
-        
-        console.log('Writing DOCX to file:', path)
-        const fs = await import('fs')
-        fs.writeFileSync(path, docxBuffer)
-        console.log('DOCX file written successfully')
-        
         trace.end(true, { size: docxBuffer.length })
-        return NextResponse.json({ 
-          download_url: `/api/export/${fileId}`,
-          format: 'docx',
-          file_id: fileId
+        return new NextResponse(docxBuffer, {
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition': 'attachment; filename="resume.docx"',
+            'Content-Length': String(docxBuffer.length)
+          }
         })
       } catch (docxError) {
         console.error('DOCX generation failed:', docxError)

@@ -25,22 +25,13 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
           session_snapshot: (window as any).__TAILOR_SESSION__ || null
         })
       })
-      // Read as text first to avoid JSON parse errors on empty/body-less responses
-      const rawText = await res.text()
-      let data: any = null
-      try {
-        data = rawText ? JSON.parse(rawText) : null
-      } catch {
-        data = null
-      }
       if (!res.ok) {
-        const message = (data && (data.error || data.message)) || rawText || `Export failed (${res.status})`
-        throw new Error(typeof message === 'string' ? message : 'Export failed')
+        const rawText = await res.text()
+        throw new Error(rawText || `Export failed (${res.status})`)
       }
-      if (!data || !data.download_url) {
-        throw new Error('Malformed response from export API')
-      }
-      setUrl(data.download_url)
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      setUrl(objectUrl)
     } catch (e:any) {
       alert(e?.message || 'Failed to export.')
     } finally {
