@@ -107,7 +107,8 @@ export async function POST(req: NextRequest) {
         if (!pdf || pdf.length === 0) throw new Error('PDF generation returned empty buffer')
         logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
         trace.end(true, { size: pdf.length })
-        return new NextResponse(new Blob([pdf]), {
+        const pdfArrayBuffer = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength)
+        return new NextResponse(pdfArrayBuffer as ArrayBuffer, {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': 'attachment; filename="resume.pdf"',
@@ -128,7 +129,8 @@ export async function POST(req: NextRequest) {
           const docxBuffer = await convertHtmlToDocument(html)
           logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
           trace.end(true, { size: docxBuffer.length, fallback: 'docx' })
-          return new NextResponse(new Blob([docxBuffer]), {
+          const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
+          return new NextResponse(ab as ArrayBuffer, {
             headers: {
               'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'Content-Disposition': 'attachment; filename="resume.docx"',
@@ -150,7 +152,8 @@ export async function POST(req: NextRequest) {
         const docxBuffer = await convertHtmlToDocument(html)
         console.log('DOCX generated successfully, size:', docxBuffer.length)
         trace.end(true, { size: docxBuffer.length })
-        return new NextResponse(new Blob([docxBuffer]), {
+        const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
+        return new NextResponse(ab as ArrayBuffer, {
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': 'attachment; filename="resume.docx"',
