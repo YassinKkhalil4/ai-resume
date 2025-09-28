@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     template = (bodyData.template as 'classic' | 'modern' | 'minimal') || 'minimal'
     format = bodyData.format || 'pdf'
     const options = bodyData.options || { includeSummary: true, includeSkills: true }
+    const snapshot = bodyData.session_snapshot || null
     
     console.log('Export parameters:', {
       session_id: session_id ? 'present' : 'missing',
@@ -59,32 +60,38 @@ export async function POST(req: NextRequest) {
       options
     })
 
-    if (!session_id) {
-      console.log('Missing session_id')
+    if (!session_id && !snapshot) {
+      console.log('Missing session_id and no snapshot provided')
       return NextResponse.json({ 
-        error: 'Missing session_id', 
-        code: 'missing_session_id' 
+        error: 'Missing session context', 
+        code: 'missing_session' 
       }, { status: 400 })
     }
 
     console.log('Getting session...')
-    const s = getSession(session_id)
-    if (!s) {
-      console.log('Session not found:', session_id)
+    const s = session_id ? getSession(session_id) : null
+    if (!s && !snapshot) {
+      console.log('Session not found and no snapshot provided:', session_id)
       return NextResponse.json({ 
         error: 'Session expired or not found', 
         code: 'session_not_found' 
       }, { status: 404 })
     }
-    console.log('Session found')
+    console.log(s ? 'Session found' : 'Using snapshot fallback')
 
     console.log('Building resume object...')
-    const resume: ResumeJSON = {
+    const resume: ResumeJSON = s ? {
       summary: options.includeSummary ? s.tailored.summary : '',
       skills: options.includeSkills ? s.tailored.skills_section : [],
-      experience: s.tailored.experience.filter(exp => exp.company && exp.role) as any,
+      experience: s.tailored.experience.filter((exp:any) => exp.company && exp.role) as any,
       education: s.original.education,
       certifications: s.original.certifications
+    } : {
+      summary: options.includeSummary ? (snapshot?.preview_sections_json?.summary || '') : '',
+      skills: options.includeSkills ? (snapshot?.preview_sections_json?.skills || []) : [],
+      experience: (snapshot?.preview_sections_json?.experience || []).filter((exp:any)=>exp.company && exp.role) as any,
+      education: snapshot?.original_sections_json?.education || [],
+      certifications: snapshot?.original_sections_json?.certifications || []
     }
     console.log('Resume object built')
 

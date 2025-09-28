@@ -20,7 +20,9 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
           session_id: sessionId,
           template,
           format,
-          options: { includeSkills, includeSummary }
+          options: { includeSkills, includeSummary },
+          // provide snapshot fallback so export works even if memory session expired
+          session_snapshot: (window as any).__TAILOR_SESSION__ || null
         })
       })
       // Read as text first to avoid JSON parse errors on empty/body-less responses

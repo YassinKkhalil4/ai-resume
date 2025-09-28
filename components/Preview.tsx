@@ -14,6 +14,11 @@ export default function Preview({ session }:{ session:any }) {
   const tailored = useMemo(()=>JSON.stringify(session.preview_sections_json, null, 2), [session])
   const original = useMemo(()=>JSON.stringify(session.original_sections_json, null, 2), [session])
 
+  // expose a minimal snapshot for export fallback
+  if (typeof window !== 'undefined') {
+    ;(window as any).__TAILOR_SESSION__ = session
+  }
+
   return (
     <section className="card p-6">
       <div className="flex items-center gap-4 mb-4">
