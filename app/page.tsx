@@ -1,6 +1,6 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import JDInput from '../components/JDInput'
 import Preview from '../components/Preview'
@@ -17,6 +17,30 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const gate = useInviteGate()
   const [ocrText, setOcrText] = useState<string>('')
+  const attemptedOCRRef = useRef(false)
+
+  async function runClientOCR(file: File): Promise<string> {
+    try {
+      const isPdf = file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf')
+      if (!isPdf) return ''
+      const Tesseract: any = (await import('tesseract.js')).default || (await import('tesseract.js'))
+      const pdfjsLib: any = await import('pdfjs-dist')
+      const arr = await file.arrayBuffer()
+      const pdf = await (pdfjsLib as any).getDocument({ data: arr }).promise
+      const page = await pdf.getPage(1)
+      const viewport = page.getViewport({ scale: 1.5 })
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      await page.render({ canvasContext: ctx, viewport }).promise
+      const dataUrl = canvas.toDataURL('image/png')
+      const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng')
+      return (text || '').trim()
+    } catch {
+      return ''
+    }
+  }
 
   async function handleTailor() {
     if (!resumeFile && !ocrText) return alert('Upload a resume or run OCR, and paste a job description.')
@@ -30,7 +54,27 @@ export default function Home() {
       fd.append('tone', tone)
       const res = await fetch('/api/tailor', { method: 'POST', body: fd })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Tailoring failed.')
+      if (!res.ok) {
+        // If server says scanned PDF, try client OCR automatically once
+        if (data?.code === 'scanned_pdf' && resumeFile && !attemptedOCRRef.current) {
+          attemptedOCRRef.current = true
+          const text = await runClientOCR(resumeFile)
+          if (text && text.length > 50) {
+            setOcrText(text)
+            // retry with resume_text only
+            const fd2 = new FormData()
+            fd2.append('resume_text', text)
+            fd2.append('jd_text', jdText)
+            fd2.append('tone', tone)
+            const res2 = await fetch('/api/tailor', { method: 'POST', body: fd2 })
+            const data2 = await res2.json()
+            if (!res2.ok) throw new Error(data2?.error || 'Tailoring failed.')
+            setSession(data2)
+            return
+          }
+        }
+        throw new Error(data?.error || 'Tailoring failed.')
+      }
       setSession(data)
     } catch (e:any) {
       alert(e?.message || 'Failed to tailor.')
