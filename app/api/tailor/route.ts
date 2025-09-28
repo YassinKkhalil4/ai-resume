@@ -98,10 +98,8 @@ export async function POST(req: NextRequest) {
     resumeText = resume_text_fallback
   }
   if (resume_file && ext==='pdf' && (!resumeText || resumeText.trim().length < 50)) {
-    // Attempt server-side OCR fallback when configured
+    // Attempt server-side OCR fallback when configured; prefer external worker
     try {
-      const ocrEnabled = !!process.env.OCR_ENDPOINT
-      if (!ocrEnabled) throw new Error('OCR not configured')
       const text = await ocrExtractText(resume_file as Blob, { maxPages: 4, lang: 'eng', denoise: true, deskew: true })
       if (text && text.trim().length >= 50) {
         resumeText = text
