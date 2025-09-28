@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="light">
       <body className={inter.className}>
         <div className="container py-10">
           <header className="flex items-center justify-between mb-8">
@@ -21,7 +21,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="badge">Integrity: <strong>No fabricated credentials</strong></span>
               <span className="badge">Privacy: <strong>Files deleted immediately</strong></span>
             </div>
-            <div className="text-xs text-gray-500">Processed in-memory • Files deleted immediately • Not stored unless you opt in</div>
+            <div className="flex items-center gap-3">
+              <button className="button-outline text-xs" onClick={() => {
+                if (typeof document !== 'undefined') {
+                  const el = document.documentElement
+                  el.classList.toggle('dark')
+                }
+              }}>Toggle Dark</button>
+              <div className="text-xs text-gray-500">Processed in-memory • Files deleted immediately • Not stored unless you opt in</div>
+            </div>
           </header>
           {children}
           <footer className="mt-12 text-xs text-gray-500">

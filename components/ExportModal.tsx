@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 export default function ExportModal({ sessionId, onClose }:{ sessionId:string, onClose:()=>void }) {
-  const [template, setTemplate] = useState<'classic'|'modern'|'minimal'>('minimal')
+  const [template, setTemplate] = useState<'classic'|'modern'|'minimal'|'executive'|'academic'>('minimal')
   const [format, setFormat] = useState<'pdf'|'docx'>('pdf')
   const [includeSkills, setIncludeSkills] = useState(true)
   const [includeSummary, setIncludeSummary] = useState(true)
@@ -60,6 +60,8 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
               <option value="classic">Classic</option>
               <option value="modern">Modern</option>
               <option value="minimal">Minimal</option>
+              <option value="executive">Executive</option>
+              <option value="academic">Academic/Projects</option>
             </select>
           </div>
           <div>

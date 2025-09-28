@@ -14,3 +14,10 @@ html, body { height: 100%; background: #fafafa; color: #111827; }
 h1 { @apply text-3xl font-semibold; }
 h2 { @apply text-xl font-semibold; }
 code { @apply bg-gray-100 rounded px-1 py-0.5; }
+
+/* Dark mode */
+.dark html, .dark body { background: #0c0c0f; color: #f3f4f6; }
+.dark .card { @apply bg-neutral-900 border-neutral-800 text-neutral-100; }
+.dark .button-outline { @apply border-neutral-700 hover:bg-neutral-800; }
+.dark .input { @apply border-neutral-700 bg-neutral-900 text-neutral-100; }
+.dark .label { @apply text-neutral-400; }

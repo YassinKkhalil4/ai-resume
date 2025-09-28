@@ -1,6 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { minimalTemplate } from '../lib/templates/minimal'
+import { modernTemplate } from '../lib/templates/modern'
+import { classicTemplate } from '../lib/templates/classic'
+import { executiveTemplate } from '../lib/templates/executive'
+import { academicTemplate } from '../lib/templates/academic'
 import DiffView from './DiffView'
 import ATSCheck from './ATSCheck'
 import ExportModal from './ExportModal'
@@ -8,6 +13,7 @@ import ExportModal from './ExportModal'
 export default function Preview({ session }:{ session:any }) {
   const [showExport, setShowExport] = useState(false)
   const [tab, setTab] = useState<'tailored'|'original'>('tailored')
+  const [tpl, setTpl] = useState<'classic'|'modern'|'minimal'|'executive'|'academic'>('minimal')
   const [honesty, setHonesty] = useState<any>(null)
   const [loadingHonesty, setLoadingHonesty] = useState(false)
 
@@ -17,6 +23,16 @@ export default function Preview({ session }:{ session:any }) {
   // expose a minimal snapshot for export fallback
   if (typeof window !== 'undefined') {
     ;(window as any).__TAILOR_SESSION__ = session
+  }
+
+  function renderHTML() {
+    const resume = session.preview_sections_json
+    const opts = { includeSkills: true, includeSummary: true }
+    if (tpl==='classic') return classicTemplate(resume, opts)
+    if (tpl==='modern') return modernTemplate(resume, opts)
+    if (tpl==='executive') return executiveTemplate(resume, opts)
+    if (tpl==='academic') return academicTemplate(resume, opts)
+    return minimalTemplate(resume, opts)
   }
 
   return (
@@ -30,6 +46,16 @@ export default function Preview({ session }:{ session:any }) {
           <button className="button" onClick={()=>setShowExport(true)}>Export</button>
         </div>
       </div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="label">Template</div>
+        <select className="input w-auto" value={tpl} onChange={e=>setTpl(e.target.value as any)}>
+          <option value="classic">Classic</option>
+          <option value="modern">Modern</option>
+          <option value="minimal">Minimal</option>
+          <option value="executive">Executive</option>
+          <option value="academic">Academic/Projects</option>
+        </select>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
@@ -41,6 +67,10 @@ export default function Preview({ session }:{ session:any }) {
           <DiffView diffs={session.diffs || []} />
           <div className="mt-4">
             <ATSCheck stats={session.keyword_stats} />
+          </div>
+          <div className="mt-4">
+            <div className="label mb-2">Visual preview</div>
+            <iframe className="w-full h-96 bg-white border rounded" srcDoc={renderHTML()} />
           </div>
         </div>
       </div>
