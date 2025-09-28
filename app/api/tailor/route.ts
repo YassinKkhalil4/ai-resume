@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
   resume_file = form.get('resume_file') as unknown as File | null
   jd_text_raw = form.get('jd_text')?.toString() || ''
   tone = (form.get('tone')?.toString() as Tone) || 'professional'
+  const resume_text_fallback = form.get('resume_text')?.toString() || ''
 
   console.log('Processing request:', { 
     hasResumeFile: !!resume_file, 
@@ -83,11 +84,19 @@ export async function POST(req: NextRequest) {
     tone 
   })
 
-  if (!resume_file) return NextResponse.json({ error: 'Missing resume_file' }, { status: 400 })
+  if (!resume_file && !resume_text_fallback) return NextResponse.json({ error: 'Missing resume input' }, { status: 400 })
   if (!jd_text_raw) return NextResponse.json({ error: 'Missing jd_text' }, { status: 400 })
 
-  const { text: resumeText, ext } = await extractTextFromFile(resume_file)
-  if (ext==='pdf' && (!resumeText || resumeText.trim().length < 50)) {
+  let resumeText = ''
+  let ext = 'txt'
+  if (resume_file) {
+    const parsed = await extractTextFromFile(resume_file)
+    resumeText = parsed.text
+    ext = parsed.ext
+  } else if (resume_text_fallback) {
+    resumeText = resume_text_fallback
+  }
+  if (resume_file && ext==='pdf' && (!resumeText || resumeText.trim().length < 50)) {
     return NextResponse.json({ error: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.', code:'scanned_pdf' }, { status: 400 })
   }
 

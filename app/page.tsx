@@ -7,6 +7,7 @@ import Preview from '../components/Preview'
 import useInviteGate from '../components/useInviteGate'
 
 const FileDrop = dynamic(() => import('../components/FileDrop'), { ssr: false })
+const OCRBanner = dynamic(() => import('../components/OCRBanner'), { ssr: false })
 
 export default function Home() {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -15,13 +16,16 @@ export default function Home() {
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const gate = useInviteGate()
+  const [ocrText, setOcrText] = useState<string>('')
 
   async function handleTailor() {
-    if (!resumeFile || !jdText) return alert('Upload a resume and paste a job description.')
+    if (!resumeFile && !ocrText) return alert('Upload a resume or run OCR, and paste a job description.')
+    if (!jdText) return alert('Paste a job description.')
     setLoading(true)
     try {
       const fd = new FormData()
-      fd.append('resume_file', resumeFile)
+      if (resumeFile) fd.append('resume_file', resumeFile)
+      if (!resumeFile && ocrText) fd.append('resume_text', ocrText)
       fd.append('jd_text', jdText)
       fd.append('tone', tone)
       const res = await fetch('/api/tailor', { method: 'POST', body: fd })
@@ -57,6 +61,7 @@ export default function Home() {
           <div>
             <label className="label">1) Upload Resume (PDF, DOCX, or TXT)</label>
             <FileDrop onFile={setResumeFile} />
+            <OCRBanner onText={setOcrText} />
           </div>
           <div>
             <label className="label">2) Paste Job Listing (URL or plain text)</label>
