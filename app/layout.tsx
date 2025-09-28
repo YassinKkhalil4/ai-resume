@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import ThemeToggle from '../components/ThemeToggle'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,12 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="badge">Privacy: <strong>Files deleted immediately</strong></span>
             </div>
             <div className="flex items-center gap-3">
-              <button className="button-outline text-xs" onClick={() => {
-                if (typeof document !== 'undefined') {
-                  const el = document.documentElement
-                  el.classList.toggle('dark')
-                }
-              }}>Toggle Dark</button>
+              <ThemeToggle />
               <div className="text-xs text-gray-500">Processed in-memory • Files deleted immediately • Not stored unless you opt in</div>
             </div>
           </header>
