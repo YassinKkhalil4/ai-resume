@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '../../../lib/sessions'
-import { renderHTML, htmlToPDF } from '../../../lib/pdf-service'
-import { ResumeJSON } from '../../../lib/types'
-import { convertHtmlToDocument } from './util_docx'
+import { renderHTML, htmlToPDF, htmlToDOCX } from '../../../lib/pdf-service'
+import { ResumeJSON, TailoredResult } from '../../../lib/types'
 import { enforceGuards } from '../../../lib/guards'
 import { startTrace, logPDFGeneration, logError } from '../../../lib/telemetry'
 
@@ -41,9 +40,11 @@ export async function POST(req: NextRequest) {
     const trace = startTrace({ route: 'export' })
     console.log('Trace started')
 
-    console.log('Parsing request body...')
+    const ct = req.headers.get('content-type') || ''
+    if (!ct.includes('application/json')) {
+      return NextResponse.json({ code: 'bad_request', message: 'JSON only' }, { status: 415 })
+    }
     const body = await req.json()
-    console.log('Request body parsed successfully')
 
     const bodyData = body || {}
     session_id = bodyData.session_id
@@ -67,30 +68,20 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    console.log('Getting session...')
-    const s = session_id ? getSession(session_id) : null
-    if (!s && !snapshot) {
-      console.log('Session not found and no snapshot provided:', session_id)
-      return NextResponse.json({ 
-        error: 'Session expired or not found', 
-        code: 'session_not_found' 
-      }, { status: 404 })
+    const session = snapshot ?? (session_id ? getSession(session_id) : null)
+    if (!session) {
+      return NextResponse.json({ code: 'session_not_found', message: 'No session' }, { status: 404 })
     }
-    console.log(s ? 'Session found' : 'Using snapshot fallback')
 
     console.log('Building resume object...')
-    const resume: ResumeJSON = s ? {
-      summary: options.includeSummary ? s.tailored.summary : '',
-      skills: options.includeSkills ? s.tailored.skills_section : [],
-      experience: s.tailored.experience.filter((exp:any) => exp.company && exp.role) as any,
-      education: s.original.education,
-      certifications: s.original.certifications
-    } : {
-      summary: options.includeSummary ? (snapshot?.preview_sections_json?.summary || '') : '',
-      skills: options.includeSkills ? (snapshot?.preview_sections_json?.skills || []) : [],
-      experience: (snapshot?.preview_sections_json?.experience || []).filter((exp:any)=>exp.company && exp.role) as any,
-      education: snapshot?.original_sections_json?.education || [],
-      certifications: snapshot?.original_sections_json?.certifications || []
+    const tailored: TailoredResult = session.tailored || session.preview_sections_json
+    const original = session.original || session.original_sections_json
+    const resume: ResumeJSON = {
+      summary: options.includeSummary ? (tailored.summary || '') : '',
+      skills: options.includeSkills ? (tailored.skills_section || []) : [],
+      experience: (tailored.experience || []).filter((exp:any)=>exp.company && exp.role) as any,
+      education: original?.education || [],
+      certifications: original?.certifications || []
     }
     console.log('Resume object built')
 
@@ -126,7 +117,7 @@ export async function POST(req: NextRequest) {
         trace.end(false, { error: String(pdfError) })
         // Attempt DOCX fallback (single-shot)
         try {
-          const docxBuffer = await convertHtmlToDocument(html)
+          const docxBuffer = await htmlToDOCX(html)
           logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
           trace.end(true, { size: docxBuffer.length, fallback: 'docx' })
           const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
@@ -149,7 +140,7 @@ export async function POST(req: NextRequest) {
     } else {
       console.log('Generating DOCX...')
       try {
-        const docxBuffer = await convertHtmlToDocument(html)
+        const docxBuffer = await htmlToDOCX(html)
         console.log('DOCX generated successfully, size:', docxBuffer.length)
         trace.end(true, { size: docxBuffer.length })
         const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)

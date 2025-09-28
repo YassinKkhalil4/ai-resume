@@ -13,6 +13,13 @@ export async function renderHTML(
   return minimalTemplate(resume, options)
 }
 
+// Convenience: DOCX from HTML for server routes that want a unified surface
+export async function htmlToDOCX(html: string): Promise<Buffer> {
+  const { convertHtmlToDocument } = await import('../app/api/export/util_docx')
+  const buf = await convertHtmlToDocument(html)
+  return buf
+}
+
 export async function htmlToPDF(html: string): Promise<Buffer> {
   const maxRetries = 2
   let lastError: Error | null = null

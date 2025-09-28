@@ -26,8 +26,15 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
         })
       })
       if (!res.ok) {
-        const rawText = await res.text()
-        throw new Error(rawText || `Export failed (${res.status})`)
+        let errJson: any = null
+        try { errJson = await res.json() } catch {}
+        throw new Error(errJson?.message || `Export HTTP ${res.status}`)
+      }
+      const ct = res.headers.get('content-type') || ''
+      if (!/^(application\/pdf|application\/vnd\.openxmlformats-.*docx)/i.test(ct)) {
+        let txt = ''
+        try { txt = await res.text() } catch {}
+        throw new Error(`Malformed export response: ${txt?.slice(0,500)}`)
       }
       const blob = await res.blob()
       const objectUrl = URL.createObjectURL(blob)
