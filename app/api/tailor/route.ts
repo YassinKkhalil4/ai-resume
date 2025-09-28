@@ -11,6 +11,7 @@ import { enforceGuards, sessionID } from '../../../lib/guards'
 import { detectLocale } from '../../../lib/locale'
 import { startTrace, logError, logSessionActivity } from '../../../lib/telemetry'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
+import { ocrExtractText } from '../../../lib/ocr'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -97,7 +98,19 @@ export async function POST(req: NextRequest) {
     resumeText = resume_text_fallback
   }
   if (resume_file && ext==='pdf' && (!resumeText || resumeText.trim().length < 50)) {
-    return NextResponse.json({ error: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.', code:'scanned_pdf' }, { status: 400 })
+    // Attempt server-side OCR fallback when configured
+    try {
+      const ocrEnabled = !!process.env.OCR_ENDPOINT
+      if (!ocrEnabled) throw new Error('OCR not configured')
+      const text = await ocrExtractText(resume_file as Blob, { maxPages: 4, lang: 'eng', denoise: true, deskew: true })
+      if (text && text.trim().length >= 50) {
+        resumeText = text
+      } else {
+        return NextResponse.json({ error: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.', code:'scanned_pdf' }, { status: 400 })
+      }
+    } catch (e) {
+      return NextResponse.json({ error: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.', code:'scanned_pdf' }, { status: 400 })
+    }
   }
 
   const original: ResumeJSON = heuristicParseResume(resumeText)
