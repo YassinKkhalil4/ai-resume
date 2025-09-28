@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
 import { extractJDFromUrl, extractKeywords } from '../../../lib/jd'
 import { atsCheck } from '../../../lib/ats'
@@ -6,7 +7,7 @@ import { buildDiffs } from '../../../lib/diff'
 import { integrityCheck } from '../../../lib/integrity'
 import { createSession } from '../../../lib/sessions'
 import { ResumeJSON, TailoredResult, Tone } from '../../../lib/types'
-import { enforceGuards } from '../../../lib/guards'
+import { enforceGuards, sessionID } from '../../../lib/guards'
 import { detectLocale } from '../../../lib/locale'
 import { startTrace, logError, logSessionActivity } from '../../../lib/telemetry'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
@@ -30,6 +31,10 @@ export async function POST(req: NextRequest) {
     hasFormData: !!req.formData
   })
   
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'Server not configured', code: 'no_openai_key' }, { status: 503 })
+  }
+
   // Declare variables outside try block for error handling
   let resume_file: File | null = null
   let jd_text_raw = ''
@@ -145,7 +150,7 @@ export async function POST(req: NextRequest) {
     experienceCount: tailored.experience?.length || 0
   })
 
-  return NextResponse.json({
+  const payload = {
     session_id: session.id,
     preview_sections_json: {
       summary: tailored.summary,
@@ -157,7 +162,15 @@ export async function POST(req: NextRequest) {
     original_sections_json: original,
     diffs,
     keyword_stats
-  })
+  }
+  const sid = sessionID(req)
+  if (sid === 'anon') {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+    const res = NextResponse.json(payload)
+    res.headers.append('Set-Cookie', `sid=${randomUUID()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${secure}`)
+    return res
+  }
+  return NextResponse.json(payload)
   } catch (error) {
     console.error('Tailor API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')

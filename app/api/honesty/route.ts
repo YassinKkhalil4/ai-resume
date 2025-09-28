@@ -7,6 +7,9 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'Server not configured', code: 'no_openai_key' }, { status: 503 })
+  }
   const guard = enforceGuards(req)
   if (!guard.ok) return guard.res
 

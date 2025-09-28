@@ -1,12 +1,22 @@
 export async function extractJDFromUrl(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 AI-Resume-Tailor' } })
-  const html = await res.text()
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/g,' ')
-    .replace(/<style[\s\S]*?<\/style>/g,' ')
-    .replace(/<[^>]+>/g,' ')
-    .replace(/\s+/g,' ')
-  return text.slice(0, 5000)
+  const u = new URL(url)
+  if (!/^https?:$/.test(u.protocol)) throw new Error('Invalid protocol')
+
+  const ctrl = new AbortController()
+  const to = setTimeout(() => ctrl.abort(), 15000)
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 AI-Resume-Tailor' } })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const html = await res.text()
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/g,' ')
+      .replace(/<style[\s\S]*?<\/style>/g,' ')
+      .replace(/<[^>]+>/g,' ')
+      .replace(/\s+/g,' ')
+    return text.slice(0, 5000)
+  } finally {
+    clearTimeout(to)
+  }
 }
 
 export function extractKeywords(jdText: string, topN=20): string[] {

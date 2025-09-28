@@ -129,11 +129,29 @@ export async function POST(req: NextRequest) {
         logError(pdfError as Error, { format, template, session_id, htmlLength: html.length })
         
         trace.end(false, { error: String(pdfError) })
-        return NextResponse.json({ 
-          error: 'PDF generation failed', 
-          code: 'pdf_generation_failed',
-          details: process.env.NODE_ENV === 'development' ? String(pdfError) : undefined
-        }, { status: 500 })
+        // Attempt DOCX fallback
+        try {
+          const docxBuffer = await convertHtmlToDocument(html)
+          const fileId = randomUUID() + '.docx'
+          const path = `/tmp/${fileId}`
+          const fs = await import('fs')
+          fs.writeFileSync(path, docxBuffer)
+          logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
+          trace.end(true, { size: docxBuffer.length, fallback: 'docx' })
+          return NextResponse.json({ 
+            download_url: `/api/export/${fileId}`,
+            format: 'docx',
+            file_id: fileId,
+            note: 'PDF failed; returned DOCX fallback'
+          })
+        } catch (docxFallbackError) {
+          console.error('DOCX fallback failed:', docxFallbackError)
+          return NextResponse.json({ 
+            error: 'PDF generation failed', 
+            code: 'pdf_generation_failed',
+            details: process.env.NODE_ENV === 'development' ? String(pdfError) : undefined
+          }, { status: 500 })
+        }
       }
     } else {
       console.log('Generating DOCX...')

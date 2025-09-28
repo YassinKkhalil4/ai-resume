@@ -54,6 +54,8 @@ export function enforceGuards(req: NextRequest) {
   const ipArr = pushHit(ipHits, ip)
   const sidArr = pushHit(sidHits, sid)
   slide(ipArr, 60_000); slide(sidArr, 60_000)
+  // prune empty and cap map sizes to avoid unbounded growth
+  pruneMaps()
   if (ipArr.length > cfg.rate.ipPerMin) {
     return { ok: false, res: NextResponse.json({ error: 'Rate limit exceeded (ip)', code: 'rate_ip' }, { status: 429 }) }
   }
@@ -61,4 +63,22 @@ export function enforceGuards(req: NextRequest) {
     return { ok: false, res: NextResponse.json({ error: 'Rate limit exceeded (session)', code: 'rate_session' }, { status: 429 }) }
   }
   return { ok: true }
+}
+
+function pruneMaps(windowMs:number = 60_000, maxKeys = 5000) {
+  const nowMs = now()
+  for (const [k, arr] of ipHits) {
+    while (arr.length && (nowMs - arr[0]) > windowMs) arr.shift()
+    if (arr.length === 0) ipHits.delete(k)
+  }
+  for (const [k, arr] of sidHits) {
+    while (arr.length && (nowMs - arr[0]) > windowMs) arr.shift()
+    if (arr.length === 0) sidHits.delete(k)
+  }
+  if (ipHits.size > maxKeys) {
+    for (const k of ipHits.keys()) { ipHits.delete(k); if (ipHits.size <= maxKeys) break }
+  }
+  if (sidHits.size > maxKeys) {
+    for (const k of sidHits.keys()) { sidHits.delete(k); if (sidHits.size <= maxKeys) break }
+  }
 }

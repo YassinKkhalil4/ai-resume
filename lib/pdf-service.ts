@@ -102,8 +102,7 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
           format: 'A4',
           printBackground: true,
           preferCSSPageSize: true,
-          margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
-          timeout: 15000
+          margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }
         })
         
         console.log('PDF generated successfully, size:', pdf.length)
