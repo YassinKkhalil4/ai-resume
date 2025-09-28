@@ -5,6 +5,9 @@ const TELEMETRY_PATH = '/tmp/telemetry.jsonl'
 const AI_RESPONSES_PATH = '/tmp/ai-responses.jsonl'
 const ERROR_LOG_PATH = '/tmp/error-log.jsonl'
 
+const LOG_DRAIN_URL = process.env.LOG_DRAIN_URL || ''
+const LOG_DRAIN_KEY = process.env.LOG_DRAIN_KEY || ''
+
 export function startTrace(meta: any = {}) {
   const id = uuid()
   const t0 = Date.now()
@@ -23,6 +26,7 @@ export function startTrace(meta: any = {}) {
     } catch (e) {
       console.warn('Failed to write telemetry:', e)
     }
+    void sendToDrain(rec)
     return rec
   }
   
@@ -45,6 +49,7 @@ export function logAIResponse(attempt: number, success: boolean, error?: string,
   } catch (e) {
     console.warn('Failed to log AI response:', e)
   }
+  void sendToDrain(logEntry)
 }
 
 export function logError(error: Error, context: any = {}) {
@@ -61,6 +66,7 @@ export function logError(error: Error, context: any = {}) {
   } catch (e) {
     console.warn('Failed to log error:', e)
   }
+  void sendToDrain(logEntry)
 }
 
 export function logPDFGeneration(attempt: number, success: boolean, error?: string, method?: string, size?: number) {
@@ -79,6 +85,7 @@ export function logPDFGeneration(attempt: number, success: boolean, error?: stri
   } catch (e) {
     console.warn('Failed to log PDF generation:', e)
   }
+  void sendToDrain(logEntry)
 }
 
 export function logSessionActivity(sessionId: string, activity: string, details: any = {}) {
@@ -95,4 +102,19 @@ export function logSessionActivity(sessionId: string, activity: string, details:
   } catch (e) {
     console.warn('Failed to log session activity:', e)
   }
+  void sendToDrain(logEntry)
+}
+
+async function sendToDrain(entry: any) {
+  if (!LOG_DRAIN_URL) return
+  try {
+    await fetch(LOG_DRAIN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(LOG_DRAIN_KEY ? { 'Authorization': `Bearer ${LOG_DRAIN_KEY}` } : {})
+      },
+      body: JSON.stringify(entry)
+    })
+  } catch {}
 }

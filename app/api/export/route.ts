@@ -3,6 +3,7 @@ import { getSession } from '../../../lib/sessions'
 import { renderHTML, htmlToPDF, htmlToDOCX } from '../../../lib/pdf-service'
 import { ResumeJSON, TailoredResult } from '../../../lib/types'
 import { enforceGuards } from '../../../lib/guards'
+import { getConfig } from '../../../lib/config'
 import { startTrace, logPDFGeneration, logError } from '../../../lib/telemetry'
 
 export const runtime = 'nodejs';
@@ -34,6 +35,10 @@ export async function POST(req: NextRequest) {
     if (!guard.ok) {
       console.log('Guard check failed:', guard.res)
       return guard.res
+    }
+    const cfg = getConfig()
+    if (cfg.pauseExport) {
+      return NextResponse.json({ error: 'Export is paused', code: 'paused' }, { status: 503 })
     }
     console.log('Guard check passed')
 
@@ -93,11 +98,13 @@ export async function POST(req: NextRequest) {
       console.log('Generating PDF...')
       console.log('HTML length:', html.length)
       try {
+        const t0 = Date.now()
         const pdf = await htmlToPDF(html)
         console.log('PDF generated successfully, size:', pdf.length)
         if (!pdf || pdf.length === 0) throw new Error('PDF generation returned empty buffer')
+        const pdfMs = Date.now() - t0
         logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
-        trace.end(true, { size: pdf.length })
+        trace.end(true, { size: pdf.length, pdf_ms: pdfMs })
         const pdfArrayBuffer = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength)
         return new NextResponse(pdfArrayBuffer as ArrayBuffer, {
           headers: {
@@ -117,9 +124,10 @@ export async function POST(req: NextRequest) {
         trace.end(false, { error: String(pdfError) })
         // Attempt DOCX fallback (single-shot)
         try {
+          const t1 = Date.now()
           const docxBuffer = await htmlToDOCX(html)
           logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
-          trace.end(true, { size: docxBuffer.length, fallback: 'docx' })
+          trace.end(true, { size: docxBuffer.length, fallback: 'docx', docx_ms: Date.now()-t1 })
           const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
           return new NextResponse(ab as ArrayBuffer, {
             headers: {
@@ -140,9 +148,10 @@ export async function POST(req: NextRequest) {
     } else {
       console.log('Generating DOCX...')
       try {
+        const t0 = Date.now()
         const docxBuffer = await htmlToDOCX(html)
         console.log('DOCX generated successfully, size:', docxBuffer.length)
-        trace.end(true, { size: docxBuffer.length })
+        trace.end(true, { size: docxBuffer.length, docx_ms: Date.now()-t0 })
         const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
         return new NextResponse(ab as ArrayBuffer, {
           headers: {

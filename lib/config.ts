@@ -4,13 +4,17 @@ const CONFIG_PATH = '/tmp/ai-resume-tailor-config.json'
 export type AppConfig = {
   rate: { ipPerMin: number, sessionPerMin: number },
   invites: string[],
-  openaiKey?: string
+  openaiKey?: string,
+  pauseTailor?: boolean,
+  pauseExport?: boolean
 }
 
 let config: AppConfig = {
   rate: { ipPerMin: Number(process.env.RATE_IP_PER_MIN||30), sessionPerMin: Number(process.env.RATE_SESSION_PER_MIN||5) },
   invites: (process.env.INVITE_CODES||'').split(',').map(s=>s.trim()).filter(Boolean),
-  openaiKey: undefined
+  openaiKey: undefined,
+  pauseTailor: false,
+  pauseExport: false
 }
 
 export function loadConfig() {

@@ -8,6 +8,7 @@ import { integrityCheck } from '../../../lib/integrity'
 import { createSession } from '../../../lib/sessions'
 import { ResumeJSON, TailoredResult, Tone } from '../../../lib/types'
 import { enforceGuards, sessionID } from '../../../lib/guards'
+import { getConfig } from '../../../lib/config'
 import { detectLocale } from '../../../lib/locale'
 import { startTrace, logError, logSessionActivity } from '../../../lib/telemetry'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
@@ -48,6 +49,10 @@ export async function POST(req: NextRequest) {
     if (!guard.ok) {
       console.log('Guard check failed:', guard.res)
       return guard.res
+    }
+    const cfg = getConfig()
+    if (cfg.pauseTailor) {
+      return NextResponse.json({ error: 'Tailoring is paused', code: 'paused' }, { status: 503 })
     }
     console.log('Guard check passed')
 
@@ -127,7 +132,10 @@ export async function POST(req: NextRequest) {
   // Use the new robust AI response parser
   let tailored: TailoredResult
   try {
+    const t0 = Date.now()
     tailored = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale, tone)
+    const ms = Date.now() - t0
+    try { trace.end(true, { tailor_ms: ms }) } catch {}
   } catch (error) {
     console.error('Failed to get tailored resume:', error)
     logError(error as Error, { original, jdText, tone })

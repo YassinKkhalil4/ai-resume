@@ -51,6 +51,10 @@ export default function Admin() {
           <div className="label">Override OpenAI API key (stores in /tmp)</div>
           <input className="input" placeholder="sk-..." value={cfg.openaiKey||''} onChange={e=>setCfg({...cfg, openaiKey: e.target.value})} />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={!!cfg.pauseTailor} onChange={e=>setCfg({...cfg, pauseTailor: e.target.checked})} /> Pause Tailoring</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={!!cfg.pauseExport} onChange={e=>setCfg({...cfg, pauseExport: e.target.checked})} /> Pause Export</label>
+        </div>
         <div className="flex gap-2">
           <button className="button" onClick={save}>Save</button>
           <button className="button-outline" onClick={load}>Reload</button>
