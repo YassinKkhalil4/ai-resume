@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const s = session_snapshot ?? (session_id ? getSession(session_id) : null);
 
     if (!s) {
-      return NextResponse.json({ code: 'session_not_found', message: 'No session' }, { status: 404 });
+      return NextResponse.json({ code: 'session_not_found', message: 'No session data available' }, { status: 404 });
     }
     
     console.log('Export parameters:', {

@@ -22,9 +22,9 @@ export default function Preview({ session }:{ session:any }) {
 
   // Persist snapshot on the client when preview renders
   useEffect(() => {
-    if (typeof window !== 'undefined' && session) {
-      (window as any).__TAILOR_SESSION__ = session; // snapshot for export
-    }
+    try { 
+      (window as any).__TAILOR_SESSION__ = session; 
+    } catch {}
   }, [session]);
 
   function renderHTML() {
