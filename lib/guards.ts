@@ -47,7 +47,7 @@ export function hasInvite(req: NextRequest) {
 export function enforceGuards(req: NextRequest) {
   const cfg = getConfig()
   if (!hasInvite(req)) {
-    return { ok: false, res: NextResponse.json({ error: 'Invite code required', code: 'invite_required' }, { status: 403 }) }
+    return { ok: false, res: NextResponse.json({ code: 'invite_required', message: 'Invite code required' }, { status: 403 }) }
   }
   const ip = clientIP(req)
   const sid = sessionID(req)
@@ -57,10 +57,10 @@ export function enforceGuards(req: NextRequest) {
   // prune empty and cap map sizes to avoid unbounded growth
   pruneMaps()
   if (ipArr.length > cfg.rate.ipPerMin) {
-    return { ok: false, res: NextResponse.json({ error: 'Rate limit exceeded (ip)', code: 'rate_ip' }, { status: 429 }) }
+    return { ok: false, res: NextResponse.json({ code: 'rate_limited', message: 'Too many requests' }, { status: 429 }) }
   }
   if (sidArr.length > cfg.rate.sessionPerMin) {
-    return { ok: false, res: NextResponse.json({ error: 'Rate limit exceeded (session)', code: 'rate_session' }, { status: 429 }) }
+    return { ok: false, res: NextResponse.json({ code: 'rate_limited', message: 'Too many requests' }, { status: 429 }) }
   }
   return { ok: true }
 }

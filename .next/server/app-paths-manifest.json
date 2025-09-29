@@ -1,15 +1,15 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/admin/page": "app/admin/page.js",
-  "/page": "app/page.js",
   "/privacy/page": "app/privacy/page.js",
+  "/page": "app/page.js",
+  "/api/ocr/route": "app/api/ocr/route.js",
+  "/api/admin/login/route": "app/api/admin/login/route.js",
   "/api/admin/config/route": "app/api/admin/config/route.js",
-  "/api/export/route": "app/api/export/route.js",
   "/api/export/[file]/route": "app/api/export/[file]/route.js",
+  "/api/test/route": "app/api/test/route.js",
   "/api/honesty/route": "app/api/honesty/route.js",
   "/api/tailor-test/route": "app/api/tailor-test/route.js",
-  "/api/admin/login/route": "app/api/admin/login/route.js",
-  "/api/ocr/route": "app/api/ocr/route.js",
-  "/api/test/route": "app/api/test/route.js",
-  "/api/tailor/route": "app/api/tailor/route.js"
+  "/api/tailor/route": "app/api/tailor/route.js",
+  "/api/export/route": "app/api/export/route.js"
 }

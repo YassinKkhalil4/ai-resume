@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const { key } = body || {}
-  if (!key || key !== process.env.ADMIN_KEY) return NextResponse.json({ error: 'Invalid admin key' }, { status: 403 })
+  if (!key || key !== process.env.ADMIN_KEY) return NextResponse.json({ code: 'invalid_admin_key', message: 'Invalid admin key' }, { status: 403 })
   const res = NextResponse.json({ ok: true })
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
   res.headers.append('Set-Cookie', `admin=1; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure}`)

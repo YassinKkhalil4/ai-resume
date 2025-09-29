@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   })
   
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: 'Server not configured', code: 'no_openai_key' }, { status: 503 })
+    return NextResponse.json({ code: 'no_openai_key', message: 'Server not configured' }, { status: 503 })
   }
 
   // Declare variables outside try block for error handling
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
     const cfg = getConfig()
     if (cfg.pauseTailor) {
-      return NextResponse.json({ error: 'Tailoring is paused', code: 'paused' }, { status: 503 })
+      return NextResponse.json({ code: 'paused', message: 'Tailoring is paused' }, { status: 503 })
     }
     console.log('Guard check passed')
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ jd_text })
       } catch (e:any) {
         console.error('JD fetch failed:', e)
-        return NextResponse.json({ error: e?.message || 'Fetch failed' }, { status: 400 })
+        return NextResponse.json({ code: 'fetch_failed', message: e?.message || 'Fetch failed' }, { status: 400 })
       }
     }
 
@@ -90,8 +90,8 @@ export async function POST(req: NextRequest) {
     tone 
   })
 
-  if (!resume_file && !resume_text_fallback) return NextResponse.json({ error: 'Missing resume input' }, { status: 400 })
-  if (!jd_text_raw) return NextResponse.json({ error: 'Missing jd_text' }, { status: 400 })
+  if (!resume_file && !resume_text_fallback) return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
+  if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
 
   let resumeText = ''
   let ext = 'txt'
@@ -109,10 +109,10 @@ export async function POST(req: NextRequest) {
       if (text && text.trim().length >= 50) {
         resumeText = text
       } else {
-        return NextResponse.json({ error: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.', code:'scanned_pdf' }, { status: 400 })
+        return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
       }
     } catch (e) {
-      return NextResponse.json({ error: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.', code:'scanned_pdf' }, { status: 400 })
+      return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
     }
   }
 
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   if ((jdText||'').trim().length < 60) {
-    return NextResponse.json({ error: 'Job description is too short/invalid. Paste the full responsibilities & requirements.', code:'jd_too_short' }, { status: 400 })
+    return NextResponse.json({ code: 'jd_too_short', message: 'Job description is too short/invalid. Paste the full responsibilities & requirements.' }, { status: 400 })
   }
 
   const locale = detectLocale(resumeText + '\n' + jdText)
