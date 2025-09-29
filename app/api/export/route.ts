@@ -49,38 +49,33 @@ export async function POST(req: NextRequest) {
     if (!ct.includes('application/json')) {
       return NextResponse.json({ code: 'bad_request', message: 'JSON only' }, { status: 415 })
     }
-    const body = await req.json()
+    const body = await req.json();
 
-    const bodyData = body || {}
-    session_id = bodyData.session_id
-    template = (bodyData.template as 'classic' | 'modern' | 'minimal') || 'minimal'
-    format = bodyData.format || 'pdf'
-    const options = bodyData.options || { includeSummary: true, includeSkills: true }
-    const snapshot = bodyData.session_snapshot || null
+    const {
+      session_id,
+      template = 'minimal',
+      format = 'pdf',
+      options = { includeSummary: true, includeSkills: true },
+      session_snapshot
+    } = body || {};
+
+    const s = session_snapshot ?? (session_id ? getSession(session_id) : null);
+
+    if (!s) {
+      return NextResponse.json({ code: 'session_not_found', message: 'No session' }, { status: 404 });
+    }
     
     console.log('Export parameters:', {
       session_id: session_id ? 'present' : 'missing',
       template,
       format,
-      options
+      options,
+      has_snapshot: !!session_snapshot
     })
 
-    if (!session_id && !snapshot) {
-      console.log('Missing session_id and no snapshot provided')
-      return NextResponse.json({ 
-        error: 'Missing session context', 
-        code: 'missing_session' 
-      }, { status: 400 })
-    }
-
-    const session = snapshot ?? (session_id ? getSession(session_id) : null)
-    if (!session) {
-      return NextResponse.json({ code: 'session_not_found', message: 'No session' }, { status: 404 })
-    }
-
     console.log('Building resume object...')
-    const tailored: TailoredResult = session.tailored || session.preview_sections_json
-    const original = session.original || session.original_sections_json
+    const tailored: TailoredResult = s.tailored || s.preview_sections_json
+    const original = s.original || s.original_sections_json
     const resume: ResumeJSON = {
       summary: options.includeSummary ? (tailored.summary || '') : '',
       skills: options.includeSkills ? (tailored.skills_section || []) : [],

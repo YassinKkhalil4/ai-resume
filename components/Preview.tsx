@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { minimalTemplate } from '../lib/templates/minimal'
 import { modernTemplate } from '../lib/templates/modern'
 import { classicTemplate } from '../lib/templates/classic'
@@ -20,10 +20,12 @@ export default function Preview({ session }:{ session:any }) {
   const tailored = useMemo(()=>JSON.stringify(session.preview_sections_json, null, 2), [session])
   const original = useMemo(()=>JSON.stringify(session.original_sections_json, null, 2), [session])
 
-  // expose a minimal snapshot for export fallback
-  if (typeof window !== 'undefined') {
-    ;(window as any).__TAILOR_SESSION__ = session
-  }
+  // Persist snapshot on the client when preview renders
+  useEffect(() => {
+    if (typeof window !== 'undefined' && session) {
+      (window as any).__TAILOR_SESSION__ = session; // snapshot for export
+    }
+  }, [session]);
 
   function renderHTML() {
     const resume = session.preview_sections_json

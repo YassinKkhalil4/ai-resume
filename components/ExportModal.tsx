@@ -13,6 +13,9 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
   async function exportFile() {
     setLoading(true)
     try {
+      // Include snapshot in export requests
+      const snapshot = (typeof window !== 'undefined' && (window as any).__TAILOR_SESSION__) || null;
+      
       const res = await fetch('/api/export', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
@@ -21,8 +24,7 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
           template,
           format,
           options: { includeSkills, includeSummary },
-          // provide snapshot fallback so export works even if memory session expired
-          session_snapshot: (window as any).__TAILOR_SESSION__ || null
+          session_snapshot: snapshot
         })
       })
       if (!res.ok) {
