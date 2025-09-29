@@ -1,5 +1,6 @@
 import { extractKeywords2 } from './jd'
 import { ResumeJSON, KeywordStats } from './types'
+import OpenAI from 'openai'
 
 export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   const { all, must, nice } = extractKeywords2(jdText, 20)
@@ -17,7 +18,7 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   if (!resume.experience?.length) warnings.push('No Experience section detected.')
   if (!resume.skills?.length) warnings.push('No Skills section detected.')
 
-  return {
+  const base: KeywordStats = {
     coverage: all.length ? matched.length / all.length : 0,
     matched, missing, warnings,
     mustCoverage: must.length ? mustMatched.length / must.length : 0,
@@ -25,6 +26,7 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
     mustMatched, mustMissing, niceMatched, niceMissing,
     topMissing: missing.slice(0,5)
   }
+  return base
 }
 
 function stringifyResume(r: ResumeJSON): string {

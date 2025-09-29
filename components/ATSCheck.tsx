@@ -4,6 +4,7 @@ export default function ATSCheck({ stats }:{ stats:any }) {
   const pct = Math.round((stats?.coverage || 0) * 100)
   const mustPct = Math.round((stats?.mustCoverage || 0) * 100)
   const nicePct = Math.round((stats?.niceCoverage || 0) * 100)
+  const semPct = Math.round((stats?.semanticCoverage || 0) * 100)
 
   return (
     <div className="border rounded-md p-3 bg-white">
@@ -31,7 +32,25 @@ export default function ATSCheck({ stats }:{ stats:any }) {
         <div className="text-sm">{nicePct}%</div>
       </div>
 
+      <div className="mt-2 text-xs text-gray-600">Semantic coverage</div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-full bg-gray-100 h-2 rounded">
+          <div className="h-2 rounded" style={{ width: semPct + '%', background: semPct>=80 ? '#10B981' : semPct>=60 ? '#F59E0B' : '#EF4444' }} />
+        </div>
+        <div className="text-sm">{semPct}%</div>
+      </div>
+
       <div className="text-xs mb-2"><strong>Top missing:</strong> {(stats?.topMissing||[]).slice(0,5).join(', ')||'—'}</div>
+      {Array.isArray(stats?.gaps) && stats.gaps.length>0 && (
+        <div className="text-xs mt-2">
+          <div className="label mb-1">Gap map (nearest support)</div>
+          <ul className="list-disc ml-4">
+            {stats.gaps.slice(0,5).map((g:any, i:number)=>(
+              <li key={i}><strong>{g.requirement}</strong> → match "{g.nearestBullet}" (score {Math.round((g.score||0)*100)/100})</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
         <div>
           <div className="label">Matched</div>

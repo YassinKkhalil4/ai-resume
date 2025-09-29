@@ -32,4 +32,6 @@ export type KeywordStats = {
   niceMatched?: string[]
   niceMissing?: string[]
   topMissing?: string[]
+  semanticCoverage?: number
+  gaps?: Array<{ requirement:string, nearestBullet:string, score:number }>
 }
