@@ -24,9 +24,10 @@ export default function Home() {
       const isPdf = file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf')
       if (!isPdf) return ''
       const Tesseract: any = (await import('tesseract.js')).default || (await import('tesseract.js'))
-      const pdfjsLib: any = await import('pdfjs-dist')
+      const { getPdfJs } = await import('../lib/parsers')
+      const pdfjsLib = await getPdfJs()
       const arr = await file.arrayBuffer()
-      const pdf = await (pdfjsLib as any).getDocument({ data: arr }).promise
+      const pdf = await pdfjsLib.getDocument({ data: arr }).promise
       const page = await pdf.getPage(1)
       const viewport = page.getViewport({ scale: 1.5 })
       const canvas = document.createElement('canvas')

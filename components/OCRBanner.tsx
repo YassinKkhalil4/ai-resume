@@ -16,8 +16,9 @@ export default function OCRBanner({ onText }: { onText: (text: string) => void }
       const Tesseract: any = (await import('tesseract.js')).default || (await import('tesseract.js'))
       const arr = await file.arrayBuffer()
       // render first page to image using pdf.js (client) for demo
-      const pdfjsLib: any = await import('pdfjs-dist')
-      const pdf = await (pdfjsLib as any).getDocument({ data: arr }).promise
+      const { getPdfJs } = await import('../lib/parsers')
+      const pdfjsLib = await getPdfJs()
+      const pdf = await pdfjsLib.getDocument({ data: arr }).promise
       const page = await pdf.getPage(1)
       const viewport = page.getViewport({ scale: 1.5 })
       const canvas = document.createElement('canvas')

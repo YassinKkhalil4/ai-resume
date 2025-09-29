@@ -10,10 +10,15 @@ async function getPdfJs() {
       // Use dynamic import to avoid build-time issues
       pdfjsLib = await import('pdfjs-dist')
       
-      // Configure for Node.js environment
+      // Configure worker for both Node and browser environments
       if (typeof window === 'undefined') {
-        // Server-side configuration
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+        // Server-side configuration (Node.js/SSR)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+      } else {
+        // Browser configuration (client-side OCR)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
       }
     } catch (error) {
       console.error('Failed to load pdfjs-dist:', error)
@@ -22,6 +27,9 @@ async function getPdfJs() {
   }
   return pdfjsLib
 }
+
+// Export the getPdfJs function for client-side use
+export { getPdfJs }
 
 export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string}> {
   // @ts-ignore
