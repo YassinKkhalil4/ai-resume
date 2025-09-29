@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/admin/login":{},"/api/admin/config":{},"/api/export/[file]":{},"/api/honesty":{},"/api/ocr":{},"/api/tailor-test":{},"/api/tailor":{},"/api/test":{},"/api/export":{"maxDuration":30}}}
+{"version":1,"functions":{"/api/admin/config":{},"/api/admin/login":{},"/api/export/[file]":{},"/api/honesty":{},"/api/ocr":{},"/api/tailor-test":{},"/api/export":{"maxDuration":30},"/api/test":{},"/api/tailor":{}}}

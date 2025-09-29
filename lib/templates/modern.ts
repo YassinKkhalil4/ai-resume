@@ -3,7 +3,7 @@ import { ResumeJSON } from '../types'
 export function modernTemplate(resume: ResumeJSON, options:{ includeSkills:boolean, includeSummary:boolean }) {
   return `<!doctype html>
 <html><head><meta charset="utf-8" /><style>
-  body { font-family: Inter, Arial, Helvetica, sans-serif; color:#111; font-size: 12pt; line-height: 1.35; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#111; font-size: 12pt; line-height: 1.35; }
   h2 { font-size: 13pt; margin: 0 0 8px; }
   .sec { margin: 14px 0; }
   .row { display:flex; justify-content: space-between; }

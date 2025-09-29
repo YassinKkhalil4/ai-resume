@@ -66,80 +66,51 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
 }
 
 async function generatePDFWithExternalService(html: string): Promise<Buffer> {
-  // Use Puppeteer with Chromium for Vercel compatibility
-  try {
-    const useLambda = process.env.USE_LAMBDA_CHROMIUM === '1' || process.env.VERCEL === '1'
-    
-    console.log('Using PDF generation method:', useLambda ? 'Lambda/Chromium' : 'Local Puppeteer')
-    
-    if (useLambda) {
-      // Vercel/Lambda path: puppeteer-core + @sparticuz/chromium
-      const chromium = (await import('@sparticuz/chromium')).default
-      const puppeteerCore = (await import('puppeteer-core')).default
+  const useLambda = process.env.USE_LAMBDA_CHROMIUM === '1' || process.env.VERCEL === '1';
+  
+  console.log('Using PDF generation method:', useLambda ? 'Lambda/Chromium' : 'Local Puppeteer')
+  
+  if (useLambda) {
+    const chromium = await import('@sparticuz/chromium');
+    const pcore = await import('puppeteer-core');
 
-      let browser: import('puppeteer-core').Browser | undefined
-      try {
-        // Minimal, stable launch flags for serverless
-        browser = await puppeteerCore.launch({
-          args: chromium.args,
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless
-        })
+    const browser = await pcore.launch({
+      args: chromium.default.args,
+      defaultViewport: chromium.default.defaultViewport,
+      executablePath: await chromium.default.executablePath(),
+      headless: chromium.default.headless
+    });
 
-        const page = await browser.newPage()
-        await page.setCacheEnabled(false)
-        await page.emulateMediaType('screen')
-        await page.setContent(html, { waitUntil: 'domcontentloaded' })
-
-        const pdf = await page.pdf({
-          format: 'A4',
-          printBackground: true,
-          preferCSSPageSize: true,
-          margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }
-        })
-        return pdf
-      } finally {
-        if (browser) {
-          try { await browser.close() } catch {}
-        }
-      }
-    } else {
-      // Local development path
-      const puppeteer = (await import('puppeteer')).default
-      let browser: import('puppeteer').Browser | undefined
-      try {
-        browser = await puppeteer.launch({
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
-        })
-
-        const page = await browser.newPage()
-        await page.setCacheEnabled(false)
-        await page.emulateMediaType('screen')
-        await page.setContent(html, { waitUntil: 'domcontentloaded' })
-
-        const pdf = await page.pdf({
-          format: 'A4',
-          printBackground: true,
-          preferCSSPageSize: true,
-          margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }
-        })
-        
-        return pdf
-      } finally {
-        if (browser) {
-          try {
-            await browser.close()
-          } catch (e) {
-            console.warn('Failed to close browser:', e)
-          }
-        }
-      }
+    try {
+      const page = await browser.newPage();
+      await page.setCacheEnabled(false);
+      await page.emulateMediaType('screen');
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top:'18mm', right:'16mm', bottom:'18mm', left:'16mm' }
+      });
+      return pdf;
+    } finally {
+      await browser.close();
     }
-  } catch (error) {
-    console.warn('Puppeteer PDF generation failed:', error)
-    throw error
+  } else {
+    const puppeteer = await import('puppeteer');
+    const browser = await puppeteer.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.emulateMediaType('screen');
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+      const pdf = await page.pdf({
+        format: 'A4', printBackground: true, preferCSSPageSize: true,
+        margin: { top:'18mm', right:'16mm', bottom:'18mm', left:'16mm' }
+      });
+      return pdf;
+    } finally {
+      await browser.close();
+    }
   }
 }
 

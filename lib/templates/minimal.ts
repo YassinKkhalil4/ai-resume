@@ -4,7 +4,7 @@ export function minimalTemplate(resume: ResumeJSON, options:{ includeSkills:bool
   return `<!doctype html>
 <html><head><meta charset="utf-8" /><style>
   /* Force safe system fonts to avoid blank glyphs in serverless Chromium */
-  body { font-family: Arial, Helvetica, sans-serif; color:#111; font-size: 11.5pt; line-height: 1.35; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#111; font-size: 11.5pt; line-height: 1.35; }
   h2 { font-size: 12.5pt; margin: 0 0 6px; letter-spacing: 0.2px; }
   .sec { margin: 16px 0; }
   .role { font-weight: 600; }

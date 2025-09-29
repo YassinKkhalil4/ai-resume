@@ -2,7 +2,7 @@ import { ResumeJSON } from '../types'
 
 export function executiveTemplate(resume: ResumeJSON, options:{ includeSkills:boolean, includeSummary:boolean }) {
   const css = `
-  body{font-family: Arial, Helvetica, sans-serif; color:#0b0b0b; font-size:11.5pt; line-height:1.38;}
+  body{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#0b0b0b; font-size:11.5pt; line-height:1.38;}
   .wrap{max-width:820px; margin:0 auto;}
   .hdr{display:grid; grid-template-columns: 2fr 1fr; gap:16px; align-items:flex-end; border-bottom:2px solid #111; padding-bottom:10px; margin-bottom:14px}
   .name{font-size:20pt; font-weight:700; letter-spacing:.2px}

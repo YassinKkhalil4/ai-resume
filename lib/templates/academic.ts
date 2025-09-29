@@ -2,7 +2,7 @@ import { ResumeJSON } from '../types'
 
 export function academicTemplate(resume: ResumeJSON, options:{ includeSkills:boolean, includeSummary:boolean }) {
   const css = `
-  body{font-family: Arial, Helvetica, sans-serif; color:#111; font-size:11.5pt; line-height:1.4}
+  body{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#111; font-size:11.5pt; line-height:1.4}
   .wrap{max-width:820px; margin:0 auto}
   h1{font-size:18pt; margin:0 0 6px; font-weight:700}
   h2{font-size:12.5pt; margin:12px 0 6px}
