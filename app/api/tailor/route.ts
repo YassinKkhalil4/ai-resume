@@ -10,7 +10,7 @@ import { ResumeJSON, TailoredResult, Tone } from '../../../lib/types'
 import { enforceGuards, sessionID } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
 import { detectLocale } from '../../../lib/locale'
-import { startTrace, logError, logSessionActivity } from '../../../lib/telemetry'
+import { startTrace, logError, logSessionActivity, logRequestTelemetry } from '../../../lib/telemetry'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
 import { ocrExtractText } from '../../../lib/ocr'
 
@@ -131,14 +131,28 @@ export async function POST(req: NextRequest) {
   
   // Use the new robust AI response parser
   let tailored: TailoredResult
+  let aiTokens = 0
   try {
     const t0 = Date.now()
-    tailored = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale, tone)
+    const result = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale, tone)
+    tailored = result.tailored
+    aiTokens = result.tokens || 0
     const ms = Date.now() - t0
-    try { trace.end(true, { tailor_ms: ms }) } catch {}
+    try { trace.end(true, { tailor_ms: ms, ai_tokens: aiTokens }) } catch {}
   } catch (error) {
     console.error('Failed to get tailored resume:', error)
     logError(error as Error, { original, jdText, tone })
+    
+    // Log telemetry for failed request
+    logRequestTelemetry({
+      req_id: trace.id,
+      route: 'tailor',
+      timing: Date.now() - (trace as any).startTime,
+      final_status: 'error',
+      error_code: 'tailoring_failed',
+      additional_metrics: { jd_length: jdText.length, resume_length: resumeText.length }
+    })
+    
     return NextResponse.json({ 
       error: 'Failed to tailor resume', 
       code: 'tailoring_failed',
@@ -152,7 +166,9 @@ export async function POST(req: NextRequest) {
     console.warn('Integrity check failed, attempting retry with stricter rules')
     try {
       // Retry with stricter integrity rules
-      tailored = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale + '\n\nSTRICT RULE: Do not add any tools, companies, or products not present in the original resume.', tone)
+      const retryResult = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale + '\n\nSTRICT RULE: Do not add any tools, companies, or products not present in the original resume.', tone)
+      tailored = retryResult.tailored
+      aiTokens += retryResult.tokens
     } catch (retryError) {
       console.warn('Retry with stricter rules also failed:', retryError)
       // Continue with the original response
@@ -198,6 +214,22 @@ export async function POST(req: NextRequest) {
     res.headers.append('Set-Cookie', `sid=${randomUUID()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${secure}`)
     return res
   }
+  
+  // Log successful request telemetry
+  logRequestTelemetry({
+    req_id: trace.id,
+    route: 'tailor',
+    timing: Date.now() - (trace as any).startTime,
+    model_tokens: aiTokens,
+    final_status: 'success',
+    additional_metrics: { 
+      jd_length: jdText.length, 
+      resume_length: resumeText.length,
+      experience_count: tailored.experience?.length || 0,
+      skills_count: tailored.skills_section?.length || 0
+    }
+  })
+  
   return NextResponse.json(payload)
   } catch (error) {
     console.error('Tailor API error:', error)

@@ -14,10 +14,11 @@ export function startTrace(meta: any = {}) {
   
   function end(ok: boolean, extra: any = {}) {
     const rec = { 
-      id, 
-      ok, 
-      ms: Date.now() - t0, 
+      req_id: id,
+      route: meta.route || 'unknown',
+      timing: Date.now() - t0,
       timestamp: new Date().toISOString(),
+      final_status: ok ? 'success' : 'error',
       ...meta, 
       ...extra 
     }
@@ -101,6 +102,33 @@ export function logSessionActivity(sessionId: string, activity: string, details:
     fs.appendFileSync(TELEMETRY_PATH, JSON.stringify(logEntry) + '\n')
   } catch (e) {
     console.warn('Failed to log session activity:', e)
+  }
+  void sendToDrain(logEntry)
+}
+
+export function logRequestTelemetry(data: {
+  req_id: string
+  route: string
+  timing: number
+  model_tokens?: number
+  pdf_launch_ms?: number
+  pdf_render_ms?: number
+  docx_ms?: number
+  final_status: 'success' | 'error'
+  was_snapshot_used?: boolean
+  error_code?: string
+  additional_metrics?: any
+}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    type: 'request_telemetry',
+    ...data
+  }
+  
+  try {
+    fs.appendFileSync(TELEMETRY_PATH, JSON.stringify(logEntry) + '\n')
+  } catch (e) {
+    console.warn('Failed to log request telemetry:', e)
   }
   void sendToDrain(logEntry)
 }

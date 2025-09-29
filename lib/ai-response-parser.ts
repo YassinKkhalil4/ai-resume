@@ -71,7 +71,7 @@ export async function getTailoredResume(
   original: ResumeJSON, 
   jdText: string, 
   tone: 'professional' | 'concise' | 'impact-heavy'
-): Promise<TailoredResultType> {
+): Promise<{ tailored: TailoredResultType, tokens: number }> {
   const maxRetries = 3
   let lastError: Error | null = null
   
@@ -104,10 +104,13 @@ export async function getTailoredResume(
         throw new Error('AI response missing experience data')
       }
       
+      // Extract token usage
+      const tokens = chat.usage?.total_tokens || 0
+      
       // Log successful AI request
       logAIResponse(attempt, true, undefined, raw.length)
       
-      return tailored
+      return { tailored, tokens }
       
     } catch (error) {
       lastError = error as Error
@@ -127,7 +130,7 @@ export async function getTailoredResume(
   console.error('All AI attempts failed, returning fallback response')
   logError(new Error('All AI attempts failed'), { original, jdText, tone, lastError: lastError?.message })
   
-  return createFallbackResponse(original, jdText)
+  return { tailored: createFallbackResponse(original, jdText), tokens: 0 }
 }
 
 function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredResultType {

@@ -4,7 +4,7 @@ import { renderHTML, htmlToPDF, htmlToDOCX } from '../../../lib/pdf-service'
 import { ResumeJSON, TailoredResult } from '../../../lib/types'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
-import { startTrace, logPDFGeneration, logError } from '../../../lib/telemetry'
+import { startTrace, logPDFGeneration, logError, logRequestTelemetry } from '../../../lib/telemetry'
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -99,6 +99,24 @@ export async function POST(req: NextRequest) {
         if (!pdf || pdf.length === 0) throw new Error('PDF generation returned empty buffer')
         const pdfMs = Date.now() - t0
         logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
+        
+        // Log successful PDF export telemetry
+        logRequestTelemetry({
+          req_id: trace.id,
+          route: 'export',
+          timing: Date.now() - (trace as any).startTime,
+          pdf_launch_ms: pdfMs,
+          pdf_render_ms: pdfMs, // For now, we don't separate launch vs render
+          final_status: 'success',
+          was_snapshot_used: !!session_snapshot,
+          additional_metrics: { 
+            format: 'pdf',
+            template,
+            html_length: html.length,
+            pdf_size: pdf.length
+          }
+        })
+        
         trace.end(true, { size: pdf.length, pdf_ms: pdfMs })
         const pdfArrayBuffer = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength)
         return new NextResponse(pdfArrayBuffer as ArrayBuffer, {
@@ -121,8 +139,27 @@ export async function POST(req: NextRequest) {
         try {
           const t1 = Date.now()
           const docxBuffer = await htmlToDOCX(html)
+          const docxMs = Date.now() - t1
           logPDFGeneration(1, true, undefined, 'docx_fallback', docxBuffer.length)
-          trace.end(true, { size: docxBuffer.length, fallback: 'docx', docx_ms: Date.now()-t1 })
+          
+          // Log successful DOCX fallback telemetry
+          logRequestTelemetry({
+            req_id: trace.id,
+            route: 'export',
+            timing: Date.now() - (trace as any).startTime,
+            docx_ms: docxMs,
+            final_status: 'success',
+            was_snapshot_used: !!session_snapshot,
+            additional_metrics: { 
+              format: 'docx_fallback',
+              template,
+              html_length: html.length,
+              docx_size: docxBuffer.length,
+              pdf_failed: true
+            }
+          })
+          
+          trace.end(true, { size: docxBuffer.length, fallback: 'docx', docx_ms: docxMs })
           const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
           return new NextResponse(ab as ArrayBuffer, {
             headers: {
@@ -146,7 +183,25 @@ export async function POST(req: NextRequest) {
         const t0 = Date.now()
         const docxBuffer = await htmlToDOCX(html)
         console.log('DOCX generated successfully, size:', docxBuffer.length)
-        trace.end(true, { size: docxBuffer.length, docx_ms: Date.now()-t0 })
+        const docxMs = Date.now() - t0
+        
+        // Log successful DOCX export telemetry
+        logRequestTelemetry({
+          req_id: trace.id,
+          route: 'export',
+          timing: Date.now() - (trace as any).startTime,
+          docx_ms: docxMs,
+          final_status: 'success',
+          was_snapshot_used: !!session_snapshot,
+          additional_metrics: { 
+            format: 'docx',
+            template,
+            html_length: html.length,
+            docx_size: docxBuffer.length
+          }
+        })
+        
+        trace.end(true, { size: docxBuffer.length, docx_ms: docxMs })
         const ab = docxBuffer.buffer.slice(docxBuffer.byteOffset, docxBuffer.byteOffset + docxBuffer.byteLength)
         return new NextResponse(ab as ArrayBuffer, {
           headers: {
