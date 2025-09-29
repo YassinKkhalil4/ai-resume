@@ -10,6 +10,11 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
   const [loading, setLoading] = useState(false)
   const [url, setUrl] = useState<string| null>(null)
 
+  function downloadBlob(blob: Blob, filename: string) {
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+  }
+
   async function exportFile() {
     setLoading(true)
     try {
@@ -28,19 +33,19 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
         })
       })
       if (!res.ok) {
-        let errJson: any = null
-        try { errJson = await res.json() } catch {}
-        throw new Error(errJson?.message || `Export HTTP ${res.status}`)
+        let err: any = null;
+        try { err = await res.json(); } catch {}
+        throw new Error(err?.message || `Export HTTP ${res.status}`);
       }
-      const ct = res.headers.get('content-type') || ''
-      if (!/^(application\/pdf|application\/vnd\.openxmlformats-.*docx)/i.test(ct)) {
-        let txt = ''
-        try { txt = await res.text() } catch {}
-        throw new Error(`Malformed export response: ${txt?.slice(0,500)}`)
+      const ct = res.headers.get('content-type') || '';
+      const isPdf = /^application\/pdf/i.test(ct);
+      const isDocx = /^application\/vnd\.openxmlformats/i.test(ct);
+      if (!isPdf && !isDocx) {
+        const txt = await res.text();
+        throw new Error(`Malformed export response: ${txt.slice(0,300)}`);
       }
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      setUrl(objectUrl)
+      const blob = await res.blob();
+      downloadBlob(blob, isPdf ? 'resume.pdf' : 'resume.docx');
     } catch (e:any) {
       alert(e?.message || 'Failed to export.')
     } finally {

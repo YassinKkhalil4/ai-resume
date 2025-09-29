@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
     const cfg = getConfig()
     if (cfg.pauseExport) {
-      return NextResponse.json({ error: 'Export is paused', code: 'paused' }, { status: 503 })
+      return NextResponse.json({ code: 'export_paused', message: 'Export functionality is temporarily disabled' }, { status: 503 })
     }
     console.log('Guard check passed')
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     const ct = req.headers.get('content-type') || ''
     if (!ct.includes('application/json')) {
-      return NextResponse.json({ code: 'bad_request', message: 'JSON only' }, { status: 415 })
+      return NextResponse.json({ code: 'invalid_content_type', message: 'Request must be JSON format' }, { status: 415 })
     }
     const body = await req.json();
 
@@ -133,11 +133,11 @@ export async function POST(req: NextRequest) {
           })
         } catch (docxFallbackError) {
           console.error('DOCX fallback failed:', docxFallbackError)
-          return NextResponse.json({ 
-            error: 'PDF generation failed', 
-            code: 'pdf_generation_failed',
-            details: process.env.NODE_ENV === 'development' ? String(pdfError) : undefined
-          }, { status: 500 })
+        return NextResponse.json({ 
+          code: 'pdf_generation_failed', 
+          message: 'Failed to generate PDF file',
+          details: process.env.NODE_ENV === 'development' ? String(pdfError) : undefined
+        }, { status: 500 })
         }
       }
     } else {
@@ -159,8 +159,8 @@ export async function POST(req: NextRequest) {
         console.error('DOCX generation failed:', docxError)
         trace.end(false, { error: String(docxError) })
         return NextResponse.json({ 
-          error: 'DOCX generation failed', 
-          code: 'docx_generation_failed',
+          code: 'docx_generation_failed', 
+          message: 'Failed to generate DOCX file',
           details: process.env.NODE_ENV === 'development' ? String(docxError) : undefined
         }, { status: 500 })
       }
@@ -180,15 +180,18 @@ export async function POST(req: NextRequest) {
     // Ensure we always return a proper JSON response
     try {
       return NextResponse.json({ 
-        error: 'Internal server error', 
-        code: 'server_error',
+        code: 'server_error', 
+        message: 'An unexpected error occurred during export',
         details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
         timestamp: new Date().toISOString()
       }, { status: 500 })
     } catch (jsonError) {
       console.error('Failed to create JSON response:', jsonError)
-      // Fallback to plain text response if JSON fails
-      return new NextResponse('Internal server error', { status: 500 })
+      // Fallback to JSON response even if JSON creation fails
+      return NextResponse.json({ 
+        code: 'server_error', 
+        message: 'An unexpected error occurred'
+      }, { status: 500 })
     }
   }
 }
