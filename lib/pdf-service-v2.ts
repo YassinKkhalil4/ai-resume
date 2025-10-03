@@ -307,7 +307,7 @@ export async function generatePDFWithFallback(html: string): Promise<{ buffer: B
   const methods = [
     { name: 'external_service', fn: () => generatePDFWithExternalService(html), quality: 'high' as const },
     { name: 'puppeteer', fn: () => generatePDFWithPuppeteer(html), quality: 'high' as const },
-    { name: 'html_pdf_node', fn: () => generatePDFWithHtmlPdfNode(html), quality: 'medium' as const }
+    { name: 'basic_pdf', fn: () => createBasicPDF(html), quality: 'low' as const }
   ]
 
   for (const method of methods) {
