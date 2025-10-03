@@ -54,11 +54,11 @@ function checkForContentChanges(original: string[], tailored: string[]): boolean
   // Check for content differences even if same length
   for (let i = 0; i < original.length; i++) {
     const orig = original[i] || ''
-    const tailored = tailored[i] || ''
+    const tailoredItem = tailored[i] || ''
     
     // Normalize and compare
     const origNormalized = orig.toLowerCase().replace(/\s+/g, ' ').trim()
-    const tailoredNormalized = tailored.toLowerCase().replace(/\s+/g, ' ').trim()
+    const tailoredNormalized = tailoredItem.toLowerCase().replace(/\s+/g, ' ').trim()
     
     if (origNormalized !== tailoredNormalized) {
       return true
