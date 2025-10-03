@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '../../../lib/sessions'
-import { renderHTML, htmlToPDF, htmlToDOCX } from '../../../lib/pdf-service'
+import { renderHTML, htmlToPDF, htmlToDOCX, generatePDFWithFallback } from '../../../lib/pdf-service-v2'
 import { ResumeJSON, TailoredResult } from '../../../lib/types'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
@@ -94,11 +94,18 @@ export async function POST(req: NextRequest) {
       console.log('HTML length:', html.length)
       try {
         const t0 = Date.now()
-        const pdf = await htmlToPDF(html)
-        console.log('PDF generated successfully, size:', pdf.length)
+        
+        // Try enhanced PDF generation with multiple fallbacks
+        const pdfResult = await generatePDFWithFallback(html)
+        const pdf = pdfResult.buffer
+        const pdfMethod = pdfResult.method
+        const pdfQuality = pdfResult.quality
+        
+        console.log(`PDF generated successfully using ${pdfMethod} (${pdfQuality} quality), size:`, pdf.length)
         if (!pdf || pdf.length === 0) throw new Error('PDF generation returned empty buffer')
+        
         const pdfMs = Date.now() - t0
-        logPDFGeneration(1, true, undefined, 'external_service', pdf.length)
+        logPDFGeneration(1, true, undefined, pdfMethod, pdf.length)
         
         // Log successful PDF export telemetry
         logRequestTelemetry({
@@ -106,37 +113,48 @@ export async function POST(req: NextRequest) {
           route: 'export',
           timing: Date.now() - (trace as any).startTime,
           pdf_launch_ms: pdfMs,
-          pdf_render_ms: pdfMs, // For now, we don't separate launch vs render
+          pdf_render_ms: pdfMs,
           final_status: 'success',
           was_snapshot_used: !!session_snapshot,
           additional_metrics: { 
             format: 'pdf',
             template,
             html_length: html.length,
-            pdf_size: pdf.length
+            pdf_size: pdf.length,
+            pdf_method: pdfMethod,
+            pdf_quality: pdfQuality
           }
         })
         
-        trace.end(true, { size: pdf.length, pdf_ms: pdfMs })
+        trace.end(true, { size: pdf.length, pdf_ms: pdfMs, method: pdfMethod, quality: pdfQuality })
         const pdfArrayBuffer = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength)
-        return new NextResponse(pdfArrayBuffer as ArrayBuffer, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename="resume.pdf"',
-            'Content-Length': String(pdf.length)
-          }
-        })
+        
+        // Add quality warning header for low-quality PDFs
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="resume.pdf"',
+          'Content-Length': String(pdf.length)
+        }
+        
+        if (pdfQuality === 'low') {
+          headers['X-PDF-Quality'] = 'low'
+          headers['X-PDF-Method'] = pdfMethod
+        }
+        
+        return new NextResponse(pdfArrayBuffer as ArrayBuffer, { headers })
       } catch (pdfError) {
-        console.error('PDF generation failed:', pdfError)
+        console.error('All PDF generation methods failed:', pdfError)
         console.error('PDF error stack:', pdfError instanceof Error ? pdfError.stack : 'No stack trace')
         
         // Log failed PDF generation
-        logPDFGeneration(1, false, String(pdfError), 'external_service')
+        logPDFGeneration(1, false, String(pdfError), 'all_methods_failed')
         logError(pdfError as Error, { format, template, session_id, htmlLength: html.length })
         
         trace.end(false, { error: String(pdfError) })
-        // Attempt DOCX fallback (single-shot)
+        
+        // Attempt DOCX fallback as last resort
         try {
+          console.log('Attempting DOCX fallback...')
           const t1 = Date.now()
           const docxBuffer = await htmlToDOCX(html)
           const docxMs = Date.now() - t1
@@ -165,16 +183,18 @@ export async function POST(req: NextRequest) {
             headers: {
               'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'Content-Disposition': 'attachment; filename="resume.docx"',
-              'Content-Length': String(docxBuffer.length)
+              'Content-Length': String(docxBuffer.length),
+              'X-Fallback-Reason': 'PDF generation failed'
             }
           })
         } catch (docxFallbackError) {
-          console.error('DOCX fallback failed:', docxFallbackError)
-        return NextResponse.json({ 
-          code: 'pdf_generation_failed', 
-          message: 'Failed to generate PDF file',
-          details: process.env.NODE_ENV === 'development' ? String(pdfError) : undefined
-        }, { status: 500 })
+          console.error('DOCX fallback also failed:', docxFallbackError)
+          return NextResponse.json({ 
+            code: 'export_generation_failed', 
+            message: 'Failed to generate both PDF and DOCX files. Please try again or contact support.',
+            details: process.env.NODE_ENV === 'development' ? String(pdfError) : undefined,
+            fallback_suggestion: 'Try exporting as DOCX format instead'
+          }, { status: 500 })
         }
       }
     } else {
