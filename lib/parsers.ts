@@ -2,7 +2,7 @@ import mammoth from 'mammoth'
 
 export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string}> {
   const buffer = Buffer.from(await file.arrayBuffer())
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'txt'
+  const ext = (file instanceof File ? file.name.split('.').pop()?.toLowerCase() : 'txt') || 'txt'
   
   if (ext === 'pdf') {
     try {
