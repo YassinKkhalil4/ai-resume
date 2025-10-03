@@ -76,25 +76,25 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
     logPDFGeneration(2, false, String(error), 'puppeteer_fallback')
   }
 
-  // Try html-pdf-node as final fallback
+  // Try basic PDF generation as final fallback
   try {
-    console.log('Attempting html-pdf-node fallback...')
+    console.log('Attempting basic PDF fallback...')
     const startTime = Date.now()
-    const pdfBuffer = await generatePDFWithHtmlPdfNode(html)
+    const pdfBuffer = await createBasicPDF(html)
     const responseTime = Date.now() - startTime
     
     if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error('html-pdf-node returned empty buffer')
+      throw new Error('Basic PDF generation returned empty buffer')
     }
     
-    console.log('html-pdf-node fallback successful, size:', pdfBuffer.length)
-    await trackPDFSuccess('html_pdf_node', responseTime, 'medium')
-    logPDFGeneration(3, true, undefined, 'html_pdf_node', pdfBuffer.length)
+    console.log('Basic PDF fallback successful, size:', pdfBuffer.length)
+    await trackPDFSuccess('basic_pdf', responseTime, 'low')
+    logPDFGeneration(3, true, undefined, 'basic_pdf', pdfBuffer.length)
     return pdfBuffer
   } catch (error) {
     console.error('All PDF generation methods failed:', error)
-    await trackPDFFailure('html_pdf_node', String(error))
-    logPDFGeneration(3, false, String(error), 'html_pdf_node')
+    await trackPDFFailure('basic_pdf', String(error))
+    logPDFGeneration(3, false, String(error), 'basic_pdf')
     logError(error as Error, { htmlLength: html.length, lastError: lastError?.message })
     throw new Error(`PDF generation failed: ${lastError?.message}`)
   }
@@ -164,28 +164,93 @@ async function generatePDFWithPuppeteer(html: string): Promise<Buffer> {
   }
 }
 
-// html-pdf-node fallback (lightweight alternative)
-async function generatePDFWithHtmlPdfNode(html: string): Promise<Buffer> {
-  try {
-    const htmlPdfNode = await import('html-pdf-node')
-    
-    const options = {
-      format: 'a4' as const,
-      margin: {
-        top: '18mm',
-        right: '16mm',
-        bottom: '18mm',
-        left: '16mm'
-      },
-      printBackground: true,
-      preferCSSPageSize: true
-    }
+// Basic PDF generation fallback
+async function createBasicPDF(html: string): Promise<Buffer> {
+  // Clean HTML for basic PDF
+  const cleanHtml = html
+    .replace(/<style[^>]*>.*?<\/style>/gis, '') // Remove complex CSS
+    .replace(/class="[^"]*"/g, '') // Remove class attributes
+    .replace(/style="[^"]*"/g, '') // Remove inline styles
+    .replace(/<div[^>]*>/g, '<p>') // Convert divs to paragraphs
+    .replace(/<\/div>/g, '</p>')
+  
+  // Extract text content
+  const textContent = cleanHtml
+    .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim()
+    .substring(0, 2000) // Limit length
 
-    const result = await htmlPdfNode.generatePdf({ content: html }, options)
-    return result
-  } catch (error) {
-    throw new Error(`html-pdf-node failed: ${error}`)
-  }
+  // Create a minimal PDF structure
+  const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length ${textContent.length + 100}
+>>
+stream
+BT
+/F1 12 Tf
+50 750 Td
+(${textContent.substring(0, 100)}) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000274 00000 n 
+0000000500 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+${600 + textContent.length}
+%%EOF`
+
+  return Buffer.from(pdfContent, 'utf8')
 }
 
 // Alternative PDF services for redundancy
@@ -263,33 +328,6 @@ export async function generatePDFWithFallback(html: string): Promise<{ buffer: B
   return { buffer: basicPdf, method: 'basic_fallback', quality: 'low' }
 }
 
-// Create a basic PDF when all other methods fail
-async function createBasicPDF(html: string): Promise<Buffer> {
-  // Use html-pdf-node with minimal options as last resort
-  try {
-    const htmlPdfNode = await import('html-pdf-node')
-    
-    // Clean HTML for basic PDF
-    const cleanHtml = html
-      .replace(/<style[^>]*>.*?<\/style>/gis, '') // Remove complex CSS
-      .replace(/class="[^"]*"/g, '') // Remove class attributes
-      .replace(/style="[^"]*"/g, '') // Remove inline styles
-      .replace(/<div[^>]*>/g, '<p>') // Convert divs to paragraphs
-      .replace(/<\/div>/g, '</p>')
-    
-    const options = {
-      format: 'A4',
-      margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' }
-    }
-
-    const result = await htmlPdfNode.generatePdf({ content: cleanHtml }, options)
-    return result
-  } catch (error) {
-    // Ultimate fallback: create a simple text-based PDF
-    console.error('Even basic PDF creation failed:', error)
-    return createTextBasedPDF(html)
-  }
-}
 
 // Ultimate fallback: create a simple text-based PDF
 function createTextBasedPDF(html: string): Buffer {
