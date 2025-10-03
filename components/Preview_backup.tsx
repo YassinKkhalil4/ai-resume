@@ -17,25 +17,8 @@ export default function Preview({ session }:{ session:any }) {
   const [honesty, setHonesty] = useState<any>(null)
   const [loadingHonesty, setLoadingHonesty] = useState(false)
 
-  // Fix: Render HTML instead of JSON
-  const tailored = useMemo(() => {
-    if (!session.preview_sections_json) return '<p>No tailored content available</p>'
-    return renderResumeHtml(session.preview_sections_json, tpl)
-  }, [session, tpl])
-
-  const original = useMemo(() => {
-    if (!session.original_sections_json) return '<p>No original content available</p>'
-    return renderResumeHtml(session.original_sections_json, tpl)
-  }, [session, tpl])
-
-  function renderResumeHtml(resume: any, template: string): string {
-    const opts = { includeSkills: true, includeSummary: true }
-    if (template === 'classic') return classicTemplate(resume, opts)
-    if (template === 'modern') return modernTemplate(resume, opts)
-    if (template === 'executive') return executiveTemplate(resume, opts)
-    if (template === 'academic') return academicTemplate(resume, opts)
-    return minimalTemplate(resume, opts)
-  }
+  const tailored = useMemo(()=>JSON.stringify(session.preview_sections_json, null, 2), [session])
+  const original = useMemo(()=>JSON.stringify(session.original_sections_json, null, 2), [session])
 
   // Persist snapshot on the client when preview renders
   useEffect(() => {
@@ -78,9 +61,8 @@ export default function Preview({ session }:{ session:any }) {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <div className="label mb-2">Resume Preview ({tab})</div>
-          <div className="bg-gray-50 p-3 rounded overflow-auto text-xs h-96 border" 
-               dangerouslySetInnerHTML={{ __html: tab==='tailored' ? tailored : original }} />
+          <div className="label mb-2">JSON structure ({tab})</div>
+          <pre className="bg-gray-50 p-3 rounded overflow-auto text-xs h-96">{tab==='tailored' ? tailored : original}</pre>
         </div>
         <div>
           <div className="label mb-2">Changes</div>

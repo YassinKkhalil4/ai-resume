@@ -10,27 +10,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-// Rate limiting store
-const rateLimitStore = new Map<string, { count: number, resetTime: number }>()
-
-function checkRateLimit(sessionId: string): boolean {
-  const now = Date.now()
-  const key = `export_${sessionId}`
-  const limit = rateLimitStore.get(key)
-  
-  if (!limit || now > limit.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + 60000 }) // 1 minute window
-    return true
-  }
-  
-  if (limit.count >= 10) { // Allow 10 exports per minute (increased from 5)
-    return false
-  }
-  
-  limit.count++
-  return true
-}
-
 export async function GET(req: NextRequest) {
   return NextResponse.json({ 
     error: 'Method not allowed', 
@@ -79,15 +58,6 @@ export async function POST(req: NextRequest) {
       options = { includeSummary: true, includeSkills: true },
       session_snapshot
     } = body || {};
-
-    // Add rate limiting check
-    if (!checkRateLimit(session_id || 'anonymous')) {
-      return NextResponse.json({ 
-        code: 'rate_limit_exceeded', 
-        message: 'Too many export requests. Please wait 1 minute before trying again.',
-        retryAfter: 60
-      }, { status: 429 })
-    }
 
     const s = session_snapshot ?? (session_id ? getSession(session_id) : null);
 
@@ -265,7 +235,7 @@ export async function POST(req: NextRequest) {
         trace.end(false, { error: String(docxError) })
         return NextResponse.json({ 
           code: 'docx_generation_failed', 
-          message: 'Failed to generate DOCX file. Please try PDF export instead.',
+          message: 'Failed to generate DOCX file',
           details: process.env.NODE_ENV === 'development' ? String(docxError) : undefined
         }, { status: 500 })
       }
