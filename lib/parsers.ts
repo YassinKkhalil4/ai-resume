@@ -16,7 +16,7 @@ async function getPdfJs() {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 
           `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
       } else {
-        // Browser configuration (client-side OCR)
+        // Browser configuration
         pdfjsLib.GlobalWorkerOptions.workerSrc = 
           `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
       }

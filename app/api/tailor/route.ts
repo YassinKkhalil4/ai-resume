@@ -12,7 +12,6 @@ import { getConfig } from '../../../lib/config'
 import { detectLocale } from '../../../lib/locale'
 import { startTrace, logError, logSessionActivity, logRequestTelemetry } from '../../../lib/telemetry'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
-import { ocrExtractText } from '../../../lib/ocr'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -82,38 +81,21 @@ export async function POST(req: NextRequest) {
   resume_file = form.get('resume_file') as unknown as File | null
   jd_text_raw = form.get('jd_text')?.toString() || ''
   tone = (form.get('tone')?.toString() as Tone) || 'professional'
-  const resume_text_fallback = form.get('resume_text')?.toString() || ''
-
   console.log('Processing request:', { 
     hasResumeFile: !!resume_file, 
     jdTextLength: jd_text_raw.length,
     tone 
   })
 
-  if (!resume_file && !resume_text_fallback) return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
+  if (!resume_file) return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
   if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
 
-  let resumeText = ''
-  let ext = 'txt'
-  if (resume_file) {
-    const parsed = await extractTextFromFile(resume_file)
-    resumeText = parsed.text
-    ext = parsed.ext
-  } else if (resume_text_fallback) {
-    resumeText = resume_text_fallback
-  }
-  if (resume_file && ext==='pdf' && (!resumeText || resumeText.trim().length < 50)) {
-    // Attempt server-side OCR fallback when configured; prefer external worker
-    try {
-      const text = await ocrExtractText(resume_file as Blob, { maxPages: 4, lang: 'eng', denoise: true, deskew: true })
-      if (text && text.trim().length >= 50) {
-        resumeText = text
-      } else {
-        return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
-      }
-    } catch (e) {
-      return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
-    }
+  const parsed = await extractTextFromFile(resume_file)
+  const resumeText = parsed.text
+  const ext = parsed.ext
+  
+  if (ext === 'pdf' && (!resumeText || resumeText.trim().length < 50)) {
+    return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
   }
 
   const original: ResumeJSON = heuristicParseResume(resumeText)
