@@ -16,23 +16,33 @@ export async function POST(req: NextRequest) {
     if (!guard.ok) return guard.res
 
     const body = await req.json()
-    const { session_id } = body || {}
+    const { session_id, original_experience, tailored_experience } = body || {}
     
     if (!session_id) {
       return NextResponse.json({ code: 'missing_session_id', message: 'Session ID required' }, { status: 400 })
     }
     
-    const s = getSession(session_id)
-    if (!s) {
-      return NextResponse.json({ code: 'session_not_found', message: 'Session not found' }, { status: 404 })
+    // Try to get session first
+    let s = getSession(session_id)
+    let originalExp = original_experience
+    let tailoredExp = tailored_experience
+    
+    // If session exists, use its data
+    if (s && s.original && s.tailored) {
+      originalExp = s.original.experience || []
+      tailoredExp = s.tailored.experience || []
     }
     
-    // Check if we have the required data
-    if (!s.original || !s.tailored) {
-      return NextResponse.json({ code: 'missing_data', message: 'Original or tailored data missing' }, { status: 400 })
+    // If no session data and no request data, return error
+    if (!originalExp || !tailoredExp) {
+      return NextResponse.json({ 
+        code: 'missing_data', 
+        message: 'Original or tailored experience data required. Please ensure the resume has been processed first.',
+        suggestion: 'Try refreshing the page and running the honesty scan again.'
+      }, { status: 400 })
     }
     
-    const res = honestyScan(s.original.experience || [], s.tailored.experience || [])
+    const res = honestyScan(originalExp, tailoredExp)
     return NextResponse.json(res)
   } catch (error) {
     console.error('Honesty scan error:', error)

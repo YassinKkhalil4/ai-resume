@@ -54,6 +54,30 @@ export default function Preview({ session }:{ session:any }) {
     return minimalTemplate(resume, opts)
   }
 
+  async function runHonestyScan() {
+    setLoadingHonesty(true)
+    try {
+      const res = await fetch('/api/honesty', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          session_id: session.session_id,
+          // Send the data directly to avoid session persistence issues
+          original_experience: session.original_sections_json?.experience || [],
+          tailored_experience: session.preview_sections_json?.experience || []
+        })
+      })
+      
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || 'Honesty scan failed')
+      setHonesty(data)
+    } catch (e: any) {
+      alert(e?.message || 'Honesty scan failed')
+    } finally {
+      setLoadingHonesty(false)
+    }
+  }
+
   return (
     <section className="card p-6">
       <div className="flex items-center gap-4 mb-4">
@@ -61,7 +85,9 @@ export default function Preview({ session }:{ session:any }) {
         <div className="ml-auto flex items-center gap-2">
           <button className={`button-outline ${tab==='tailored'?'border-black':''}`} onClick={()=>setTab('tailored')}>Tailored</button>
           <button className={`button-outline ${tab==='original'?'border-black':''}`} onClick={()=>setTab('original')}>Original</button>
-          <button className="button-outline" onClick={async()=>{ setLoadingHonesty(true); try{ const res = await fetch('/api/honesty', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ session_id: session.session_id })}); const data = await res.json(); if(!res.ok) throw new Error(data?.error||'Honesty scan failed'); setHonesty(data);} catch(e:any){ alert(e?.message||'Honesty scan failed') } finally { setLoadingHonesty(false) } }}>Honesty scan</button>
+          <button className="button-outline" onClick={runHonestyScan} disabled={loadingHonesty}>
+            {loadingHonesty ? 'Scanning...' : 'Honesty scan'}
+          </button>
           <button className="button" onClick={()=>setShowExport(true)}>Export</button>
         </div>
       </div>

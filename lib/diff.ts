@@ -26,11 +26,14 @@ export function buildDiffs(original: Role[], tailored: Role[]) {
       continue
     }
     
-    // Compare bullets more intelligently
+    // Compare bullets more intelligently - check for content changes
     const originalBullets = o.bullets || []
     const tailoredBullets = t.bullets || []
     
-    if (JSON.stringify(originalBullets) !== JSON.stringify(tailoredBullets)) {
+    // Check if there are any meaningful differences
+    const hasChanges = checkForContentChanges(originalBullets, tailoredBullets)
+    
+    if (hasChanges) {
       const reasons = explainChanges(originalBullets, tailoredBullets)
       diffs.push({ 
         role: `${t.role} @ ${t.company}`, 
@@ -42,4 +45,25 @@ export function buildDiffs(original: Role[], tailored: Role[]) {
   }
   
   return diffs
+}
+
+function checkForContentChanges(original: string[], tailored: string[]): boolean {
+  // If different lengths, definitely changed
+  if (original.length !== tailored.length) return true
+  
+  // Check for content differences even if same length
+  for (let i = 0; i < original.length; i++) {
+    const orig = original[i] || ''
+    const tailored = tailored[i] || ''
+    
+    // Normalize and compare
+    const origNormalized = orig.toLowerCase().replace(/\s+/g, ' ').trim()
+    const tailoredNormalized = tailored.toLowerCase().replace(/\s+/g, ' ').trim()
+    
+    if (origNormalized !== tailoredNormalized) {
+      return true
+    }
+  }
+  
+  return false
 }
