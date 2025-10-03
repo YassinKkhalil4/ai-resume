@@ -50,7 +50,7 @@ function createSimpleHtml(html: string): string {
   `
 }
 
-function createBasicDocx(html: string): Buffer {
+async function createBasicDocx(html: string): Promise<Buffer> {
   const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   
   const simpleHtml = `
@@ -64,7 +64,8 @@ function createBasicDocx(html: string): Buffer {
   
   try {
     const buf = htmlDocx.asBlob(simpleHtml) as Blob
-    return Buffer.from(buf.arrayBuffer())
+    const arrayBuffer = await buf.arrayBuffer()
+    return Buffer.from(arrayBuffer)
   } catch (error) {
     console.error('Even simple DOCX creation failed:', error)
     // Ultimate fallback
