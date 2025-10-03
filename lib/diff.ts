@@ -30,7 +30,7 @@ export function buildDiffs(original: Role[], tailored: Role[]) {
     const originalBullets = o.bullets || []
     const tailoredBullets = t.bullets || []
     
-    // Check if there are any meaningful differences
+    // Check if there are any meaningful differences using token-based comparison
     const hasChanges = checkForContentChanges(originalBullets, tailoredBullets)
     
     if (hasChanges) {
@@ -51,19 +51,42 @@ function checkForContentChanges(original: string[], tailored: string[]): boolean
   // If different lengths, definitely changed
   if (original.length !== tailored.length) return true
   
-  // Check for content differences even if same length
+  // Check for content differences using token-based comparison
   for (let i = 0; i < original.length; i++) {
     const orig = original[i] || ''
     const tailoredItem = tailored[i] || ''
     
-    // Normalize and compare
-    const origNormalized = orig.toLowerCase().replace(/\s+/g, ' ').trim()
-    const tailoredNormalized = tailoredItem.toLowerCase().replace(/\s+/g, ' ').trim()
+    // Tokenize and compare
+    const origTokens = tokenize(orig)
+    const tailoredTokens = tokenize(tailoredItem)
     
-    if (origNormalized !== tailoredNormalized) {
+    // Calculate similarity
+    const similarity = calculateSimilarity(origTokens, tailoredTokens)
+    
+    // If similarity is below 0.8, consider it changed
+    if (similarity < 0.8) {
       return true
     }
   }
   
   return false
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ') // Remove punctuation
+    .split(/\s+/)
+    .filter(token => token.length > 2) // Filter out short words
+    .filter(token => !['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'].includes(token))
+}
+
+function calculateSimilarity(tokens1: string[], tokens2: string[]): number {
+  const set1 = new Set(tokens1)
+  const set2 = new Set(tokens2)
+  
+  const intersection = new Set([...set1].filter(x => set2.has(x)))
+  const union = new Set([...set1, ...set2])
+  
+  return union.size > 0 ? intersection.size / union.size : 0
 }

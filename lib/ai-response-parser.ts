@@ -75,6 +75,12 @@ export async function getTailoredResume(
   const maxRetries = 3
   let lastError: Error | null = null
   
+  // Enhanced validation - check if we have meaningful data to work with
+  if (!original.experience || original.experience.length === 0) {
+    console.warn('No experience data available for tailoring')
+    return { tailored: createFallbackResponse(original, jdText), tokens: 0 }
+  }
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const messages = [
@@ -99,9 +105,15 @@ export async function getTailoredResume(
       // Parse and validate
       const tailored = await parseAIResponse(raw)
       
-      // Additional validation
+      // Relaxed validation - only require that we got some response
+      if (!tailored || typeof tailored !== 'object') {
+        throw new Error('AI response is not a valid object')
+      }
+      
+      // If experience is missing or empty, try to preserve other fields
       if (!tailored.experience || tailored.experience.length === 0) {
-        throw new Error('AI response missing experience data')
+        console.warn('AI response missing experience, using original experience')
+        tailored.experience = original.experience || []
       }
       
       // Extract token usage
@@ -115,6 +127,12 @@ export async function getTailoredResume(
     } catch (error) {
       lastError = error as Error
       console.warn(`AI request attempt ${attempt} failed:`, error)
+      console.warn('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        originalExperienceLength: original.experience?.length || 0,
+        jdLength: jdText.length
+      })
       
       // Log failed attempt
       logAIResponse(attempt, false, error.message)
@@ -128,6 +146,7 @@ export async function getTailoredResume(
   
   // Final fallback: return original resume with minimal changes
   console.error('All AI attempts failed, returning fallback response')
+  console.error('Last error:', lastError?.message)
   logError(new Error('All AI attempts failed'), { original, jdText, tone, lastError: lastError?.message })
   
   return { tailored: createFallbackResponse(original, jdText), tokens: 0 }
@@ -137,7 +156,7 @@ function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredR
   // Extract keywords from job description
   const keywords = extractKeywords(jdText, 10)
   
-  // Create a minimal tailored response
+  // Create a minimal tailored response that preserves original data
   return {
     summary: original.summary || 'Experienced professional with relevant skills and experience.',
     skills_section: original.skills || [],

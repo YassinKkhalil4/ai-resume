@@ -68,17 +68,20 @@ function splitByHeadings(text: string) {
 }
 
 function isHeading(line: string): boolean {
+  // Clean the line by removing trailing punctuation and whitespace
+  const clean = line.replace(/[:\s]+$/, '').toLowerCase()
+  
   const headingPatterns = [
-    /^(experience|work experience|professional experience|employment)$/i,
-    /^(skills|technical skills|core competencies|key skills|competencies)$/i,
-    /^(summary|profile|objective|about)$/i,
-    /^(education|academic background)$/i,
-    /^(certifications|certificates|certs)$/i,
-    /^(projects|project experience)$/i,
-    /^(achievements|accomplishments)$/i
+    /^(experience|work experience|professional experience|employment)$/,
+    /^(skills|technical skills|core competencies|key skills|competencies)$/,
+    /^(summary|profile|objective|about)$/,
+    /^(education|academic background)$/,
+    /^(certifications|certificates|certs)$/,
+    /^(projects|project experience)$/,
+    /^(achievements|accomplishments)$/
   ]
   
-  return headingPatterns.some(pattern => pattern.test(line))
+  return headingPatterns.some(pattern => pattern.test(clean))
 }
 
 function parseExperience(section: string) {

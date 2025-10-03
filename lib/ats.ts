@@ -15,8 +15,14 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   const niceMissing = nice.filter(k => !resumeText.includes(k.toLowerCase()))
 
   const warnings:string[] = []
-  if (!resume.experience?.length) warnings.push('No Experience section detected.')
-  if (!resume.skills?.length) warnings.push('No Skills section detected.')
+  
+  // Enhanced section detection with better validation
+  if (!hasExperienceSection(resume)) {
+    warnings.push('No Experience section detected.')
+  }
+  if (!hasSkillsSection(resume)) {
+    warnings.push('No Skills section detected.')
+  }
 
   const base: KeywordStats = {
     coverage: all.length ? matched.length / all.length : 0,
@@ -29,16 +35,39 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   return base
 }
 
-function stringifyResume(r: ResumeJSON): string {
-  let t = ''
-  if (r.summary) t += r.summary + '\n'
-  if (r.skills) t += (r.skills||[]).join(' ') + '\n'
-  // Handle TailoredResult which has skills_section instead of skills
-  if ('skills_section' in r && Array.isArray((r as any).skills_section)) {
-    t += ((r as any).skills_section || []).join(' ') + '\n'
+function hasExperienceSection(resume: ResumeJSON): boolean {
+  if (!resume.experience || resume.experience.length === 0) return false
+  
+  // Check if experience has meaningful content
+  return resume.experience.some(exp => 
+    exp.company && exp.role && 
+    (exp.bullets?.length || 0) > 0
+  )
+}
+
+function hasSkillsSection(resume: ResumeJSON): boolean {
+  if (!resume.skills || resume.skills.length === 0) return false
+  
+  // Check if skills have meaningful content
+  return resume.skills.some(skill => 
+    skill && skill.trim().length > 2
+  )
+}
+
+function stringifyResume(resume: ResumeJSON): string {
+  const parts: string[] = []
+  
+  if (resume.summary) parts.push(resume.summary)
+  if (resume.skills?.length) parts.push(resume.skills.join(' '))
+  if (resume.experience?.length) {
+    resume.experience.forEach(exp => {
+      if (exp.company) parts.push(exp.company)
+      if (exp.role) parts.push(exp.role)
+      if (exp.bullets?.length) parts.push(exp.bullets.join(' '))
+    })
   }
-  for (const e of r.experience || []) {
-    t += [e.company, e.role, e.dates].join(' ') + ' ' + (e.bullets||[]).join(' ')
-  }
-  return t
+  if (resume.education?.length) parts.push(resume.education.join(' '))
+  if (resume.certifications?.length) parts.push(resume.certifications.join(' '))
+  
+  return parts.join(' ')
 }
