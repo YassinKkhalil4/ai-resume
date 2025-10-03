@@ -1,4 +1,5 @@
 import mammoth from 'mammoth'
+import { ResumeJSON } from './types'
 
 export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string}> {
   const buffer = Buffer.from(await file.arrayBuffer())
