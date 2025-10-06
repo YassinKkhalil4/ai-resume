@@ -116,7 +116,7 @@ export default function Home() {
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <div className="label mb-2">Resume</div>
-            <FileDrop onFileSelect={setResumeFile} />
+            <FileDrop onFile={setResumeFile} />
             {resumeFile && (
               <div className="mt-2 text-sm text-gray-600">
                 Selected: {resumeFile.name}
