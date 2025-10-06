@@ -4,7 +4,10 @@ import { useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import JDInput from '../components/JDInput'
 import Preview from '../components/Preview'
+import ParsingErrorBanner from '../components/ParsingErrorBanner'
+import ExperienceInputModal from '../components/ExperienceInputModal'
 import useInviteGate from '../components/useInviteGate'
+import { ParsingValidationResult } from '../lib/parsing-validation'
 
 const FileDrop = dynamic(() => import('../components/FileDrop'), { ssr: false })
 
@@ -14,8 +17,10 @@ export default function Home() {
   const [tone, setTone] = useState<'professional'|'concise'|'impact-heavy'>('professional')
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [validation, setValidation] = useState<ParsingValidationResult | null>(null)
+  const [showExperienceModal, setShowExperienceModal] = useState(false)
+  const [showBanner, setShowBanner] = useState(true)
   const gate = useInviteGate()
-
 
   async function handleTailor() {
     if (!resumeFile) return alert('Upload a resume and paste a job description.')
@@ -28,15 +33,57 @@ export default function Home() {
       fd.append('tone', tone)
       const res = await fetch('/api/tailor', { method: 'POST', body: fd })
       const data = await res.json()
+      
       if (!res.ok) {
-        throw new Error(data?.error || 'Tailoring failed.')
+        if (data.code === 'missing_experience') {
+          // Handle missing experience case
+          setValidation(data.validation)
+          setShowBanner(true)
+          setLoading(false)
+          return
+        }
+        throw new Error(data?.message || 'Tailoring failed.')
       }
+      
       setSession(data)
+      setValidation(data.validation)
+      setShowBanner(false) // Hide banner on success
     } catch (e:any) {
       alert(e?.message || 'Failed to tailor.')
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleBannerAction(action: string) {
+    switch (action) {
+      case 'paste_experience':
+        setShowExperienceModal(true)
+        break
+      case 'mark_experience':
+        // TODO: Implement line marking functionality
+        alert('Line marking functionality coming soon!')
+        break
+      case 'upload_new':
+        setResumeFile(null)
+        setSession(null)
+        setValidation(null)
+        setShowBanner(false)
+        break
+      case 'continue':
+        setShowBanner(false)
+        break
+      default:
+        console.log('Unknown action:', action)
+    }
+  }
+
+  async function handleExperienceSubmit(experience: string) {
+    // TODO: Implement experience processing
+    console.log('Experience submitted:', experience)
+    setShowExperienceModal(false)
+    // For now, just hide the modal
+    // In a real implementation, this would process the experience and retry tailoring
   }
 
   if (!gate.ok) return (
@@ -48,40 +95,87 @@ export default function Home() {
           <input className="input" placeholder="Invite code" value={gate.code} onChange={e=>gate.setCode(e.target.value)} />
           <button className="button" onClick={gate.submit}>Continue</button>
         </div>
+        {gate.error && <p className="text-red-600 text-sm mt-2">{gate.error}</p>}
       </section>
     </main>
   )
 
   return (
     <main className="grid gap-6">
+      {validation && showBanner && (
+        <ParsingErrorBanner 
+          validation={validation}
+          onAction={handleBannerAction}
+          onDismiss={() => setShowBanner(false)}
+        />
+      )}
+      
       <section className="card p-6">
-        <h1 className="mb-1">Tailor your resume to any job</h1>
-        <p className="text-gray-600 mb-4">Upload resume → paste job → click Tailor. Bullets rewritten with integrity guardrails. Export ATS-safe PDF/DOCX.</p>
+        <h1 className="mb-1">AI Resume Tailor</h1>
+        <p className="text-gray-600 mb-4">Upload your resume and paste a job description to get a tailored version.</p>
+        
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="label">1) Upload Resume (PDF, DOCX, or TXT)</label>
-            <FileDrop onFile={setResumeFile} />
+            <div className="label mb-2">Resume</div>
+            <FileDrop onFileSelect={setResumeFile} />
+            {resumeFile && (
+              <div className="mt-2 text-sm text-gray-600">
+                Selected: {resumeFile.name}
+              </div>
+            )}
           </div>
+          
           <div>
-            <label className="label">2) Paste Job Listing (URL or plain text)</label>
+            <div className="label mb-2">Job Description</div>
             <JDInput value={jdText} onChange={setJdText} />
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-3">
-          <label className="label">Tone</label>
-          <select className="input w-auto" value={tone} onChange={e => setTone(e.target.value as any)}>
-            <option value="professional">Professional</option>
-            <option value="concise">Concise</option>
-            <option value="impact-heavy">Impact-heavy</option>
-          </select>
-          <button className="button ml-auto" onClick={handleTailor} disabled={loading}>
-            {loading ? 'Tailoring…' : 'Tailor'}
+        
+        <div className="mt-4">
+          <div className="label mb-2">Tone</div>
+          <div className="flex gap-2">
+            <button 
+              className={`button-outline ${tone === 'professional' ? 'border-black' : ''}`}
+              onClick={() => setTone('professional')}
+            >
+              Professional
+            </button>
+            <button 
+              className={`button-outline ${tone === 'concise' ? 'border-black' : ''}`}
+              onClick={() => setTone('concise')}
+            >
+              Concise
+            </button>
+            <button 
+              className={`button-outline ${tone === 'impact-heavy' ? 'border-black' : ''}`}
+              onClick={() => setTone('impact-heavy')}
+            >
+              Impact Heavy
+            </button>
+          </div>
+        </div>
+        
+        <div className="mt-6">
+          <button 
+            className="button" 
+            onClick={handleTailor}
+            disabled={loading || !resumeFile || !jdText}
+          >
+            {loading ? 'Tailoring...' : 'Tailor Resume'}
           </button>
         </div>
       </section>
 
       {session && (
         <Preview session={session} />
+      )}
+
+      {showExperienceModal && (
+        <ExperienceInputModal
+          isOpen={showExperienceModal}
+          onClose={() => setShowExperienceModal(false)}
+          onSubmit={handleExperienceSubmit}
+        />
       )}
     </main>
   )

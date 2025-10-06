@@ -7,6 +7,7 @@ import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
 import { startTrace, logRequestTelemetry, logError } from '../../../lib/telemetry'
 import { createUserFriendlyError, logAIError } from '../../../lib/ai-error-handler'
+import { validateParsingResult, shouldShowExperienceBanner } from '../../../lib/parsing-validation'
 import { Tone } from '../../../lib/types'
 
 export const runtime = 'nodejs';
@@ -77,6 +78,25 @@ export async function POST(req: NextRequest) {
       certificationsCount: original.certifications?.length || 0
     })
 
+    // Validate parsing results
+    const validation = validateParsingResult(original)
+    console.log('Parsing validation:', validation)
+
+    // Check if we should block due to missing experience
+    if (shouldShowExperienceBanner(validation)) {
+      return NextResponse.json({
+        code: 'missing_experience',
+        message: 'No work experience detected in your resume',
+        validation,
+        original_sections_json: original,
+        suggestions: [
+          'Paste your work history manually',
+          'Try uploading a different resume format',
+          'Check if your resume has experience section headings'
+        ]
+      }, { status: 422 }) // Unprocessable Entity
+    }
+
     console.log('Tailoring resume...')
     const { tailored, tokens } = await getTailoredResume(original, jd_text_raw, tone)
     console.log('Resume tailored successfully:', {
@@ -110,7 +130,9 @@ export async function POST(req: NextRequest) {
         tokens_used: tokens,
         ats_coverage: keywordStats.coverage,
         original_experience_count: original.experience?.length || 0,
-        tailored_experience_count: tailored.experience?.length || 0
+        tailored_experience_count: tailored.experience?.length || 0,
+        validation_errors: validation.errors.length,
+        validation_warnings: validation.warnings.length
       }
     })
 
@@ -124,6 +146,7 @@ export async function POST(req: NextRequest) {
       keyword_stats: keywordStats,
       tokens_used: tokens,
       message: 'Resume tailored successfully',
+      validation,
       parsing_details: {
         original_sections_found: {
           summary: !!original.summary,
