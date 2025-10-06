@@ -1,49 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
-import { extractJDFromUrl, extractKeywords } from '../../../lib/jd'
-import { atsCheck } from '../../../lib/ats'
-import { buildDiffs } from '../../../lib/diff'
-import { integrityCheck } from '../../../lib/integrity'
-import { createSession } from '../../../lib/sessions'
-import { ResumeJSON, TailoredResult, Tone } from '../../../lib/types'
-import { enforceGuards, sessionID } from '../../../lib/guards'
-import { getConfig } from '../../../lib/config'
-import { detectLocale } from '../../../lib/locale'
-import { startTrace, logError, logSessionActivity, logRequestTelemetry } from '../../../lib/telemetry'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
+import { atsCheck } from '../../../lib/ats'
+import { createSession } from '../../../lib/sessions'
+import { enforceGuards } from '../../../lib/guards'
+import { getConfig } from '../../../lib/config'
+import { startTrace, logRequestTelemetry, logError } from '../../../lib/telemetry'
+import { Tone } from '../../../lib/types'
 
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
-
-export async function GET(req: NextRequest) {
-  return NextResponse.json({ 
-    error: 'Method not allowed', 
-    message: 'This endpoint only accepts POST requests',
-    method: req.method
-  }, { status: 405 })
-}
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   console.log('Tailor API called:', {
     method: req.method,
     url: req.url,
-    timestamp: new Date().toISOString(),
-    hasFormData: !!req.formData
+    timestamp: new Date().toISOString()
   })
-  
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ code: 'no_openai_key', message: 'Server not configured' }, { status: 503 })
-  }
 
-  // Declare variables outside try block for error handling
+  let session_id: string | undefined
   let resume_file: File | null = null
-  let jd_text_raw = ''
+  let jd_text_raw: string = ''
   let tone: Tone = 'professional'
-  let trace: any = null
-  
+
   try {
-    console.log('Starting guard check...')
     const guard = enforceGuards(req)
     if (!guard.ok) {
       console.log('Guard check failed:', guard.res)
@@ -51,168 +32,83 @@ export async function POST(req: NextRequest) {
     }
     const cfg = getConfig()
     if (cfg.pauseTailor) {
-      return NextResponse.json({ code: 'paused', message: 'Tailoring is paused' }, { status: 503 })
+      return NextResponse.json({ code: 'tailor_paused', message: 'Tailoring functionality is temporarily disabled' }, { status: 503 })
     }
     console.log('Guard check passed')
 
-    console.log('Starting trace...')
-    trace = startTrace({ route: 'tailor' })
+    const trace = startTrace({ route: 'tailor' })
     console.log('Trace started')
 
-      console.log('Parsing form data...')
-    const form = await req.formData()
-    console.log('Form data parsed successfully')
-    
-    const mode = form.get('mode')?.toString()
-    console.log('Mode:', mode)
-
-    const jd_url = form.get('jd_url')?.toString()
-    if (mode === 'fetchOnly' && jd_url) {
-      try {
-        console.log('Fetching JD from URL:', jd_url)
-        const jd_text = await extractJDFromUrl(jd_url)
-        return NextResponse.json({ jd_text })
-      } catch (e:any) {
-        console.error('JD fetch failed:', e)
-        return NextResponse.json({ code: 'fetch_failed', message: e?.message || 'Fetch failed' }, { status: 400 })
-      }
+    const ct = req.headers.get('content-type') || ''
+    if (!ct.includes('multipart/form-data')) {
+      return NextResponse.json({ code: 'invalid_content_type', message: 'Request must be multipart/form-data' }, { status: 415 })
     }
 
-  resume_file = form.get('resume_file') as unknown as File | null
-  jd_text_raw = form.get('jd_text')?.toString() || ''
-  tone = (form.get('tone')?.toString() as Tone) || 'professional'
-  console.log('Processing request:', { 
-    hasResumeFile: !!resume_file, 
-    jdTextLength: jd_text_raw.length,
-    tone 
-  })
+    const form = await req.formData()
+    session_id = form.get('session_id')?.toString()
+    resume_file = form.get('resume_file') as unknown as File | null
+    jd_text_raw = form.get('jd_text')?.toString() || ''
+    tone = (form.get('tone')?.toString() as Tone) || 'professional'
+    console.log('Processing request:', { 
+      hasResumeFile: !!resume_file, 
+      jdTextLength: jd_text_raw.length,
+      tone 
+    })
 
-  if (!resume_file) return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
-  if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
+    if (!resume_file) return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
+    if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
 
-  const parsed = await extractTextFromFile(resume_file)
-  const resumeText = parsed.text
-  const ext = parsed.ext
-  
-  if (ext === 'pdf' && (!resumeText || resumeText.trim().length < 50)) {
-    return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
-  }
-
-  const original: ResumeJSON = heuristicParseResume(resumeText)
-
-  let jdText = jd_text_raw
-  if (/^https?:\/\//i.test(jdText)) {
-    try { jdText = await extractJDFromUrl(jdText) } catch {}
-  }
-
-  if ((jdText||'').trim().length < 60) {
-    return NextResponse.json({ code: 'jd_too_short', message: 'Job description is too short/invalid. Paste the full responsibilities & requirements.' }, { status: 400 })
-  }
-
-  const locale = detectLocale(resumeText + '\n' + jdText)
-  
-  // Use the new robust AI response parser
-  let tailored: TailoredResult
-  let aiTokens = 0
-  try {
-    const t0 = Date.now()
-    const result = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale, tone)
-    tailored = result.tailored
-    aiTokens = result.tokens || 0
-    const ms = Date.now() - t0
-    try { trace.end(true, { tailor_ms: ms, ai_tokens: aiTokens }) } catch {}
-  } catch (error) {
-    console.error('Failed to get tailored resume:', error)
-    logError(error as Error, { original, jdText, tone })
+    const parsed = await extractTextFromFile(resume_file)
+    const resumeText = parsed.text
+    const ext = parsed.ext
     
-    // Log telemetry for failed request
+    if (ext === 'pdf' && (!resumeText || resumeText.trim().length < 50)) {
+      return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
+    }
+
+    console.log('Parsing resume...')
+    const original = heuristicParseResume(resumeText)
+    console.log('Resume parsed successfully')
+
+    console.log('Tailoring resume...')
+    const { tailored, tokens } = await getTailoredResume(original, jd_text_raw, tone)
+    console.log('Resume tailored successfully')
+
+    console.log('Running ATS check...')
+    const keywordStats = atsCheck(original, jd_text_raw)
+    console.log('ATS check completed')
+
+    console.log('Creating session...')
+    const session = createSession(original, tailored, jd_text_raw, keywordStats)
+    console.log('Session created:', session.id)
+
+    // Log successful request telemetry
     logRequestTelemetry({
       req_id: trace.id,
       route: 'tailor',
       timing: Date.now() - (trace as any).startTime,
-      final_status: 'error',
-      error_code: 'tailoring_failed',
-      additional_metrics: { jd_length: jdText.length, resume_length: resumeText.length }
+      final_status: 'success',
+      additional_metrics: { 
+        resume_length: resumeText.length,
+        jd_length: jd_text_raw.length,
+        tone,
+        tokens_used: tokens,
+        ats_coverage: keywordStats.coverage
+      }
     })
+
+    trace.end(true, { session_id: session.id, tokens, ats_coverage: keywordStats.coverage })
     
-    return NextResponse.json({ 
-      error: 'Failed to tailor resume', 
-      code: 'tailoring_failed',
-      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
-    }, { status: 500 })
-  }
+    return NextResponse.json({
+      session_id: session.id,
+      version: session.version,
+      original_sections_json: original,
+      preview_sections_json: tailored,
+      keyword_stats: keywordStats,
+      tokens_used: tokens,
+      message: 'Resume tailored successfully'
+    })
 
-  const jdKeywords = extractKeywords(jdText, 30)
-  const integ = integrityCheck(original.experience || [], tailored.experience || [], jdKeywords)
-  if (!integ.ok) {
-    console.warn('Integrity check failed, attempting retry with stricter rules')
-    try {
-      // Retry with stricter integrity rules
-      const retryResult = await getTailoredResume(original, jdText + '\n\nLOCALE:' + locale + '\n\nSTRICT RULE: Do not add any tools, companies, or products not present in the original resume.', tone)
-      tailored = retryResult.tailored
-      aiTokens += retryResult.tokens
-    } catch (retryError) {
-      console.warn('Retry with stricter rules also failed:', retryError)
-      // Continue with the original response
-    }
-  }
-
-  const diffs = buildDiffs(original.experience || [], tailored.experience || [])
-  const keyword_stats = atsCheck(tailored, jdText)
-
-  const session = createSession(original, tailored, jdText, keyword_stats)
-
-  // Log session creation
-  logSessionActivity(session.id, 'created', { 
-    hasResume: !!resume_file, 
-    jdLength: jdText.length,
-    tone,
-    integrityOk: integ.ok
-  })
-
-  trace.end(true, { 
-    sessionId: session.id,
-    integrityOk: integ.ok,
-    experienceCount: tailored.experience?.length || 0
-  })
-
-  const payload = {
-    session_id: session.id,
-    preview_sections_json: {
-      summary: tailored.summary,
-      skills: tailored.skills_section,
-      experience: tailored.experience,
-      education: original.education,
-      certifications: original.certifications
-    },
-    original_sections_json: original,
-    diffs,
-    keyword_stats
-  }
-  const sid = sessionID(req)
-  if (sid === 'anon') {
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
-    const res = NextResponse.json(payload)
-    res.headers.append('Set-Cookie', `sid=${randomUUID()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${secure}`)
-    return res
-  }
-  
-  // Log successful request telemetry
-  logRequestTelemetry({
-    req_id: trace.id,
-    route: 'tailor',
-    timing: Date.now() - (trace as any).startTime,
-    model_tokens: aiTokens,
-    final_status: 'success',
-    additional_metrics: { 
-      jd_length: jdText.length, 
-      resume_length: resumeText.length,
-      experience_count: tailored.experience?.length || 0,
-      skills_count: tailored.skills_section?.length || 0
-    }
-  })
-  
-  return NextResponse.json(payload)
   } catch (error) {
     console.error('Tailor API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
@@ -220,24 +116,27 @@ export async function POST(req: NextRequest) {
     // Log the error with context
     logError(error as Error, {
       route: 'tailor',
-      hasResume: !!resume_file,
-      jdLength: jd_text_raw?.length || 0,
-      tone,
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-        hasInviteCodes: !!process.env.INVITE_CODES,
-        hasAdminKey: !!process.env.ADMIN_KEY
-      }
+      session_id: session_id || 'unknown',
+      hasResumeFile: !!resume_file,
+      jdLength: jd_text_raw.length,
+      tone: tone || 'unknown'
     })
     
-    if (trace) trace.end(false, { error: String(error) })
-    
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      code: 'server_error',
-      details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
+    // Ensure we always return a proper JSON response
+    try {
+      return NextResponse.json({ 
+        code: 'server_error', 
+        message: 'An unexpected error occurred during tailoring',
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
+        timestamp: new Date().toISOString()
+      }, { status: 500 })
+    } catch (jsonError) {
+      console.error('Failed to create JSON response:', jsonError)
+      // Fallback to JSON response even if JSON creation fails
+      return NextResponse.json({ 
+        code: 'server_error', 
+        message: 'An unexpected error occurred'
+      }, { status: 500 })
+    }
   }
 }

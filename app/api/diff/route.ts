@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '../../../lib/sessions'
-import { honestyScan } from '../../../lib/honesty'
+import { buildDiffs } from '../../../lib/diff'
 import { enforceGuards } from '../../../lib/guards'
 
 export const dynamic = 'force-dynamic'
@@ -8,10 +8,6 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ code: 'no_openai_key', message: 'Server not configured' }, { status: 503 })
-    }
-    
     const guard = enforceGuards(req)
     if (!guard.ok) return guard.res
 
@@ -36,14 +32,14 @@ export async function POST(req: NextRequest) {
     if (original_payload && tailored_payload) {
       originalExp = original_payload.experience || []
       tailoredExp = tailored_payload.experience || []
-      console.log('Using direct payloads for honesty scan')
+      console.log('Using direct payloads for diff generation')
     } else {
       // Fallback to session lookup
       const s = getSession(session_id)
       if (s && s.original && s.tailored) {
         originalExp = s.original.experience || []
         tailoredExp = s.tailored.experience || []
-        console.log('Using session data for honesty scan')
+        console.log('Using session data for diff generation')
       }
     }
     
@@ -51,8 +47,8 @@ export async function POST(req: NextRequest) {
     if (!originalExp || !tailoredExp) {
       return NextResponse.json({ 
         code: 'missing_data', 
-        message: 'Original or tailored experience data required. Please ensure the resume has been processed first.',
-        suggestion: 'Try refreshing the page and running the honesty scan again.',
+        message: 'Original or tailored experience data required for diff generation.',
+        suggestion: 'Try refreshing the page and try again.',
         session_version: session_version || 'unknown'
       }, { status: 400 })
     }
@@ -70,16 +66,16 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    const res = honestyScan(originalExp, tailoredExp)
+    const diffs = buildDiffs(originalExp, tailoredExp)
     return NextResponse.json({
-      ...res,
+      diffs,
       session_version: session_version || 'unknown'
     })
   } catch (error) {
-    console.error('Honesty scan error:', error)
+    console.error('Diff generation error:', error)
     return NextResponse.json({ 
-      code: 'honesty_scan_failed', 
-      message: 'Honesty scan failed. Please try again.',
+      code: 'diff_generation_failed', 
+      message: 'Failed to generate diffs. Please try again.',
       details: process.env.NODE_ENV === 'development' ? String(error) : undefined
     }, { status: 500 })
   }

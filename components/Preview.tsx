@@ -16,6 +16,7 @@ export default function Preview({ session }:{ session:any }) {
   const [tpl, setTpl] = useState<'classic'|'modern'|'minimal'|'executive'|'academic'>('minimal')
   const [honesty, setHonesty] = useState<any>(null)
   const [loadingHonesty, setLoadingHonesty] = useState(false)
+  const [diffs, setDiffs] = useState<any[]>([])
 
   // Fix: Render HTML instead of JSON
   const tailored = useMemo(() => {
@@ -44,6 +45,11 @@ export default function Preview({ session }:{ session:any }) {
     } catch {}
   }, [session]);
 
+  // Load diffs on component mount
+  useEffect(() => {
+    loadDiffs()
+  }, [session])
+
   function renderHTML() {
     const resume = session.preview_sections_json
     const opts = { includeSkills: true, includeSummary: true }
@@ -54,6 +60,33 @@ export default function Preview({ session }:{ session:any }) {
     return minimalTemplate(resume, opts)
   }
 
+  async function loadDiffs() {
+    try {
+      const res = await fetch('/api/diff', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          session_id: session.session_id,
+          session_version: session.version,
+          // Pass direct payloads to avoid session dependency
+          original_payload: session.original_sections_json,
+          tailored_payload: session.preview_sections_json
+        })
+      })
+      
+      const data = await res.json()
+      if (res.ok) {
+        setDiffs(data.diffs || [])
+      } else if (data.code === 'stale_session') {
+        console.warn('Session is stale, refreshing...')
+        // Could trigger a page refresh or show a warning
+        alert('Session data is outdated. Please refresh the page.')
+      }
+    } catch (error) {
+      console.error('Failed to load diffs:', error)
+    }
+  }
+
   async function runHonestyScan() {
     setLoadingHonesty(true)
     try {
@@ -62,14 +95,21 @@ export default function Preview({ session }:{ session:any }) {
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
           session_id: session.session_id,
-          // Send the data directly to avoid session persistence issues
-          original_experience: session.original_sections_json?.experience || [],
-          tailored_experience: session.preview_sections_json?.experience || []
+          session_version: session.version,
+          // Pass direct payloads to avoid session dependency
+          original_payload: session.original_sections_json,
+          tailored_payload: session.preview_sections_json
         })
       })
       
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.message || 'Honesty scan failed')
+      if (!res.ok) {
+        if (data.code === 'stale_session') {
+          alert('Session data is outdated. Please refresh the page and try again.')
+          return
+        }
+        throw new Error(data?.message || 'Honesty scan failed')
+      }
       setHonesty(data)
     } catch (e: any) {
       alert(e?.message || 'Honesty scan failed')
@@ -110,7 +150,7 @@ export default function Preview({ session }:{ session:any }) {
         </div>
         <div>
           <div className="label mb-2">Changes</div>
-          <DiffView diffs={session.diffs || []} />
+          <DiffView diffs={diffs} />
           <div className="mt-4">
             <ATSCheck stats={session.keyword_stats} />
           </div>

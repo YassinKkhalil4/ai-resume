@@ -3,6 +3,7 @@ import { ResumeJSON, TailoredResult, KeywordStats } from './types'
 
 type Session = {
   id: string
+  version: string
   createdAt: number
   original: ResumeJSON
   tailored: TailoredResult
@@ -22,12 +23,13 @@ function purgeExpired(ttlMs = 60 * 60 * 1000) {
 export function createSession(original: ResumeJSON, tailored: TailoredResult, jdText: string, keywordStats: KeywordStats) {
   purgeExpired()
   const id = uuid()
-  const s: Session = { id, createdAt: Date.now(), original, tailored, jdText, keywordStats }
+  const version = generateSessionVersion(original, tailored)
+  const s: Session = { id, version, createdAt: Date.now(), original, tailored, jdText, keywordStats }
   store.set(id, s)
   return s
 }
 
-export function getSession(id:string) {
+export function getSession(id: string) {
   purgeExpired()
   const s = store.get(id)
   if (!s) return null
@@ -36,4 +38,37 @@ export function getSession(id:string) {
     return null
   }
   return s
+}
+
+export function updateSession(id: string, updates: Partial<Session>) {
+  const s = store.get(id)
+  if (!s) return null
+  
+  const updated = { ...s, ...updates }
+  if (updates.original || updates.tailored) {
+    updated.version = generateSessionVersion(updated.original, updated.tailored)
+  }
+  
+  store.set(id, updated)
+  return updated
+}
+
+export function deleteSession(id: string) {
+  return store.delete(id)
+}
+
+export function getSessionVersion(id: string): string | null {
+  const s = getSession(id)
+  return s ? s.version : null
+}
+
+function generateSessionVersion(original: ResumeJSON, tailored: TailoredResult): string {
+  // Create a hash of the content to detect changes
+  const content = JSON.stringify({ original, tailored })
+  return btoa(content).slice(0, 16) // Simple hash, first 16 chars
+}
+
+export function validateSessionVersion(id: string, providedVersion: string): boolean {
+  const currentVersion = getSessionVersion(id)
+  return currentVersion === providedVersion
 }
