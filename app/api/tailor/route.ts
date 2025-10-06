@@ -6,6 +6,7 @@ import { createSession } from '../../../lib/sessions'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
 import { startTrace, logRequestTelemetry, logError } from '../../../lib/telemetry'
+import { createUserFriendlyError, logAIError } from '../../../lib/ai-error-handler'
 import { Tone } from '../../../lib/types'
 
 export const runtime = 'nodejs';
@@ -68,15 +69,29 @@ export async function POST(req: NextRequest) {
 
     console.log('Parsing resume...')
     const original = heuristicParseResume(resumeText)
-    console.log('Resume parsed successfully')
+    console.log('Resume parsed successfully:', {
+      hasSummary: !!original.summary,
+      skillsCount: original.skills?.length || 0,
+      experienceCount: original.experience?.length || 0,
+      educationCount: original.education?.length || 0,
+      certificationsCount: original.certifications?.length || 0
+    })
 
     console.log('Tailoring resume...')
     const { tailored, tokens } = await getTailoredResume(original, jd_text_raw, tone)
-    console.log('Resume tailored successfully')
+    console.log('Resume tailored successfully:', {
+      hasSummary: !!tailored.summary,
+      skillsCount: tailored.skills_section?.length || 0,
+      experienceCount: tailored.experience?.length || 0
+    })
 
     console.log('Running ATS check...')
     const keywordStats = atsCheck(original, jd_text_raw)
-    console.log('ATS check completed')
+    console.log('ATS check completed:', {
+      coverage: keywordStats.coverage,
+      matchedKeywords: keywordStats.matched?.length || 0,
+      missingKeywords: keywordStats.missing?.length || 0
+    })
 
     console.log('Creating session...')
     const session = createSession(original, tailored, jd_text_raw, keywordStats)
@@ -93,7 +108,9 @@ export async function POST(req: NextRequest) {
         jd_length: jd_text_raw.length,
         tone,
         tokens_used: tokens,
-        ats_coverage: keywordStats.coverage
+        ats_coverage: keywordStats.coverage,
+        original_experience_count: original.experience?.length || 0,
+        tailored_experience_count: tailored.experience?.length || 0
       }
     })
 
@@ -106,29 +123,52 @@ export async function POST(req: NextRequest) {
       preview_sections_json: tailored,
       keyword_stats: keywordStats,
       tokens_used: tokens,
-      message: 'Resume tailored successfully'
+      message: 'Resume tailored successfully',
+      parsing_details: {
+        original_sections_found: {
+          summary: !!original.summary,
+          skills: (original.skills?.length || 0) > 0,
+          experience: (original.experience?.length || 0) > 0,
+          education: (original.education?.length || 0) > 0,
+          certifications: (original.certifications?.length || 0) > 0
+        },
+        tailored_sections_generated: {
+          summary: !!tailored.summary,
+          skills: (tailored.skills_section?.length || 0) > 0,
+          experience: (tailored.experience?.length || 0) > 0
+        }
+      }
     })
 
   } catch (error) {
     console.error('Tailor API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
-    // Log the error with context
-    logError(error as Error, {
+    // Create detailed error information
+    const errorDetails = {
       route: 'tailor',
       session_id: session_id || 'unknown',
       hasResumeFile: !!resume_file,
       jdLength: jd_text_raw.length,
-      tone: tone || 'unknown'
-    })
+      tone: tone || 'unknown',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined
+    }
+    
+    // Log the error with context
+    logError(error as Error, errorDetails)
+    
+    // Create user-friendly error message
+    const userMessage = createUserFriendlyError(error as Error, errorDetails)
     
     // Ensure we always return a proper JSON response
     try {
       return NextResponse.json({ 
         code: 'server_error', 
-        message: 'An unexpected error occurred during tailoring',
+        message: userMessage,
         details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        error_type: error instanceof Error ? error.constructor.name : 'UnknownError'
       }, { status: 500 })
     } catch (jsonError) {
       console.error('Failed to create JSON response:', jsonError)
