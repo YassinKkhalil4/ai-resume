@@ -95,7 +95,6 @@ export default function Home() {
           <input className="input" placeholder="Invite code" value={gate.code} onChange={e=>gate.setCode(e.target.value)} />
           <button className="button" onClick={gate.submit}>Continue</button>
         </div>
-        {gate.error && <p className="text-red-600 text-sm mt-2">{gate.error}</p>}
       </section>
     </main>
   )

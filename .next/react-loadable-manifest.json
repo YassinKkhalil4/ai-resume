@@ -6,43 +6,5 @@
       "static/chunks/d6a3c14e.41c4af2c3ae38244.js",
       "static/chunks/328.15d3f53f8788009a.js"
     ]
-  },
-  "app/page.tsx -> ../components/OCRBanner": {
-    "id": 4727,
-    "files": [
-      "static/chunks/727.017e7ab10c5f7640.js"
-    ]
-  },
-  "app/page.tsx -> ../lib/parsers": {
-    "id": 3246,
-    "files": [
-      "static/chunks/83.53abe3d9cdae8880.js",
-      "static/chunks/246.b9746267f8f28328.js"
-    ]
-  },
-  "app/page.tsx -> tesseract.js": {
-    "id": 7728,
-    "files": [
-      "static/chunks/728.750f1db427855b77.js"
-    ]
-  },
-  "components/OCRBanner.tsx -> ../lib/parsers": {
-    "id": 3246,
-    "files": [
-      "static/chunks/83.53abe3d9cdae8880.js",
-      "static/chunks/246.b9746267f8f28328.js"
-    ]
-  },
-  "components/OCRBanner.tsx -> tesseract.js": {
-    "id": 7728,
-    "files": [
-      "static/chunks/728.750f1db427855b77.js"
-    ]
-  },
-  "lib/parsers.ts -> pdfjs-dist": {
-    "id": 971,
-    "files": [
-      "static/chunks/9b0008ae.300781c2cab9db7f.js"
-    ]
   }
 }
