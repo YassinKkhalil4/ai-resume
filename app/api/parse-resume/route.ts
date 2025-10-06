@@ -103,7 +103,9 @@ function findUnknownSections(resume: any): string[] {
   const unknownSections: string[] = []
   
   for (const [key, value] of Object.entries(resume)) {
-    if (!standardSections.includes(key) && value && value.length > 0) {
+    if (!standardSections.includes(key) && value && Array.isArray(value) && value.length > 0) {
+      unknownSections.push(key)
+    } else if (!standardSections.includes(key) && value && typeof value === 'string' && value.length > 0) {
       unknownSections.push(key)
     }
   }
