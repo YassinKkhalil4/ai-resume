@@ -140,7 +140,7 @@ function fallbackSegmentation(text: string): Record<string, string> {
   const sections: Record<string, string> = {}
   
   // Pattern-based section detection
-  const patterns = {
+  const patterns: Record<string, any> = {
     experience: {
       indicators: ['experience', 'work', 'employment', 'career', 'professional'],
       datePattern: /\b(19|20)\d{2}\b/, // Years 1900-2099
@@ -172,7 +172,7 @@ function fallbackSegmentation(text: string): Record<string, string> {
       let score = 0
       
       // Check for indicator words
-      if (pattern.indicators.some(indicator => normalizedLine.includes(indicator))) {
+      if (pattern.indicators.some((indicator: string) => normalizedLine.includes(indicator))) {
         score += 3
       }
       
