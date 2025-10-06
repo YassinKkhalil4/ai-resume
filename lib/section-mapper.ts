@@ -64,7 +64,7 @@ export function createSectionMapper() {
         }
         
         // Check synonym matches
-        for (const synonym of synonyms) {
+        for (const synonym of synonyms as string[]) {
           const score = this.calculateSimilarity(normalizedName, synonym)
           if (score > bestScore && score > 0.6) {
             bestScore = score
