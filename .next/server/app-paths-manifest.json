@@ -1,5 +1,5 @@
 {
-  "/api/process-experience/route": "app/api/process-experience/route.js",
-  "/api/process-line-selections/route": "app/api/process-line-selections/route.js",
-  "/api/tailor/route": "app/api/tailor/route.js"
+  "/api/test/route": "app/api/test/route.js",
+  "/api/tailor/route": "app/api/tailor/route.js",
+  "/api/admin/config/route": "app/api/admin/config/route.js"
 }

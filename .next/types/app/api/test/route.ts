@@ -1,8 +1,8 @@
-// File: /Users/yassinkhalil/Downloads/ai-resume-tailor_v2_full/app/api/process-line-selections/route.ts
-import * as entry from '../../../../../app/api/process-line-selections/route.js'
+// File: /Users/yassinkhalil/Downloads/ai-resume-tailor_v2_full/app/api/test/route.ts
+import * as entry from '../../../../../app/api/test/route.js'
 import type { NextRequest } from 'next/server.js'
 
-type TEntry = typeof import('../../../../../app/api/process-line-selections/route.js')
+type TEntry = typeof import('../../../../../app/api/test/route.js')
 
 // Check that the entry is a valid entry
 checkFields<Diff<{
