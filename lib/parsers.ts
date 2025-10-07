@@ -313,7 +313,7 @@ function isRoleLine(line: string): boolean {
 function parseRoleLine(line: string) {
   // Enhanced role parsing
   const separators = /at|@|\-|\||\b(19|20)\d{2}\b/
-  const parts = line.split(separators).map(p => p.trim()).filter(Boolean)
+  const parts = line.split(separators).map(p => (p || '').trim()).filter(Boolean)
   
   if (parts.length >= 2) {
     return {

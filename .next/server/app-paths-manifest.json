@@ -1,5 +1,3 @@
 {
-  "/api/test/route": "app/api/test/route.js",
-  "/api/tailor/route": "app/api/tailor/route.js",
-  "/api/admin/config/route": "app/api/admin/config/route.js"
+  "/api/tailor/route": "app/api/tailor/route.js"
 }
