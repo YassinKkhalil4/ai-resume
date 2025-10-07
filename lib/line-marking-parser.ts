@@ -1,4 +1,4 @@
-import { ResumeJSON, Experience } from './types'
+import { ResumeJSON, Role } from './types'
 
 export interface LineSelection {
   lineIndex: number
@@ -40,7 +40,7 @@ export function processLineSelections(
     }
   })
 
-  const experiences: Experience[] = []
+  const experiences: Role[] = []
 
   // Process grouped selections
   Object.entries(groups).forEach(([groupId, groupSelections]) => {
@@ -64,7 +64,7 @@ export function processLineSelections(
 /**
  * Process a group of related line selections into a single experience entry
  */
-function processGroupedSelections(selections: LineSelection[]): Experience | null {
+function processGroupedSelections(selections: LineSelection[]): Role | null {
   if (selections.length === 0) return null
 
   // Sort by line index to maintain order
@@ -146,7 +146,7 @@ function processGroupedSelections(selections: LineSelection[]): Experience | nul
 /**
  * Process ungrouped selections as a single experience entry
  */
-function processUngroupedSelections(selections: LineSelection[]): Experience | null {
+function processUngroupedSelections(selections: LineSelection[]): Role | null {
   if (selections.length === 0) return null
 
   const sortedSelections = selections.sort((a, b) => a.lineIndex - b.lineIndex)
@@ -227,15 +227,16 @@ function inferLineType(line: string): LineSelection['type'] {
   }
   
   // Role patterns (title-like, often after company)
+  const roleKeywords = /\b(engineer|developer|manager|director|analyst|specialist|coordinator|lead|senior|junior|architect|consultant|designer|programmer|administrator|supervisor|executive|officer|representative|assistant|intern|trainee)\b/i
   if (/^[A-Z][a-z\s&.,-]+$/.test(trimmed) && 
-      (/\b(engineer|developer|manager|director|analyst|specialist|coordinator|lead|senior|junior|architect|consultant|designer|programmer|administrator|supervisor|executive|officer|representative|assistant|intern|trainee)\b/i.test(trimmed) ||
-       (trimmed.length > 5 && trimmed.length < 50 && !trimmed.includes('•') && !trimmed.includes('-'))) {
+      (roleKeywords.test(trimmed) ||
+       (trimmed.length > 5 && trimmed.length < 50 && !trimmed.includes('•') && !trimmed.includes('-')))) {
     return 'role'
   }
   
   // Bullet patterns
-  if (/^[•\-\*]\s+/.test(trimmed) || 
-      /^(developed|implemented|created|designed|managed|led|built|improved|increased|reduced|optimized|delivered|achieved|collaborated|coordinated|supervised|trained|mentored|analyzed|researched|planned|executed|maintained|supported|facilitated|organized|streamlined|enhanced|established|launched|initiated|oversaw|directed|guided|influenced|negotiated|presented|communicated|documented|tested|debugged|troubleshot|configured|deployed|integrated|customized|automated|scaled|monitored|evaluated|assessed|reviewed|audited|validated|verified|ensured|guaranteed|secured|protected|maintained|updated|upgraded|modernized|refactored|optimized|performance|efficiency|productivity|quality|reliability|scalability|usability|accessibility|security|compliance|standards|best practices|methodologies|frameworks|tools|technologies|platforms|systems|applications|databases|networks|infrastructure|cloud|mobile|web|desktop|enterprise|consumer|business|technical|functional|non-functional|requirements|specifications|documentation|training|support|maintenance|troubleshooting|debugging|testing|quality assurance|user experience|user interface|user acceptance|integration|deployment|configuration|customization|automation|monitoring|logging|analytics|reporting|dashboard|metrics|key performance indicators|kpis|sla|service level agreement|uptime|availability|reliability|performance|scalability|security|compliance|governance|risk management|change management|project management|agile|scrum|kanban|waterfall|devops|ci/cd|continuous integration|continuous deployment|version control|git|svn|mercurial|branching|merging|code review|peer review|pull request|merge request|issue tracking|bug tracking|project tracking|time tracking|resource management|team management|stakeholder management|client management|vendor management|supplier management|contract management|budget management|cost management|quality management|risk management|change management|configuration management|release management|incident management|problem management|service management|asset management|inventory management|knowledge management|document management|content management|workflow management|process management|business process|business analysis|requirements analysis|system analysis|data analysis|performance analysis|root cause analysis|gap analysis|impact analysis|feasibility analysis|cost benefit analysis|risk analysis|security analysis|compliance analysis|audit|assessment|evaluation|review|inspection|testing|validation|verification|quality assurance|quality control|testing strategy|test plan|test case|test script|test data|test environment|test execution|test reporting|defect management|bug tracking|issue tracking|ticket management|support|help desk|customer service|user support|technical support|application support|system support|infrastructure support|network support|database support|security support|compliance support|training|documentation|user guide|technical documentation|system documentation|process documentation|procedure documentation|policy documentation|standard operating procedure|sop|runbook|playbook|checklist|template|form|report|dashboard|metrics|kpi|sla|service level agreement|uptime|availability|reliability|performance|scalability|security|compliance|governance|risk|change|project|program|portfolio|initiative|strategy|roadmap|milestone|deliverable|artifact|work product|output|outcome|result|benefit|value|roi|return on investment|cost savings|efficiency|productivity|quality|customer satisfaction|user satisfaction|stakeholder satisfaction|business value|strategic value|tactical value|operational value|financial value|technical value|functional value|non-functional value|business requirement|functional requirement|non-functional requirement|technical requirement|system requirement|user requirement|stakeholder requirement|regulatory requirement|compliance requirement|security requirement|performance requirement|scalability requirement|usability requirement|accessibility requirement|reliability requirement|availability requirement|maintainability requirement|portability requirement|interoperability requirement|compatibility requirement|integration requirement|deployment requirement|configuration requirement|customization requirement|automation requirement|monitoring requirement|logging requirement|analytics requirement|reporting requirement|dashboard requirement|metrics requirement|kpi requirement|sla requirement|service level agreement requirement|uptime requirement|availability requirement|reliability requirement|performance requirement|scalability requirement|security requirement|compliance requirement|governance requirement|risk requirement|change requirement|project requirement|program requirement|portfolio requirement|initiative requirement|strategy requirement|roadmap requirement|milestone requirement|deliverable requirement|artifact requirement|work product requirement|output requirement|outcome requirement|result requirement|benefit requirement|value requirement|roi requirement|return on investment requirement|cost savings requirement|efficiency requirement|productivity requirement|quality requirement|customer satisfaction requirement|user satisfaction requirement|stakeholder satisfaction requirement|business value requirement|strategic value requirement|tactical value requirement|operational value requirement|financial value requirement|technical value requirement|functional value requirement|non-functional value requirement)/i.test(trimmed)) {
+  const bulletKeywords = /^(developed|implemented|created|designed|managed|led|built|improved|increased|reduced|optimized|delivered|achieved|collaborated|coordinated|supervised|trained|mentored|analyzed|researched|planned|executed|maintained|supported|facilitated|organized|streamlined|enhanced|established|launched|initiated|oversaw|directed|guided|influenced|negotiated|presented|communicated|documented|tested|debugged|troubleshot|configured|deployed|integrated|customized|automated|scaled|monitored|evaluated|assessed|reviewed|audited|validated|verified|ensured|guaranteed|secured|protected|updated|upgraded|modernized|refactored)/i
+  if (/^[•\-\*]\s+/.test(trimmed) || bulletKeywords.test(trimmed)) {
     return 'bullet'
   }
   
@@ -245,7 +246,7 @@ function inferLineType(line: string): LineSelection['type'] {
 /**
  * Validate and clean processed experience data
  */
-export function validateProcessedExperience(experience: Experience): Experience {
+export function validateProcessedExperience(experience: Role): Role {
   return {
     company: experience.company.trim() || 'Unknown Company',
     role: experience.role.trim() || 'Unknown Role',
@@ -262,7 +263,7 @@ export function validateProcessedExperience(experience: Experience): Experience 
  */
 export function createProcessingSummary(
   originalSelections: LineSelection[],
-  processedExperiences: Experience[]
+  processedExperiences: Role[]
 ): {
   totalLines: number
   totalExperiences: number

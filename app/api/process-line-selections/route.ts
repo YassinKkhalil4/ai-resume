@@ -119,7 +119,12 @@ export async function POST(req: NextRequest) {
     // Create or update session
     let session
     if (existingSession) {
-      session = updateSession(sessionId, originalResume, tailored, jdText, keywordStats)
+      session = updateSession(sessionId, {
+        original: originalResume,
+        tailored: tailored,
+        jdText: jdText,
+        keywordStats: keywordStats
+      })
     } else {
       session = createSession(originalResume, tailored, jdText, keywordStats)
     }

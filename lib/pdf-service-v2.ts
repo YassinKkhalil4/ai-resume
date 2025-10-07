@@ -149,7 +149,7 @@ async function generatePDFWithPuppeteer(html: string): Promise<Buffer> {
       await page.setContent(html, { waitUntil: 'domcontentloaded' })
       
       const pdf = await page.pdf({
-        format: 'A4',
+        format: 'a4',
         printBackground: true,
         preferCSSPageSize: true,
         margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }

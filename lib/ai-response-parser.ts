@@ -440,7 +440,7 @@ Output:`
 
   } catch (error) {
     console.error("Error extracting bullets from free text:", error)
-    logError('bullet_extraction', error as Error)
+    logError(error as Error, { context: 'bullet_extraction' })
     return []
   }
 }
