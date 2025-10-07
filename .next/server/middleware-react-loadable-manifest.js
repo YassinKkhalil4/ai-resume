@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> ../components/FileDrop\":{\"id\":\"app/page.tsx -> ../components/FileDrop\",\"files\":[\"static/css/_app-pages-browser_components_FileDrop_tsx.css\",\"static/chunks/_app-pages-browser_components_FileDrop_tsx.js\"]}}"
