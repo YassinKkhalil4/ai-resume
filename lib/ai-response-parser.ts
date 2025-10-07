@@ -2,6 +2,8 @@ import { TailoredResultSchema, type TailoredResultType } from './schemas'
 import { ResumeJSON } from './types'
 import { logAIResponse, logError } from './telemetry'
 import { extractKeywords } from './jd'
+import { getOpenAI, OPENAI_MODEL } from './openai'
+import { SYSTEM_PROMPT, makeUserPrompt } from './prompts'
 
 export async function parseAIResponse(raw: string, maxRetries: number = 3): Promise<TailoredResultType> {
   let lastError: Error | null = null
@@ -365,6 +367,3 @@ function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredR
   }
 }
 
-// Import the required functions and constants
-import { getOpenAI, OPENAI_MODEL } from './openai'
-import { SYSTEM_PROMPT, makeUserPrompt } from './prompts'
