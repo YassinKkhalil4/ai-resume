@@ -6,6 +6,7 @@ import JDInput from '../components/JDInput'
 import Preview from '../components/Preview'
 import ParsingErrorBanner from '../components/ParsingErrorBanner'
 import ExperienceInputModal from '../components/ExperienceInputModal'
+import LineMarkingModal, { LineSelection } from '../components/LineMarkingModal'
 import useInviteGate from '../components/useInviteGate'
 import { ParsingValidationResult } from '../lib/parsing-validation'
 
@@ -19,14 +20,48 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [validation, setValidation] = useState<ParsingValidationResult | null>(null)
   const [showExperienceModal, setShowExperienceModal] = useState(false)
+  const [showLineMarkingModal, setShowLineMarkingModal] = useState(false)
   const [showBanner, setShowBanner] = useState(true)
+  const [resumeText, setResumeText] = useState<string>('')
   const gate = useInviteGate()
+
+  // Helper function to extract text from resume file
+  async function extractResumeText(file: File): Promise<string> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch('/api/parse-resume', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        return data.resumeText || ''
+      }
+    } catch (error) {
+      console.error('Failed to extract resume text:', error)
+    }
+    
+    // Fallback: try to read as text
+    try {
+      return await file.text()
+    } catch (error) {
+      console.error('Failed to read file as text:', error)
+      return ''
+    }
+  }
 
   async function handleTailor() {
     if (!resumeFile) return alert('Upload a resume and paste a job description.')
     if (!jdText) return alert('Paste a job description.')
     setLoading(true)
     try {
+      // Extract resume text for line marking feature
+      const text = await extractResumeText(resumeFile)
+      setResumeText(text)
+      
       const fd = new FormData()
       fd.append('resume_file', resumeFile)
       fd.append('jd_text', jdText)
@@ -61,8 +96,11 @@ export default function Home() {
         setShowExperienceModal(true)
         break
       case 'mark_experience':
-        // TODO: Implement line marking functionality
-        alert('Line marking functionality coming soon!')
+        if (!resumeText) {
+          alert('Resume text not available. Please try uploading the resume again.')
+          return
+        }
+        setShowLineMarkingModal(true)
         break
       case 'upload_new':
         setResumeFile(null)
@@ -86,6 +124,49 @@ export default function Home() {
     // In a real implementation, this would process the experience and retry tailoring
   }
 
+  async function handleLineMarkingSubmit(selectedLines: LineSelection[]) {
+    if (!resumeText || !jdText) {
+      alert('Missing resume text or job description. Please try again.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/process-line-selections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resumeText,
+          selectedLines,
+          jdText,
+          tone,
+          sessionId: session?.session_id
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to process line selections')
+      }
+
+      // Update session with the processed results
+      setSession(data)
+      setValidation(null) // Clear validation since we've processed the experience
+      setShowBanner(false) // Hide banner
+      setShowLineMarkingModal(false)
+
+      console.log('Line selections processed successfully:', data.processing_summary)
+    } catch (error: any) {
+      console.error('Failed to process line selections:', error)
+      alert(error?.message || 'Failed to process line selections')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!gate.ok) return (
     <main className="grid gap-6">
       <section className="card p-6">
@@ -106,6 +187,7 @@ export default function Home() {
           validation={validation}
           onAction={handleBannerAction}
           onDismiss={() => setShowBanner(false)}
+          resumeText={resumeText}
         />
       )}
       
@@ -174,6 +256,16 @@ export default function Home() {
           isOpen={showExperienceModal}
           onClose={() => setShowExperienceModal(false)}
           onSubmit={handleExperienceSubmit}
+        />
+      )}
+
+      {showLineMarkingModal && (
+        <LineMarkingModal
+          isOpen={showLineMarkingModal}
+          onClose={() => setShowLineMarkingModal(false)}
+          onSubmit={handleLineMarkingSubmit}
+          resumeText={resumeText}
+          originalResume={session?.original_sections_json}
         />
       )}
     </main>

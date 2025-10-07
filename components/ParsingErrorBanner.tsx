@@ -7,9 +7,10 @@ interface ParsingErrorBannerProps {
   validation: ParsingValidationResult
   onAction: (action: string) => void
   onDismiss?: () => void
+  resumeText?: string
 }
 
-export default function ParsingErrorBanner({ validation, onAction, onDismiss }: ParsingErrorBannerProps) {
+export default function ParsingErrorBanner({ validation, onAction, onDismiss, resumeText }: ParsingErrorBannerProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
   const errorState = createErrorState(validation)
