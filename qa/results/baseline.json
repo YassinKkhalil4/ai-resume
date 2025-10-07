@@ -1,0 +1,502 @@
+[
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_01.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_02.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_03.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_04.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_05.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_06.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_07.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_08.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_09.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_01.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_02.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_03.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_04.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_05.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_06.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_07.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_08.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_09.txt",
+    "baseline_cov": 50
+  },
+  {
+    "resume": "resume_10.txt",
+    "jd": "jd_10.txt",
+    "baseline_cov": 50
+  }
+]

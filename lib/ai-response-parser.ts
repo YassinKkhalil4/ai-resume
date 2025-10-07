@@ -80,7 +80,7 @@ function coerceToSchema(parsed: any): any {
   
   // Coerce summary
   if (parsed.summary && typeof parsed.summary === 'string') {
-    coerced.summary = parsed.summary.trim()
+    coerced.summary = parsed.summary.trim() || 'Professional summary not available'
   } else if (parsed.summary && typeof parsed.summary === 'object') {
     // If summary is an object, try to extract text
     coerced.summary = extractTextFromObject(parsed.summary) || 'Professional summary not available'
@@ -128,7 +128,7 @@ function coerceExperience(exp: any): any {
   
   // Coerce company
   if (typeof exp.company === 'string') {
-    coerced.company = exp.company.trim()
+    coerced.company = exp.company.trim() || 'Unknown Company'
   } else if (exp.company && typeof exp.company === 'object') {
     coerced.company = extractTextFromObject(exp.company) || 'Unknown Company'
   } else {
@@ -137,7 +137,7 @@ function coerceExperience(exp: any): any {
   
   // Coerce role
   if (typeof exp.role === 'string') {
-    coerced.role = exp.role.trim()
+    coerced.role = exp.role.trim() || 'Unknown Role'
   } else if (exp.role && typeof exp.role === 'object') {
     coerced.role = extractTextFromObject(exp.role) || 'Unknown Role'
   } else {
@@ -335,13 +335,13 @@ Return only valid JSON.`
     })
 
     const extractionRaw = extractionChat.choices[0]?.message?.content || '{}'
-    const extracted = await parseAIResponse(extractionRaw)
+    const extractedData = JSON.parse(extractionRaw)
     
-    if (extracted.experience && extracted.experience.length > 0) {
+    if (extractedData.experience && Array.isArray(extractedData.experience) && extractedData.experience.length > 0) {
       console.log('Successfully extracted experience from free text')
       // Now tailor the extracted experience
       const tailored = await getTailoredResume(
-        { ...original, experience: extracted.experience }, 
+        { ...original, experience: extractedData.experience }, 
         jdText, 
         tone
       )
@@ -422,17 +422,17 @@ Output:`
     // Validate the structure
     if (Array.isArray(parsed)) {
       return parsed.map((role: any) => ({
-        company: role.company || 'Unknown Company',
-        role: role.role || 'Unknown Role',
-        dates: role.dates || '',
-        bullets: Array.isArray(role.bullets) ? role.bullets : []
+        company: (role.company || '').trim() || 'Unknown Company',
+        role: (role.role || '').trim() || 'Unknown Role',
+        dates: (role.dates || '').trim() || '',
+        bullets: Array.isArray(role.bullets) ? role.bullets.filter(b => typeof b === 'string' && b.trim().length > 0).map(b => b.trim()) : []
       }))
     } else if (parsed.experience && Array.isArray(parsed.experience)) {
       return parsed.experience.map((role: any) => ({
-        company: role.company || 'Unknown Company',
-        role: role.role || 'Unknown Role',
-        dates: role.dates || '',
-        bullets: Array.isArray(role.bullets) ? role.bullets : []
+        company: (role.company || '').trim() || 'Unknown Company',
+        role: (role.role || '').trim() || 'Unknown Role',
+        dates: (role.dates || '').trim() || '',
+        bullets: Array.isArray(role.bullets) ? role.bullets.filter(b => typeof b === 'string' && b.trim().length > 0).map(b => b.trim()) : []
       }))
     } else {
       throw new Error("Unexpected response format from AI")

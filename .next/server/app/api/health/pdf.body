@@ -1,1 +1,0 @@
-{"service":"pdf-generation","status":"unhealthy","issues":["Low success rate: 0.0%"],"metrics":{"totalRequests":0,"successRate":"0.0%","averageResponseTime":"0ms","methodBreakdown":{},"qualityBreakdown":{},"errorBreakdown":{}},"timestamp":"2025-10-07T17:14:49.141Z","uptime":5.366155167}

@@ -248,10 +248,10 @@ function inferLineType(line: string): LineSelection['type'] {
  */
 export function validateProcessedExperience(experience: Role): Role {
   return {
-    company: experience.company.trim() || 'Unknown Company',
-    role: experience.role.trim() || 'Unknown Role',
-    dates: experience.dates.trim() || 'Dates not specified',
-    bullets: experience.bullets
+    company: (experience.company || '').trim() || 'Unknown Company',
+    role: (experience.role || '').trim() || 'Unknown Role',
+    dates: (experience.dates || '').trim() || 'Dates not specified',
+    bullets: (experience.bullets || [])
       .map(bullet => bullet.trim())
       .filter(bullet => bullet.length > 0)
       .slice(0, 12) // Limit to 12 bullets per experience
