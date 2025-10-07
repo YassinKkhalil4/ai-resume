@@ -367,3 +367,81 @@ function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredR
   }
 }
 
+/**
+ * Extract structured experience from free-form text using AI
+ */
+export async function extractBulletsFromFreeText(freeText: string): Promise<ResumeJSON['experience']> {
+  if (!freeText || freeText.trim().length === 0) {
+    return []
+  }
+
+  const openai = getOpenAI()
+  if (!openai) {
+    console.warn('OpenAI not available for bullet extraction')
+    return []
+  }
+
+  const prompt = `Given the following free-form text describing work experience, extract it into a JSON array of roles. Each role should have 'company', 'role', 'dates' (optional, can be empty string), and 'bullets' (an array of strings). If no specific role or company is clear, group related bullets under a generic "Experience" role.
+
+Example:
+Text: "Company A (2020-2022) - Software Engineer. Developed X, Implemented Y. Company B (2018-2020) - Junior Dev. Assisted with Z."
+Output:
+[
+  {
+    "company": "Company A",
+    "role": "Software Engineer",
+    "dates": "2020-2022",
+    "bullets": ["Developed X", "Implemented Y"]
+  },
+  {
+    "company": "Company B",
+    "role": "Junior Dev",
+    "dates": "2018-2020",
+    "bullets": ["Assisted with Z"]
+  }
+]
+
+Text: "${freeText}"
+Output:`
+
+  try {
+    const chatCompletion = await openai.chat.completions.create({
+      model: OPENAI_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    })
+
+    const rawResponse = chatCompletion.choices[0].message.content
+    if (!rawResponse) {
+      throw new Error("AI returned an empty response for bullet extraction")
+    }
+
+    const parsed = JSON.parse(rawResponse)
+    
+    // Validate the structure
+    if (Array.isArray(parsed)) {
+      return parsed.map((role: any) => ({
+        company: role.company || 'Unknown Company',
+        role: role.role || 'Unknown Role',
+        dates: role.dates || '',
+        bullets: Array.isArray(role.bullets) ? role.bullets : []
+      }))
+    } else if (parsed.experience && Array.isArray(parsed.experience)) {
+      return parsed.experience.map((role: any) => ({
+        company: role.company || 'Unknown Company',
+        role: role.role || 'Unknown Role',
+        dates: role.dates || '',
+        bullets: Array.isArray(role.bullets) ? role.bullets : []
+      }))
+    } else {
+      throw new Error("Unexpected response format from AI")
+    }
+
+  } catch (error) {
+    console.error("Error extracting bullets from free text:", error)
+    logError('bullet_extraction', error as Error)
+    return []
+  }
+}
+

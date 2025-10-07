@@ -117,11 +117,47 @@ export default function Home() {
   }
 
   async function handleExperienceSubmit(experience: string) {
-    // TODO: Implement experience processing
-    console.log('Experience submitted:', experience)
-    setShowExperienceModal(false)
-    // For now, just hide the modal
-    // In a real implementation, this would process the experience and retry tailoring
+    if (!jdText) {
+      alert('Job description is required. Please paste a job description first.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/process-experience', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          experienceText: experience,
+          jdText,
+          tone,
+          sessionId: session?.session_id
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to process experience')
+      }
+
+      // Update session with the processed results
+      setSession(data)
+      setValidation(null) // Clear validation since we've processed the experience
+      setShowBanner(false) // Hide banner
+      setShowExperienceModal(false)
+
+      console.log('Experience processed successfully:', {
+        extractedExperienceCount: data.extracted_experience_count
+      })
+    } catch (error: any) {
+      console.error('Failed to process experience:', error)
+      alert(error?.message || 'Failed to process experience')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleLineMarkingSubmit(selectedLines: LineSelection[]) {
