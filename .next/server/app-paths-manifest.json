@@ -1,6 +1,1 @@
-{
-  "/api/test/route": "app/api/test/route.js",
-  "/page": "app/page.js",
-  "/api/tailor/route": "app/api/tailor/route.js",
-  "/api/health/pdf/route": "app/api/health/pdf/route.js"
-}
+{}
