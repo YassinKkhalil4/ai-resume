@@ -51,3 +51,4 @@ npm run dev
 
 ## License
 You own and can ship this. Keep privacy and integrity promises intact.
+# Force redeploy Thu Oct  9 00:52:29 EEST 2025
