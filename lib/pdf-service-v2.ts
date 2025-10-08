@@ -174,12 +174,50 @@ async function createBasicPDF(html: string): Promise<Buffer> {
     .replace(/<div[^>]*>/g, '<p>') // Convert divs to paragraphs
     .replace(/<\/div>/g, '</p>')
   
-  // Extract text content
+  // Extract text content and split into lines
   const textContent = cleanHtml
     .replace(/<[^>]*>/g, ' ') // Remove HTML tags
     .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
     .substring(0, 2000) // Limit length
+
+  // Split text into lines (approximately 60 characters per line)
+  const lines = []
+  const words = textContent.split(' ')
+  let currentLine = ''
+  
+  for (const word of words) {
+    if ((currentLine + ' ' + word).length > 60 && currentLine.length > 0) {
+      lines.push(currentLine.trim())
+      currentLine = word
+    } else {
+      currentLine += (currentLine.length > 0 ? ' ' : '') + word
+    }
+  }
+  if (currentLine.trim()) {
+    lines.push(currentLine.trim())
+  }
+
+  // Create PDF content with multiple lines
+  const lineHeight = 20
+  const startY = 750
+  const leftMargin = 50
+  const maxLines = Math.min(lines.length, 30) // Limit to 30 lines to fit on page
+  
+  let pdfStream = 'BT\n'
+  pdfStream += '/F1 12 Tf\n'
+  
+  for (let i = 0; i < maxLines; i++) {
+    const y = startY - (i * lineHeight)
+    if (y < 50) break // Don't go below bottom margin
+    
+    const line = lines[i].replace(/[()\\]/g, '\\$&') // Escape PDF special characters
+    pdfStream += `${leftMargin} ${y} Td\n`
+    pdfStream += `(${line}) Tj\n`
+    pdfStream += '0 0 Td\n' // Reset position for next line
+  }
+  
+  pdfStream += 'ET\n'
 
   // Create a minimal PDF structure
   const pdfContent = `%PDF-1.4
@@ -214,15 +252,10 @@ endobj
 
 4 0 obj
 <<
-/Length ${textContent.length + 100}
+/Length ${pdfStream.length + 100}
 >>
 stream
-BT
-/F1 12 Tf
-50 750 Td
-(${textContent.substring(0, 100)}) Tj
-ET
-endstream
+${pdfStream}endstream
 endobj
 
 5 0 obj
@@ -247,7 +280,7 @@ trailer
 /Root 1 0 R
 >>
 startxref
-${600 + textContent.length}
+${600 + pdfStream.length}
 %%EOF`
 
   return Buffer.from(pdfContent, 'utf8')
