@@ -92,20 +92,15 @@ export async function POST(req: NextRequest) {
     
     // Step 9: Create session
     console.log('Step 9: Create session...')
-    const session = createSession({
-      original: original,
-      tailored: tailored,
-      jdText: jd_text_raw,
-      keywordStats: keywordStats
-    })
+    const session = createSession(original, tailored, jd_text_raw, keywordStats)
     console.log('Step 9: Session created successfully', {
-      sessionId: session.session_id
+      sessionId: session.id
     })
     
     return NextResponse.json({
       status: 'success',
       message: 'All steps completed successfully',
-      session_id: session.session_id,
+      session_id: session.id,
       steps_completed: [
         'Guard check',
         'Form data parsing',

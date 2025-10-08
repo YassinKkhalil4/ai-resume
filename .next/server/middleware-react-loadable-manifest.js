@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> ../components/FileDrop\":{\"id\":\"app/page.tsx -> ../components/FileDrop\",\"files\":[\"static/css/_app-pages-browser_components_FileDrop_tsx.css\",\"static/chunks/_app-pages-browser_components_FileDrop_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST='{"app/page.tsx -> ../components/FileDrop":{"id":5328,"files":["static/css/10a3ff620b5adb2b.css","static/chunks/d6a3c14e.41c4af2c3ae38244.js","static/chunks/328.15d3f53f8788009a.js"]}}';
