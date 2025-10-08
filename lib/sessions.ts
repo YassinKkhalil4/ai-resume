@@ -65,7 +65,8 @@ export function getSessionVersion(id: string): string | null {
 function generateSessionVersion(original: ResumeJSON, tailored: TailoredResult): string {
   // Create a hash of the content to detect changes
   const content = JSON.stringify({ original, tailored })
-  return btoa(content).slice(0, 16) // Simple hash, first 16 chars
+  // Use Buffer.from() to handle Unicode characters properly
+  return Buffer.from(content, 'utf8').toString('base64').slice(0, 16) // Simple hash, first 16 chars
 }
 
 export function validateSessionVersion(id: string, providedVersion: string): boolean {
