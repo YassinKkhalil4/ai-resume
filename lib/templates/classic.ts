@@ -28,4 +28,4 @@ export function classicTemplate(resume: ResumeJSON, options:{ includeSkills:bool
 </body></html>`
 }
 
-function esc(s:string){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'} as any)[c]) }
+function esc(s:string){ return (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'} as any)[c]) }

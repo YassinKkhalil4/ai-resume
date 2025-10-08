@@ -20,7 +20,7 @@
   </div>
   ${s.includeSkills&&e.skills?.length?`<div class="sec"><h2>Skills</h2><div>${(e.skills||[]).join(" • ")}</div></div>`:""}
   ${e.education?.length?`<div class="sec"><h2>Education</h2><ul>${(e.education||[]).map(e=>`<li>${o(e)}</li>`).join("")}</ul></div>`:""}
-</body></html>`}function o(e){return e.replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[e])}function d(e,s){return`<!doctype html>
+</body></html>`}function o(e){return(e||"").replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[e])}function d(e,s){return`<!doctype html>
 <html><head><meta charset="utf-8" /><style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#111; font-size: 12pt; line-height: 1.35; }
   h2 { font-size: 13pt; margin: 0 0 8px; }
@@ -43,7 +43,7 @@
   </div>
   ${s.includeSkills&&e.skills?.length?`<div class="sec"><h2>Skills</h2><div class="chips">${(e.skills||[]).map(e=>`<span>${c(e)}</span>`).join("")}</div></div>`:""}
   ${e.education?.length?`<div class="sec"><h2>Education</h2><ul>${(e.education||[]).map(e=>`<li>${c(e)}</li>`).join("")}</ul></div>`:""}
-</body></html>`}function c(e){return e.replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[e])}function m(e,s){return`<!doctype html>
+</body></html>`}function c(e){return(e||"").replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[e])}function m(e,s){return`<!doctype html>
 <html><head><meta charset="utf-8" /><style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#111; font-size: 12pt; line-height: 1.35; }
   h1,h2 { margin: 0 0 6px; }
@@ -67,7 +67,7 @@
   ${s.includeSkills&&e.skills?.length?`<div class="sec"><h2>Skills</h2><div class="chips">${(e.skills||[]).map(e=>`<span>${u(e)}</span>`).join("")}</div></div>`:""}
   ${e.education?.length?`<div class="sec"><h2>Education</h2><ul>${(e.education||[]).map(e=>`<li>${u(e)}</li>`).join("")}</ul></div>`:""}
   ${e.certifications?.length?`<div class="sec"><h2>Certifications</h2><ul>${(e.certifications||[]).map(e=>`<li>${u(e)}</li>`).join("")}</ul></div>`:""}
-</body></html>`}function u(e){return e.replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[e])}function x(e,s){var t;let l=`
+</body></html>`}function u(e){return(e||"").replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[e])}function x(e,s){var t;let l=`
   body{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif; color:#0b0b0b; font-size:11.5pt; line-height:1.38;}
   .wrap{max-width:820px; margin:0 auto;}
   .hdr{display:grid; grid-template-columns: 2fr 1fr; gap:16px; align-items:flex-end; border-bottom:2px solid #111; padding-bottom:10px; margin-bottom:14px}
