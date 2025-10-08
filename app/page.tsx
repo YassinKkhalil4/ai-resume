@@ -25,6 +25,15 @@ export default function Home() {
   const [resumeText, setResumeText] = useState<string>('')
   const gate = useInviteGate()
 
+  // Helper function to get invite code from cookie
+  function getInviteCode(): string {
+    const inviteCode = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('invite='))
+      ?.split('=')[1]
+    return inviteCode ? decodeURIComponent(inviteCode) : ''
+  }
+
   // Helper function to extract text from resume file
   async function extractResumeText(file: File): Promise<string> {
     try {
@@ -66,7 +75,14 @@ export default function Home() {
       fd.append('resume_file', resumeFile)
       fd.append('jd_text', jdText)
       fd.append('tone', tone)
-      const res = await fetch('/api/tailor', { method: 'POST', body: fd })
+      
+      const res = await fetch('/api/tailor', { 
+        method: 'POST', 
+        body: fd,
+        headers: {
+          'x-invite-code': getInviteCode()
+        }
+      })
       const data = await res.json()
       
       if (!res.ok) {
@@ -128,6 +144,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-invite-code': getInviteCode()
         },
         body: JSON.stringify({
           experienceText: experience,
@@ -172,6 +189,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-invite-code': getInviteCode()
         },
         body: JSON.stringify({
           resumeText,

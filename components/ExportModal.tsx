@@ -21,9 +21,19 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
       // Include snapshot in export requests
       const snapshot = (typeof window !== 'undefined' && (window as any).__TAILOR_SESSION__) || null;
       
+      // Get invite code from cookie
+      const inviteCode = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('invite='))
+        ?.split('=')[1]
+      const decodedInviteCode = inviteCode ? decodeURIComponent(inviteCode) : ''
+      
       const res = await fetch('/api/export', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: {
+          'Content-Type':'application/json',
+          'x-invite-code': decodedInviteCode
+        },
         body: JSON.stringify({
           session_id: sessionId,
           template,

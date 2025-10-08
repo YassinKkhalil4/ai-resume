@@ -90,9 +90,19 @@ export default function Preview({ session }:{ session:any }) {
   async function runHonestyScan() {
     setLoadingHonesty(true)
     try {
+      // Get invite code from cookie
+      const inviteCode = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('invite='))
+        ?.split('=')[1]
+      const decodedInviteCode = inviteCode ? decodeURIComponent(inviteCode) : ''
+      
       const res = await fetch('/api/honesty', { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-invite-code': decodedInviteCode
+        }, 
         body: JSON.stringify({ 
           session_id: session.session_id,
           session_version: session.version,
