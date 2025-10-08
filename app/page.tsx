@@ -31,7 +31,13 @@ export default function Home() {
       .split('; ')
       .find(row => row.startsWith('invite='))
       ?.split('=')[1]
-    return inviteCode ? decodeURIComponent(inviteCode) : ''
+    const decoded = inviteCode ? decodeURIComponent(inviteCode) : ''
+    console.log('Cookie debug:', {
+      allCookies: document.cookie,
+      inviteCode,
+      decoded
+    })
+    return decoded
   }
 
   // Helper function to extract text from resume file
@@ -76,11 +82,20 @@ export default function Home() {
       fd.append('jd_text', jdText)
       fd.append('tone', tone)
       
+      const inviteCode = getInviteCode()
+      console.log('API call debug:', {
+        inviteCode,
+        formDataEntries: [...fd.entries()],
+        headers: {
+          'x-invite-code': inviteCode
+        }
+      })
+      
       const res = await fetch('/api/tailor', { 
         method: 'POST', 
         body: fd,
         headers: {
-          'x-invite-code': getInviteCode()
+          'x-invite-code': inviteCode
         }
       })
       const data = await res.json()
