@@ -112,7 +112,11 @@ function isHeading(line: string): boolean {
     
     // Additional patterns
     /^(publications|research|volunteer|volunteer work|community service)$/,
-    /^(languages|language skills|interests|hobbies|additional information)$/
+    /^(languages|language skills|interests|hobbies|additional information)$/,
+    
+    // Extracurricular and volunteer patterns
+    /^(extracurricular activities|extracurricular|activities|volunteer experience)$/,
+    /^(volunteer work|community involvement|community service)$/
   ]
   
   return headingPatterns.some(pattern => pattern.test(normalized))
@@ -304,14 +308,34 @@ function isRoleLine(line: string): boolean {
     /^[^•\-\*].*(at|@|\-|\|).*[0-9]{4}/i, // "Role at Company 2020"
     /^[A-Z][^•\-\*]*[A-Z].*[0-9]{4}/, // "Company Role 2020"
     /^[^•\-\*].*\b(19|20)\d{2}\b/, // Any line with a year
-    /^[A-Z][^•\-\*]*\b(engineer|manager|developer|analyst|consultant|director|lead|senior|junior)\b/i
+    /^[A-Z][^•\-\*]*\b(engineer|manager|developer|analyst|consultant|director|lead|senior|junior|organizer|volunteer|intern|associate|athlete)\b/i,
+    /^[^•\-\*].*\b(organizer|volunteer|intern|associate|athlete|sales|retail|consultant|real estate)\b.*[A-Z]/i, // "Role — Company" format
+    /^[A-Z][^•\-\*]*\s*—\s*[A-Z]/, // "Company — Location" format
+    /^[^•\-\*].*\s*—\s*[A-Z].*\s*—\s*[A-Z]/, // "Role — Company — Location" format
   ]
   
   return rolePatterns.some(pattern => pattern.test(line))
 }
 
 function parseRoleLine(line: string) {
-  // Enhanced role parsing
+  // Extract dates from the line first
+  const dateMatch = line.match(/\b(19|20)\d{2}(?:\s*[-–]\s*(?:present|current|19|20)\d{2})?\b/gi)
+  const dates = dateMatch ? dateMatch.join(' ') : ''
+  
+  // Handle "Role — Company — Location" format
+  if (line.includes('—')) {
+    const parts = line.split('—').map(p => p.trim())
+    if (parts.length >= 2) {
+      return {
+        role: parts[0],
+        company: parts[1],
+        dates: dates,
+        bullets: []
+      }
+    }
+  }
+  
+  // Handle other formats with separators
   const separators = /at|@|\-|\||\b(19|20)\d{2}\b/
   const parts = line.split(separators).map(p => (p || '').trim()).filter(Boolean)
   
@@ -319,17 +343,19 @@ function parseRoleLine(line: string) {
     return {
       role: parts[0],
       company: parts[1] || 'Unknown',
+      dates: dates,
       bullets: []
     }
   }
   
   // Fallback: try to extract role and company from the line
-  const roleMatch = line.match(/\b(engineer|manager|developer|analyst|consultant|director|lead|senior|junior)\b/i)
+  const roleMatch = line.match(/\b(engineer|manager|developer|analyst|consultant|director|lead|senior|junior|organizer|volunteer|intern|associate|athlete|sales|retail)\b/i)
   const companyMatch = line.match(/\b[A-Z][^•\-\*]*[A-Z]\b/)
   
   return {
     role: roleMatch ? roleMatch[0] : line,
     company: companyMatch ? companyMatch[0] : 'Unknown',
+    dates: dates,
     bullets: []
   }
 }

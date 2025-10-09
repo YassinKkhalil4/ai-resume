@@ -1,1 +1,1 @@
-{"service":"pdf-generation","status":"unhealthy","issues":["Low success rate: 0.0%"],"metrics":{"totalRequests":0,"successRate":"0.0%","averageResponseTime":"0ms","methodBreakdown":{},"qualityBreakdown":{},"errorBreakdown":{}},"timestamp":"2025-10-09T10:06:17.851Z","uptime":2.149295541}
+{"service":"pdf-generation","status":"unhealthy","issues":["Low success rate: 0.0%"],"metrics":{"totalRequests":0,"successRate":"0.0%","averageResponseTime":"0ms","methodBreakdown":{},"qualityBreakdown":{},"errorBreakdown":{}},"timestamp":"2025-10-09T10:34:40.818Z","uptime":2.429649334}
