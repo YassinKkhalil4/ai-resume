@@ -174,20 +174,27 @@ async function createBasicPDF(html: string): Promise<Buffer> {
     .replace(/<div[^>]*>/g, '<p>') // Convert divs to paragraphs
     .replace(/<\/div>/g, '</p>')
   
-  // Extract text content and split into lines
+  // Extract text content
   const textContent = cleanHtml
     .replace(/<[^>]*>/g, ' ') // Remove HTML tags
     .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
-    .substring(0, 2000) // Limit length
+    .substring(0, 1500) // Limit length
 
-  // Split text into lines (approximately 60 characters per line)
+  // Create a simple, reliable PDF using a different approach
+  const pdfContent = createSimplePDF(textContent)
+  return Buffer.from(pdfContent, 'utf8')
+}
+
+// Create a simple PDF with proper structure
+function createSimplePDF(text: string): string {
+  // Split text into chunks that fit on a line
+  const words = text.split(' ')
   const lines = []
-  const words = textContent.split(' ')
   let currentLine = ''
   
   for (const word of words) {
-    if ((currentLine + ' ' + word).length > 60 && currentLine.length > 0) {
+    if ((currentLine + ' ' + word).length > 70 && currentLine.length > 0) {
       lines.push(currentLine.trim())
       currentLine = word
     } else {
@@ -198,29 +205,25 @@ async function createBasicPDF(html: string): Promise<Buffer> {
     lines.push(currentLine.trim())
   }
 
-  // Create PDF content with multiple lines
-  const lineHeight = 20
-  const startY = 750
-  const leftMargin = 50
-  const maxLines = Math.min(lines.length, 30) // Limit to 30 lines to fit on page
-  
-  let pdfStream = 'BT\n'
-  pdfStream += '/F1 12 Tf\n'
-  
-  for (let i = 0; i < maxLines; i++) {
-    const y = startY - (i * lineHeight)
-    if (y < 50) break // Don't go below bottom margin
-    
-    const line = lines[i].replace(/[()\\]/g, '\\$&') // Escape PDF special characters
-    pdfStream += `${leftMargin} ${y} Td\n`
-    pdfStream += `(${line}) Tj\n`
-    pdfStream += '0 0 Td\n' // Reset position for next line
-  }
-  
-  pdfStream += 'ET\n'
+  // Limit to reasonable number of lines
+  const maxLines = Math.min(lines.length, 25)
+  const displayLines = lines.slice(0, maxLines)
 
-  // Create a minimal PDF structure
-  const pdfContent = `%PDF-1.4
+  // Create PDF content
+  let content = ''
+  let y = 750
+  
+  for (const line of displayLines) {
+    if (y < 50) break
+    const escapedLine = line.replace(/[()\\]/g, '\\$&')
+    content += `50 ${y} Td (${escapedLine}) Tj 0 0 Td `
+    y -= 20
+  }
+
+  const stream = `BT /F1 12 Tf ${content}ET`
+  const streamLength = stream.length
+
+  return `%PDF-1.4
 1 0 obj
 <<
 /Type /Catalog
@@ -252,10 +255,10 @@ endobj
 
 4 0 obj
 <<
-/Length ${pdfStream.length + 100}
+/Length ${streamLength}
 >>
 stream
-${pdfStream}endstream
+${stream}endstream
 endobj
 
 5 0 obj
@@ -280,10 +283,8 @@ trailer
 /Root 1 0 R
 >>
 startxref
-${600 + pdfStream.length}
+${600 + streamLength}
 %%EOF`
-
-  return Buffer.from(pdfContent, 'utf8')
 }
 
 // Alternative PDF services for redundancy
