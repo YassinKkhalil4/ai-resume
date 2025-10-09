@@ -242,7 +242,7 @@ export async function getTailoredResume(
         messages,
         temperature: 0.2,
         response_format: { type: 'json_object' },
-        max_tokens: 4000 // Ensure we don't get truncated responses
+        max_tokens: 8000 // Increased limit for long resumes
       })
 
       const raw = chat.choices[0]?.message?.content || '{}'
@@ -331,7 +331,7 @@ Return only valid JSON.`
       ],
       temperature: 0.1,
       response_format: { type: 'json_object' },
-      max_tokens: 2000
+      max_tokens: 4000 // Increased for better experience extraction
     })
 
     const extractionRaw = extractionChat.choices[0]?.message?.content || '{}'
