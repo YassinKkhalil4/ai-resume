@@ -179,7 +179,7 @@ async function createBasicPDF(html: string): Promise<Buffer> {
     .replace(/<[^>]*>/g, ' ') // Remove HTML tags
     .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
-    .substring(0, 1500) // Limit length
+    // Remove length limit to include full resume content
 
   // Create a simple, reliable PDF using a different approach
   const pdfContent = createSimplePDF(textContent)
@@ -194,7 +194,7 @@ function createSimplePDF(text: string): string {
   let currentLine = ''
   
   for (const word of words) {
-    if ((currentLine + ' ' + word).length > 70 && currentLine.length > 0) {
+    if ((currentLine + ' ' + word).length > 80 && currentLine.length > 0) {
       lines.push(currentLine.trim())
       currentLine = word
     } else {
@@ -205,8 +205,8 @@ function createSimplePDF(text: string): string {
     lines.push(currentLine.trim())
   }
 
-  // Limit to reasonable number of lines
-  const maxLines = Math.min(lines.length, 25)
+  // Allow more lines to accommodate longer resumes
+  const maxLines = Math.min(lines.length, 50) // Increased from 25 to 50
   const displayLines = lines.slice(0, maxLines)
 
   // Create PDF content
@@ -214,10 +214,10 @@ function createSimplePDF(text: string): string {
   let y = 750
   
   for (const line of displayLines) {
-    if (y < 50) break
+    if (y < 30) break // Allow more content by going closer to bottom
     const escapedLine = line.replace(/[()\\]/g, '\\$&')
     content += `50 ${y} Td (${escapedLine}) Tj 0 0 Td `
-    y -= 20
+    y -= 15 // Reduced line height to fit more content
   }
 
   const stream = `BT /F1 12 Tf ${content}ET`
