@@ -24,6 +24,13 @@ export async function POST(req: Request) {
     //  - { tailored: {...} }
     //  - {...}   (if user passed the tailored directly)
     const rawTailored = body.session_snapshot?.tailored ?? body.session_snapshot;
+    
+    // Guard to surface bad payloads
+    if (!rawTailored || typeof rawTailored !== 'object') {
+      console.error('Export bad payload snapshot shape', JSON.stringify(body).slice(0, 1000));
+      return NextResponse.json({ code: 'bad_snapshot', message: 'Invalid snapshot shape' }, { status: 400 });
+    }
+    
     const tailored = normalizeTailored(rawTailored); // <- never undefined now
 
     const html = await renderHTML(tailored, body.template, {
