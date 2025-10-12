@@ -1,25 +1,37 @@
 import { NextResponse } from 'next/server';
-import { renderHTML } from '../../../lib/pdf-service-v2';  // your existing HTML builder
-import { htmlToDocxSafe } from '../../../lib/html-to-docx';        // we'll add in step 3
-import { ExportBody } from '../../../lib/types/export';
+import { renderHTML } from '../../../lib/pdf-service-v2';
+import { htmlToDocxSafe } from '../../../lib/html-to-docx';
+import { normalizeTailored } from '../../../lib/export-normalize';
 
-export const runtime = 'nodejs'; // keep node runtime on Vercel
+export const runtime = 'nodejs';
+
+type ExportBody = {
+  format: 'pdf' | 'docx';
+  template: 'classic' | 'modern' | 'minimal';
+  options?: { includeSummary?: boolean; includeSkills?: boolean };
+  session_snapshot: any; // UI preview JSON
+};
 
 export async function POST(req: Request) {
   try {
-    const { format, template, options, session_snapshot }: ExportBody = await req.json();
+    const body = await req.json() as ExportBody;
 
-    if (!session_snapshot) {
+    if (!body?.session_snapshot) {
       return NextResponse.json({ code: 'bad_request', message: 'Missing session_snapshot' }, { status: 400 });
     }
 
-    // Build printable HTML from snapshot and selected template
-    const html = await renderHTML(session_snapshot.tailored, template, {
-      includeSummary: options?.includeSummary ?? true,
-      includeSkills: options?.includeSkills ?? true
+    // Accept both shapes:
+    //  - { tailored: {...} }
+    //  - {...}   (if user passed the tailored directly)
+    const rawTailored = body.session_snapshot?.tailored ?? body.session_snapshot;
+    const tailored = normalizeTailored(rawTailored); // <- never undefined now
+
+    const html = await renderHTML(tailored, body.template, {
+      includeSummary: body.options?.includeSummary ?? true,
+      includeSkills: body.options?.includeSkills ?? true
     });
 
-    if (format === 'docx') {
+    if (body.format === 'docx') {
       const docx = await htmlToDocxSafe(html);
       return new Response(new Uint8Array(docx), {
         headers: {
@@ -30,7 +42,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (format === 'pdf') {
+    if (body.format === 'pdf') {
       const r = await fetch(`${process.env.PDF_RENDERER_URL}/render-pdf`, {
         method: 'POST',
         headers: {
@@ -38,24 +50,21 @@ export async function POST(req: Request) {
           'x-renderer-key': process.env.RENDERER_KEY || '',
         },
         body: JSON.stringify({ html }),
-        // @ts-ignore: Vercel's fetch supports a timeout init; if your TS complains, remove it.
+        // @ts-ignore
         timeout: 30000,
       });
 
       const ct = (r.headers.get('content-type') || '').toLowerCase();
       if (!r.ok || !ct.startsWith('application/pdf')) {
-        const body = await r.text().catch(() => '');
-        return NextResponse.json(
-          { code: 'pdf_generation_failed', message: body.slice(0, 300), status: r.status },
-          { status: 502 },
-        );
+        const text = await r.text().catch(() => '');
+        return NextResponse.json({ code: 'pdf_generation_failed', message: text.slice(0, 400) }, { status: 502 });
       }
 
       const pdf = Buffer.from(await r.arrayBuffer());
       return new Response(pdf, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename="resume.pdf"',
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="resume.pdf"',
           'Cache-Control': 'no-store',
         },
       });
@@ -63,9 +72,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ code: 'bad_request', message: 'Unknown format' }, { status: 400 });
   } catch (e: any) {
-    return NextResponse.json(
-      { code: 'export_exception', message: String(e?.message || e) },
-      { status: 500 },
-    );
+    return NextResponse.json({ code: 'export_exception', message: String(e?.message || e) }, { status: 500 });
   }
 }
