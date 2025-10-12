@@ -32,16 +32,17 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-inner focus-within:border-blue-400/60 focus-within:ring-2 focus-within:ring-blue-200 dark:border-slate-800 dark:bg-slate-900/70 dark:focus-within:border-blue-500/50 dark:focus-within:ring-blue-900/50">
+      <div className="rounded-3xl border border-slate-200/70 bg-white/80 shadow-inner focus-within:border-blue-400/60 focus-within:ring-2 focus-within:ring-blue-200 dark:border-slate-800 dark:bg-slate-900/70 dark:focus-within:border-blue-500/50 dark:focus-within:ring-blue-900/50">
         <textarea
           className="h-48 w-full resize-none rounded-3xl bg-transparent px-5 py-5 text-sm leading-relaxed text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
           placeholder="Paste the job description here. Include responsibilities, requirements, and key qualifications so we can match keywords precisely."
           value={value}
           onChange={e => onChange(e.target.value)}
         />
-        <div className="pointer-events-none absolute bottom-4 right-5 text-xs text-slate-400 dark:text-slate-500">
-          {charCount.toLocaleString()} characters
-        </div>
+      </div>
+      <div className="flex justify-between text-[11px] text-slate-400 dark:text-slate-500">
+        <span>Tip: include responsibilities, requirements, and any listed tools.</span>
+        <span>{charCount.toLocaleString()} characters</span>
       </div>
       <div className="glass-panel flex flex-col gap-3 rounded-3xl p-4 shadow-sm sm:flex-row sm:items-center">
         <div className="flex-1">

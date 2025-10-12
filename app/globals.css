@@ -143,6 +143,21 @@ code {
   color: rgba(226, 232, 240, 0.6);
 }
 
+.animate-fade-slide {
+  animation: fade-slide 0.5s ease forwards;
+}
+
+@keyframes fade-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .glass-panel {
   background: var(--surface-strong);
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -152,4 +167,50 @@ code {
 .dark .glass-panel {
   background: rgba(15, 23, 42, 0.65);
   border-color: rgba(148, 163, 184, 0.18);
+}
+
+.filepond-shell {
+  @apply relative overflow-hidden rounded-3xl border border-dashed border-blue-300/60 bg-white/70 p-2 shadow-inner transition dark:border-blue-500/30 dark:bg-slate-900/60;
+}
+
+.filepond-shell .filepond--root {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+.filepond-shell .filepond--panel-root {
+  background-color: transparent;
+  border: none;
+  @apply rounded-2xl bg-white/70 p-6 dark:bg-slate-900/70;
+}
+
+.filepond-shell .filepond--drop-label {
+  @apply flex flex-col items-center justify-center gap-2 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-200;
+  min-height: 180px;
+}
+
+.filepond-shell__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.filepond-shell__headline {
+  @apply text-base font-semibold text-slate-800 dark:text-slate-50;
+}
+
+.filepond-shell__subhead {
+  @apply text-xs text-slate-500 dark:text-slate-400;
+}
+
+.filepond-shell .filepond--label-action {
+  @apply text-blue-600 underline decoration-blue-400 underline-offset-4 dark:text-blue-300;
+}
+
+.filepond-shell .filepond--item-panel,
+.filepond-shell .filepond--file-action-button {
+  @apply bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200;
+}
+
+.filepond-shell:hover {
+  @apply border-blue-500/70 bg-blue-500/5 shadow-lg;
 }

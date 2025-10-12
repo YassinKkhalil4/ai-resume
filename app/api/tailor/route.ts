@@ -10,6 +10,7 @@ import { createUserFriendlyError, logAIError } from '../../../lib/ai-error-handl
 import { validateParsingResult, shouldShowExperienceBanner } from '../../../lib/parsing-validation'
 import { Tone } from '../../../lib/types'
 import { honestyScan } from '../../../lib/honesty'
+import { extractJDFromUrl } from '../../../lib/jd'
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,9 +50,38 @@ export async function POST(req: NextRequest) {
 
     const form = await req.formData()
     session_id = form.get('session_id')?.toString()
+    const mode = form.get('mode')?.toString()
+    const jd_url = form.get('jd_url')?.toString()
     resume_file = form.get('resume_file') as unknown as File | null
     jd_text_raw = form.get('jd_text')?.toString() || ''
     tone = (form.get('tone')?.toString() as Tone) || 'professional'
+
+    if (mode === 'fetchOnly') {
+      if (!jd_url) {
+        return NextResponse.json({ code: 'missing_jd_url', message: 'Job description URL is required' }, { status: 400 })
+      }
+
+      try {
+        console.log('Fetch-only mode: fetching JD from URL', { jd_url })
+        const jdText = await extractJDFromUrl(jd_url)
+        if (!jdText) {
+          return NextResponse.json({ code: 'empty_jd_text', message: 'Could not extract text from the provided URL' }, { status: 422 })
+        }
+
+        return NextResponse.json({
+          success: true,
+          mode: 'fetchOnly',
+          jd_text: jdText
+        })
+      } catch (fetchError) {
+        console.error('Failed to fetch JD text:', fetchError)
+        return NextResponse.json({
+          code: 'jd_fetch_failed',
+          message: fetchError instanceof Error ? fetchError.message : 'Failed to fetch job description'
+        }, { status: 500 })
+      }
+    }
+
     console.log('Processing request:', { 
       hasResumeFile: !!resume_file, 
       jdTextLength: jd_text_raw.length,
