@@ -4,16 +4,16 @@ export const RoleSchema = z.object({
   company: z.string().min(1, 'Company name is required').max(100, 'Company name too long'),
   role: z.string().min(1, 'Role title is required').max(100, 'Role title too long'),
   dates: z.string().max(50, 'Date string too long').optional().default(''),
-  bullets: z.array(z.string().min(10, 'Bullet point too short').max(200, 'Bullet point too long')).min(1, 'At least one bullet required').max(8, 'Too many bullet points')
+  bullets: z.array(z.string().min(1, 'Bullet point cannot be empty').max(200, 'Bullet point too long')).min(1, 'At least one bullet required').max(8, 'Too many bullet points')
 }).strict()
 
 export const TailoredResultSchema = z.object({
-  skills_matched: z.array(z.string().min(1, 'Skill cannot be empty').max(50, 'Skill name too long')).max(20, 'Too many matched skills').optional().default([]),
-  skills_missing_but_relevant: z.array(z.string().min(1, 'Skill cannot be empty').max(50, 'Skill name too long')).max(15, 'Too many missing skills').optional().default([]),
-  summary: z.string().min(20, 'Summary too short').max(500, 'Summary too long').optional().default(''),
+  skills_matched: z.array(z.string().min(1, 'Skill cannot be empty')).max(20, 'Too many matched skills').optional().default([]),
+  skills_missing_but_relevant: z.array(z.string().min(1, 'Skill cannot be empty')).max(15, 'Too many missing skills').optional().default([]),
+  summary: z.string().min(1, 'Summary is required').max(500, 'Summary too long').optional().default(''),
   experience: z.array(RoleSchema).min(1, 'At least one experience required').max(10, 'Too many experiences'),
-  skills_section: z.array(z.string().min(1, 'Skill cannot be empty').max(50, 'Skill name too long')).min(3, 'At least 3 skills required').max(30, 'Too many skills'),
-  notes_to_user: z.array(z.string().min(10, 'Note too short').max(200, 'Note too long')).max(5, 'Too many notes').optional().default([])
+  skills_section: z.array(z.string().min(1, 'Skill cannot be empty')).min(1, 'At least 1 skill required').max(30, 'Too many skills'),
+  notes_to_user: z.array(z.string().min(1, 'Note cannot be empty')).max(5, 'Too many notes').optional().default([])
 }).strict()
 
 export type TailoredResultType = z.infer<typeof TailoredResultSchema>

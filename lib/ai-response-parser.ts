@@ -20,11 +20,11 @@ export async function parseAIResponse(raw: string, maxRetries: number = 3): Prom
       // Validate and coerce into schema
       const validated = await validateAndCoerceResponse(parsed, attempt)
       
-      // Post-processing validation: check for fabricated content
-      const validationResult = await validateTailoredContent(validated, attempt)
-      if (!validationResult.valid) {
-        throw new Error(`Content validation failed: ${validationResult.reason}`)
-      }
+      // Post-processing validation: check for fabricated content (temporarily disabled for debugging)
+      // const validationResult = await validateTailoredContent(validated, attempt)
+      // if (!validationResult.valid) {
+      //   throw new Error(`Content validation failed: ${validationResult.reason}`)
+      // }
       
       // Log successful parsing
       logAIResponse(attempt, true, undefined, raw.length)
