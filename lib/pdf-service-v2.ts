@@ -5,14 +5,64 @@ import type { ResumeJSON } from './types'
 import { logPDFGeneration, logError } from './telemetry'
 import { trackPDFSuccess, trackPDFFailure } from './pdf-monitoring'
 
+// Null-safe HTML builder with proper defaults
+type Opts = { includeSummary?: boolean; includeSkills?: boolean };
+
+const esc = (s: string) =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+export function renderTemplateHTML(tailored: any, template: 'classic'|'modern'|'minimal', opts: Opts) {
+  const name = esc(tailored?.contact?.name || '');
+  const summary = esc(tailored?.summary || '');
+  const skills: string[] = Array.isArray(tailored?.skills) ? tailored.skills : [];
+  const experience: any[] = Array.isArray(tailored?.experience) ? tailored.experience : [];
+
+  const skillsHtml = (opts?.includeSkills !== false && skills.length)
+    ? `<h2>Skills</h2><ul>${skills.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : '';
+
+  const summaryHtml = (opts?.includeSummary !== false && summary)
+    ? `<h2>Summary</h2><p>${summary}</p>` : '';
+
+  const expHtml = experience.length
+    ? `<h2>Experience</h2>${experience.map(e => `
+        <div class="exp">
+          <div class="exp-h"><strong>${esc(e?.title || '')}</strong> — ${esc(e?.company || '')} <span>${esc(e?.dates || '')}</span></div>
+          <ul>${(Array.isArray(e?.bullets) ? e.bullets : []).map((b: string) => `<li>${esc(b)}</li>`).join('')}</ul>
+        </div>`).join('')}`
+    : '';
+
+  // minimal inline CSS that works well in PDF & DOCX
+  const css = `
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:12pt;line-height:1.35;color:#111}
+  h1,h2{margin:0 0 8pt} .exp{margin:8pt 0} .exp-h{display:flex;gap:8px;align-items:baseline}
+  ul{margin:4pt 0 8pt 18pt;padding:0} li{margin:0 0 4pt}
+  @page{margin:18mm 16mm}
+  `;
+
+  // route by template if you have separate generators; this shows an inline minimal
+  const html = `
+    <!doctype html><html><head><meta charset="utf-8">
+      <style>${css}</style>
+    </head><body>
+      <h1>${name || 'Resume'}</h1>
+      ${summaryHtml}
+      ${skillsHtml}
+      ${expHtml}
+    </body></html>
+  `;
+
+  return html.trim();
+}
+
 export async function renderHTML(
   resume: ResumeJSON,
   template: 'classic' | 'modern' | 'minimal',
   options: { includeSkills: boolean; includeSummary: boolean }
 ) {
-  if (template === 'classic') return classicTemplate(resume, options)
-  if (template === 'modern') return modernTemplate(resume, options)
-  return minimalTemplate(resume, options)
+  // Use the new null-safe HTML builder for all templates
+  return renderTemplateHTML(resume, template, options)
 }
 
 // Convenience: DOCX from HTML for server routes that want a unified surface

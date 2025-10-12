@@ -23,18 +23,24 @@ export function minimalTemplate(resume: ResumeJSON, options:{ includeSkills:bool
   .role { font-weight: 600; }
   .sep { height:1px; background:#2c5aa0; margin:10px 0; }
 </style></head><body>
-  ${options.includeSummary && resume.summary ? `<div class="section"><h2>Summary</h2><div>${esc(resume.summary!)}</div></div>` : ''}
+  ${options.includeSummary && resume?.summary ? `<div class="section"><h2>Summary</h2><div>${esc(resume.summary)}</div></div>` : ''}
   <div class="section"><h2>Experience</h2><div class="sep"></div>
-    ${resume.experience.map(e=>`
+    ${(Array.isArray(resume?.experience) ? resume.experience : []).map(e=>`
       <div class="entry">
-        <div class="role">${esc(e.role)} — ${esc(e.company)} <span style="color:#666; font-weight:400">(${esc(e.dates)})</span></div>
-        <ul>${e.bullets.map(b=>`<li>${esc(b)}</li>`).join('')}</ul>
+        <div class="role">${esc(e?.role || '')} — ${esc(e?.company || '')} <span style="color:#666; font-weight:400">(${esc(e?.dates || '')})</span></div>
+        <ul>${(Array.isArray(e?.bullets) ? e.bullets : []).map(b=>`<li>${esc(b)}</li>`).join('')}</ul>
       </div>
     `).join('')}
   </div>
-  ${options.includeSkills && resume.skills?.length ? `<div class="section"><h2>Skills</h2><div>${(resume.skills||[]).join(' • ')}</div></div>`:''}
-  ${resume.education?.length ? `<div class="section"><h2>Education</h2><ul>${(resume.education||[]).map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>`:''}
+  ${options.includeSkills && Array.isArray(resume?.skills) && resume.skills.length ? `<div class="section"><h2>Skills</h2><div>${resume.skills.join(' • ')}</div></div>`:''}
+  ${Array.isArray(resume?.education) && resume.education.length ? `<div class="section"><h2>Education</h2><ul>${resume.education.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>`:''}
 </body></html>`
 }
 
-function esc(s:string){ return (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'} as any)[c]) }
+function esc(s: string) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
