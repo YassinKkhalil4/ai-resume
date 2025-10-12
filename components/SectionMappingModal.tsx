@@ -70,7 +70,7 @@ export default function SectionMappingModal({
               <div className="flex items-center justify-between">
                 <div>
                   <label className="font-medium text-gray-700">
-                    "{originalSection}"
+                    &quot;{originalSection}&quot;
                   </label>
                   <p className="text-sm text-gray-500">
                     Suggested: {suggestedMapping}

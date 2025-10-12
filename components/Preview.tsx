@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { minimalTemplate } from '../lib/templates/minimal'
 import { modernTemplate } from '../lib/templates/modern'
 import { classicTemplate } from '../lib/templates/classic'
@@ -47,11 +47,6 @@ export default function Preview({ session }:{ session:any }) {
     } catch {}
   }, [session]);
 
-  // Load diffs on component mount
-  useEffect(() => {
-    loadDiffs()
-  }, [session])
-
   function renderHTML() {
     const resume = session.preview_sections_json
     const opts = { includeSkills: true, includeSummary: true }
@@ -60,7 +55,7 @@ export default function Preview({ session }:{ session:any }) {
     return minimalTemplate(resume, opts)
   }
 
-  async function loadDiffs() {
+  const loadDiffs = useCallback(async () => {
     try {
       const res = await fetch('/api/diff', { 
         method: 'POST', 
@@ -85,7 +80,12 @@ export default function Preview({ session }:{ session:any }) {
     } catch (error) {
       console.error('Failed to load diffs:', error)
     }
-  }
+  }, [session.session_id, session.version, session.original_sections_json, session.preview_sections_json])
+
+  // Load diffs on component mount
+  useEffect(() => {
+    loadDiffs()
+  }, [loadDiffs])
 
   async function runHonestyScan() {
     setLoadingHonesty(true)
