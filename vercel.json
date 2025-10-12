@@ -12,8 +12,5 @@
       "memory": 512,
       "maxDuration": 20
     }
-  },
-  "env": {
-    "USE_LAMBDA_CHROMIUM": "1"
   }
 }
