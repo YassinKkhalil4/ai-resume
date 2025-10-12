@@ -25,7 +25,7 @@ export default function FileDrop({ onFile }:{ onFile:(f:File|null)=>void }) {
       acceptedFileTypes={['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain']}
       allowFileSizeValidation
       maxFileSize="10MB"
-      labelIdle='Drag & Drop your resume or <span class="filepond--label-action">Browse</span>'
+      labelIdle='Drag & Drop your resume or <span class="filepond--label-action">Browse</span><br><small class="text-gray-500">Supported: DOCX or text PDFs. Scans/photos are not supported. To fix: open your resume in Word/Google Docs → File → Save as PDF, or upload DOCX.</small>'
       className="border rounded-md"
     />
   )

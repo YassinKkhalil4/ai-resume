@@ -57,10 +57,10 @@ export function enforceGuards(req: NextRequest) {
   // prune empty and cap map sizes to avoid unbounded growth
   pruneMaps()
   if (ipArr.length > cfg.rate.ipPerMin) {
-    return { ok: false, res: NextResponse.json({ code: 'rate_limited', message: 'Too many requests' }, { status: 429 }) }
+    return { ok: false, res: NextResponse.json({ code: 'rate_limit', message: 'Too many requests' }, { status: 429 }) }
   }
   if (sidArr.length > cfg.rate.sessionPerMin) {
-    return { ok: false, res: NextResponse.json({ code: 'rate_limited', message: 'Too many requests' }, { status: 429 }) }
+    return { ok: false, res: NextResponse.json({ code: 'rate_limit', message: 'Too many requests' }, { status: 429 }) }
   }
   return { ok: true }
 }

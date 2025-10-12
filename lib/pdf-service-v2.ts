@@ -1,21 +1,17 @@
 import { minimalTemplate } from './templates/minimal'
 import { modernTemplate } from './templates/modern'
 import { classicTemplate } from './templates/classic'
-import { executiveTemplate } from './templates/executive'
-import { academicTemplate } from './templates/academic'
 import type { ResumeJSON } from './types'
 import { logPDFGeneration, logError } from './telemetry'
 import { trackPDFSuccess, trackPDFFailure } from './pdf-monitoring'
 
 export async function renderHTML(
   resume: ResumeJSON,
-  template: 'classic' | 'modern' | 'minimal' | 'executive' | 'academic',
+  template: 'classic' | 'modern' | 'minimal',
   options: { includeSkills: boolean; includeSummary: boolean }
 ) {
   if (template === 'classic') return classicTemplate(resume, options)
   if (template === 'modern') return modernTemplate(resume, options)
-  if (template === 'executive') return executiveTemplate(resume, options)
-  if (template === 'academic') return academicTemplate(resume, options)
   return minimalTemplate(resume, options)
 }
 

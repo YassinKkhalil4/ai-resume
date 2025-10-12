@@ -4,8 +4,6 @@ import { useMemo, useState, useEffect } from 'react'
 import { minimalTemplate } from '../lib/templates/minimal'
 import { modernTemplate } from '../lib/templates/modern'
 import { classicTemplate } from '../lib/templates/classic'
-import { executiveTemplate } from '../lib/templates/executive'
-import { academicTemplate } from '../lib/templates/academic'
 import DiffView from './DiffView'
 import ATSCheck from './ATSCheck'
 import ExportModal from './ExportModal'
@@ -13,7 +11,7 @@ import ExportModal from './ExportModal'
 export default function Preview({ session }:{ session:any }) {
   const [showExport, setShowExport] = useState(false)
   const [tab, setTab] = useState<'tailored'|'original'>('tailored')
-  const [tpl, setTpl] = useState<'classic'|'modern'|'minimal'|'executive'|'academic'>('minimal')
+  const [tpl, setTpl] = useState<'classic'|'modern'|'minimal'>('minimal')
   const [honesty, setHonesty] = useState<any>(null)
   const [loadingHonesty, setLoadingHonesty] = useState(false)
   const [diffs, setDiffs] = useState<any[]>([])
@@ -33,8 +31,6 @@ export default function Preview({ session }:{ session:any }) {
     const opts = { includeSkills: true, includeSummary: true }
     if (template === 'classic') return classicTemplate(resume, opts)
     if (template === 'modern') return modernTemplate(resume, opts)
-    if (template === 'executive') return executiveTemplate(resume, opts)
-    if (template === 'academic') return academicTemplate(resume, opts)
     return minimalTemplate(resume, opts)
   }
 
@@ -55,8 +51,6 @@ export default function Preview({ session }:{ session:any }) {
     const opts = { includeSkills: true, includeSummary: true }
     if (tpl==='classic') return classicTemplate(resume, opts)
     if (tpl==='modern') return modernTemplate(resume, opts)
-    if (tpl==='executive') return executiveTemplate(resume, opts)
-    if (tpl==='academic') return academicTemplate(resume, opts)
     return minimalTemplate(resume, opts)
   }
 

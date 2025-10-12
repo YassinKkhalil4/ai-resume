@@ -38,6 +38,15 @@ export async function POST(req: NextRequest) {
     // Step 3: Extract text from file
     console.log('Step 3: Extract text from file...')
     const parsed = await extractTextFromFile(resume_file)
+    
+    // Check for scanned PDF error
+    if (parsed.error === 'scanned_pdf') {
+      return NextResponse.json({ 
+        code: 'scanned_pdf', 
+        message: parsed.message || 'Your PDF appears to be scanned. Please upload DOCX or a text-based PDF (File → Save as PDF).' 
+      }, { status: 400 })
+    }
+    
     const resumeText = parsed.text
     const ext = parsed.ext
     console.log('Step 3: Text extracted successfully', {

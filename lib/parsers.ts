@@ -1,7 +1,7 @@
 import mammoth from 'mammoth'
 import { ResumeJSON } from './types'
 
-export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string}> {
+export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string, error?: string, message?: string}> {
   const buffer = Buffer.from(await file.arrayBuffer())
   const ext = (file instanceof File ? file.name.split('.').pop()?.toLowerCase() : 'txt') || 'txt'
   
@@ -15,10 +15,26 @@ export async function extractTextFromFile(file: File | Blob): Promise<{text:stri
         const content = await page.getTextContent()
         text += content.items.map((item: any) => item.str).join(' ') + '\n'
       }
+      
+      // Check if PDF is scanned (very little text extracted)
+      if (text.trim().length < 50) {
+        return { 
+          text: '', 
+          ext, 
+          error: 'scanned_pdf',
+          message: 'Your PDF appears to be scanned. Please upload DOCX or a text-based PDF (File → Save as PDF).'
+        }
+      }
+      
       return { text, ext }
     } catch (error) {
       console.error('PDF parsing failed:', error)
-      return { text: buffer.toString('utf8'), ext: 'txt' }
+      return { 
+        text: '', 
+        ext, 
+        error: 'scanned_pdf',
+        message: 'Your PDF appears to be scanned. Please upload DOCX or a text-based PDF (File → Save as PDF).'
+      }
     }
   } else if (ext === 'docx') {
     const data = await mammoth.extractRawText({ buffer })

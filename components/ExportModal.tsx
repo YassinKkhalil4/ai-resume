@@ -3,59 +3,50 @@
 import { useState } from 'react'
 
 export default function ExportModal({ sessionId, onClose }:{ sessionId:string, onClose:()=>void }) {
-  const [template, setTemplate] = useState<'classic'|'modern'|'minimal'|'executive'|'academic'>('minimal')
+  const [template, setTemplate] = useState<'classic'|'modern'|'minimal'>('minimal')
   const [format, setFormat] = useState<'pdf'|'docx'>('pdf')
   const [includeSkills, setIncludeSkills] = useState(true)
   const [includeSummary, setIncludeSummary] = useState(true)
   const [loading, setLoading] = useState(false)
-  const [url, setUrl] = useState<string| null>(null)
-
-  function downloadBlob(blob: Blob, filename: string) {
-    const objectUrl = URL.createObjectURL(blob);
-    setUrl(objectUrl);
-  }
 
   async function exportFile() {
     setLoading(true)
     try {
-      // Include snapshot in export requests
-      const snapshot = (typeof window !== 'undefined' && (window as any).__TAILOR_SESSION__) || null;
+      // Get the snapshot directly from the preview state, not window
+      const previewJson = (typeof window !== 'undefined' && (window as any).__TAILOR_SESSION__) || null;
       
-      // Get invite code from cookie
-      const inviteCode = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('invite='))
-        ?.split('=')[1]
-      const decodedInviteCode = inviteCode ? decodeURIComponent(inviteCode) : ''
+      if (!previewJson) {
+        throw new Error('No preview data available. Please tailor your resume first.')
+      }
       
+      // inside your export handler
       const res = await fetch('/api/export', {
         method: 'POST',
-        headers: {
-          'Content-Type':'application/json',
-          'x-invite-code': decodedInviteCode
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: sessionId,
-          template,
-          format,
-          options: { includeSkills, includeSummary },
-          session_snapshot: snapshot
-        })
-      })
+          format,                  // 'pdf' | 'docx'
+          template,                // 'classic' | 'modern' | 'minimal'
+          options: { includeSummary, includeSkills },
+          session_snapshot: previewJson, // <<< full tailored result JSON from Preview
+        }),
+      });
+
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
       if (!res.ok) {
-        let err: any = null;
-        try { err = await res.json(); } catch {}
-        throw new Error(err?.message || `Export HTTP ${res.status}`);
+        const err = ct.includes('application/json') ? await res.json() : { code: 'export_failed', message: await res.text() };
+        throw new Error(`${err.code}: ${err.message}`);
       }
-      const ct = res.headers.get('content-type') || '';
-      const isPdf = /^application\/pdf/i.test(ct);
-      const isDocx = /^application\/vnd\.openxmlformats/i.test(ct);
-      if (!isPdf && !isDocx) {
-        const txt = await res.text();
-        throw new Error(`Malformed export response: ${txt.slice(0,300)}`);
+      if (format === 'pdf' && !ct.startsWith('application/pdf')) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`pdf_bad_content_type: ${ct} body: ${body.slice(0, 200)}`);
       }
+
       const blob = await res.blob();
-      downloadBlob(blob, isPdf ? 'resume.pdf' : 'resume.docx');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `resume.${format}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     } catch (e:any) {
       alert(e?.message || 'Failed to export.')
     } finally {
@@ -77,8 +68,6 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
               <option value="classic">Classic</option>
               <option value="modern">Modern</option>
               <option value="minimal">Minimal</option>
-              <option value="executive">Executive</option>
-              <option value="academic">Academic/Projects</option>
             </select>
           </div>
           <div>
@@ -95,7 +84,6 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button className="button" onClick={exportFile} disabled={loading}>{loading?'Exporting…':'Export'}</button>
-          {url && <a className="button-outline" href={url} target="_blank" rel="noreferrer">Download</a>}
         </div>
         <div className="text-xs text-gray-500 mt-3">DOCX exports instantly. PDF may take a few seconds. All exports are text-selectable and ATS-safe.</div>
       </div>

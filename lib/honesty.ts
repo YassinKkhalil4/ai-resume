@@ -33,9 +33,8 @@ export function honestyScan(original: Role[], tailored: Role[]) {
         }
       }
       
-      // Lowered threshold from 0.28 to 0.15 for more sensitive detection
-      // Added check for completely new content (score = 0)
-      if (best < 0.15 || (best === 0 && tb.length > 20)) {
+      // Strict threshold: flag bullets with <0.28 overlap with sources
+      if (best < 0.28) {
         flags.push({ 
           role: `${t.role} @ ${t.company}`, 
           bullet: tb, 

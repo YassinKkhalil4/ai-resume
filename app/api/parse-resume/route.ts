@@ -22,7 +22,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract text from file
-    const { text } = await extractTextFromFile(file)
+    const parsed = await extractTextFromFile(file)
+    
+    // Check for scanned PDF error
+    if (parsed.error === 'scanned_pdf') {
+      return NextResponse.json({ 
+        code: 'scanned_pdf', 
+        message: parsed.message || 'Your PDF appears to be scanned. Please upload DOCX or a text-based PDF (File → Save as PDF).' 
+      }, { status: 400 })
+    }
+    
+    const { text } = parsed
     
     // Parse resume with enhanced parsing
     const resume = heuristicParseResume(text)

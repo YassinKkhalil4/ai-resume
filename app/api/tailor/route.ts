@@ -9,6 +9,7 @@ import { startTrace, logRequestTelemetry, logError } from '../../../lib/telemetr
 import { createUserFriendlyError, logAIError } from '../../../lib/ai-error-handler'
 import { validateParsingResult, shouldShowExperienceBanner } from '../../../lib/parsing-validation'
 import { Tone } from '../../../lib/types'
+import { honestyScan } from '../../../lib/honesty'
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -61,12 +62,17 @@ export async function POST(req: NextRequest) {
     if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
 
     const parsed = await extractTextFromFile(resume_file)
+    
+    // Check for scanned PDF error
+    if (parsed.error === 'scanned_pdf') {
+      return NextResponse.json({ 
+        code: 'scanned_pdf', 
+        message: parsed.message || 'Your PDF appears to be scanned. Please upload DOCX or a text-based PDF (File → Save as PDF).' 
+      }, { status: 400 })
+    }
+    
     const resumeText = parsed.text
     const ext = parsed.ext
-    
-    if (ext === 'pdf' && (!resumeText || resumeText.trim().length < 50)) {
-      return NextResponse.json({ code: 'scanned_pdf', message: 'Your PDF appears to be image-only (scanned). Please upload a DOCX or a text-based PDF.' }, { status: 400 })
-    }
 
     console.log('Parsing resume...')
     const original = heuristicParseResume(resumeText)
@@ -136,6 +142,9 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    // Run honesty scan to detect fabricated content
+    const honestyResult = honestyScan(original.experience || [], tailored.experience || [])
+    
     trace.end(true, { session_id: session.id, tokens, ats_coverage: keywordStats.coverage })
     
     return NextResponse.json({
@@ -147,6 +156,11 @@ export async function POST(req: NextRequest) {
       tokens_used: tokens,
       message: 'Resume tailored successfully',
       validation,
+      honesty_scan: {
+        flags: honestyResult.flags,
+        flagged_count: honestyResult.flags.length,
+        has_concerns: honestyResult.flags.length > 0
+      },
       parsing_details: {
         original_sections_found: {
           summary: !!original.summary,
