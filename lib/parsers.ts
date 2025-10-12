@@ -1,6 +1,12 @@
 import mammoth from 'mammoth'
 import { ResumeJSON } from './types'
 
+type ParsedSections = {
+  sections: Record<string, string>
+  headings: Record<string, string>
+  order: string[]
+}
+
 export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string, error?: string, message?: string}> {
   const buffer = Buffer.from(await file.arrayBuffer())
   const ext = (file instanceof File ? file.name.split('.').pop()?.toLowerCase() : 'txt') || 'txt'
@@ -45,50 +51,90 @@ export async function extractTextFromFile(file: File | Blob): Promise<{text:stri
 }
 
 export function heuristicParseResume(raw: string): ResumeJSON {
-  const text = (raw||'').replace('\r','').split('\n').map(l=>l.trim()).filter(Boolean).join('\n')
+  const text = (raw || '')
+    .replace('\r', '')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .join('\n')
 
   // Try primary parsing with enhanced heading detection
-  let sections = splitByHeadings(text)
+  let parsedSections = splitByHeadings(text)
+  let sections = parsedSections.sections
   
   // If primary parsing fails, try fallback segmentation
   if (Object.keys(sections).length === 0 || !hasMeaningfulContent(sections)) {
     console.log('Primary parsing failed, attempting fallback segmentation')
-    sections = fallbackSegmentation(text)
+    parsedSections = fallbackSegmentation(text)
+    sections = parsedSections.sections
   }
 
-  const experience = parseExperience(sections['experience'] || sections['work'] || sections['work experience'] || sections['professional experience'] || '')
-  const skills = parseSkills(sections['skills'] || sections['core competencies'] || sections['technical skills'] || sections['key skills'] || sections['tech stack'] || sections['competencies'] || '')
+  const experience = parseExperience(
+    sections['experience'] ||
+      sections['work'] ||
+      sections['work experience'] ||
+      sections['professional experience'] ||
+      sections['employment'] ||
+      sections['work history'] ||
+      ''
+  )
+  const projects = parseProjects(
+    sections['projects'] ||
+      sections['project experience'] ||
+      sections['key projects'] ||
+      sections['project portfolio'] ||
+      ''
+  )
+  const skills = parseSkills(
+    sections['skills'] ||
+      sections['core competencies'] ||
+      sections['technical skills'] ||
+      sections['key skills'] ||
+      sections['tech stack'] ||
+      sections['competencies'] ||
+      sections['technologies'] ||
+      ''
+  )
   const summary = (sections['summary'] || sections['profile'] || sections['objective'] || sections['about'] || '').split('\n').slice(0,3).join(' ')
   const education = (sections['education'] || sections['academic background'] || '').split('\n').filter(Boolean)
   const certifications = (sections['certifications'] || sections['certificates'] || sections['certs'] || '').split('\n').filter(Boolean)
 
-  return { summary, skills, experience, education, certifications }
+  const additionalSections = buildAdditionalSections(parsedSections)
+
+  return { summary, skills, experience, education, certifications, projects, additional_sections: additionalSections }
 }
 
-function splitByHeadings(text: string) {
+function splitByHeadings(text: string): ParsedSections {
   const sections: Record<string, string> = {}
+  const headings: Record<string, string> = {}
+  const order: string[] = []
   const lines = text.split('\n')
-  let currentSection = ''
+  let currentSectionKey = ''
   let currentContent: string[] = []
   
   for (const line of lines) {
     const trimmed = line.trim()
     if (isHeading(trimmed)) {
-      if (currentSection) {
-        sections[currentSection.toLowerCase()] = currentContent.join('\n')
+      if (currentSectionKey) {
+        sections[currentSectionKey] = currentContent.join('\n')
       }
-      currentSection = trimmed
+      const normalized = normalizeHeading(trimmed)
+      currentSectionKey = normalized
+      headings[normalized] = trimmed
+      if (!order.includes(normalized)) {
+        order.push(normalized)
+      }
       currentContent = []
     } else {
       currentContent.push(line)
     }
   }
   
-  if (currentSection) {
-    sections[currentSection.toLowerCase()] = currentContent.join('\n')
+  if (currentSectionKey) {
+    sections[currentSectionKey] = currentContent.join('\n')
   }
   
-  return sections
+  return { sections, headings, order }
 }
 
 function isHeading(line: string): boolean {
@@ -147,6 +193,13 @@ function normalizeHeading(line: string): string {
     .trim()
 }
 
+function formatHeading(key: string): string {
+  return key
+    .split(' ')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function hasMeaningfulContent(sections: Record<string, string>): boolean {
   const meaningfulSections = ['experience', 'skills', 'summary', 'education']
   return meaningfulSections.some(section => 
@@ -154,10 +207,12 @@ function hasMeaningfulContent(sections: Record<string, string>): boolean {
   )
 }
 
-function fallbackSegmentation(text: string): Record<string, string> {
+function fallbackSegmentation(text: string): ParsedSections {
   console.log('Attempting fallback segmentation')
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
   const sections: Record<string, string> = {}
+  const headings: Record<string, string> = {}
+  const order: string[] = []
   
   // Pattern-based section detection
   const patterns: Record<string, any> = {
@@ -220,6 +275,8 @@ function fallbackSegmentation(text: string): Record<string, string> {
     if (bestSection[1] > 2 && bestSection[0] !== currentSection) {
       if (currentSection) {
         sections[currentSection] = currentContent.join('\n')
+        headings[currentSection] = formatHeading(currentSection)
+        if (!order.includes(currentSection)) order.push(currentSection)
       }
       currentSection = bestSection[0]
       currentContent = [line]
@@ -231,6 +288,8 @@ function fallbackSegmentation(text: string): Record<string, string> {
   
   if (currentSection) {
     sections[currentSection] = currentContent.join('\n')
+    headings[currentSection] = formatHeading(currentSection)
+    if (!order.includes(currentSection)) order.push(currentSection)
   }
   
   // If still no sections found, try content-based segmentation
@@ -238,13 +297,15 @@ function fallbackSegmentation(text: string): Record<string, string> {
     return contentBasedSegmentation(text)
   }
   
-  return sections
+  return { sections, headings, order }
 }
 
-function contentBasedSegmentation(text: string): Record<string, string> {
+function contentBasedSegmentation(text: string): ParsedSections {
   console.log('Attempting content-based segmentation')
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
   const sections: Record<string, string> = {}
+  const headings: Record<string, string> = {}
+  const order: string[] = []
   
   let currentSection = 'summary'
   let currentContent: string[] = []
@@ -270,9 +331,11 @@ function contentBasedSegmentation(text: string): Record<string, string> {
   
   if (currentContent.length > 0) {
     sections[currentSection] = currentContent.join('\n')
+    headings[currentSection] = formatHeading(currentSection)
+    if (!order.includes(currentSection)) order.push(currentSection)
   }
   
-  return sections
+  return { sections, headings, order }
 }
 
 function isLikelyExperience(line: string): boolean {
@@ -310,7 +373,11 @@ function parseExperience(section: string) {
       if (currentRole) roles.push(currentRole)
       currentRole = parseRoleLine(trimmed)
     } else if (currentRole && isBulletPoint(trimmed)) {
-      currentRole.bullets.push(trimmed)
+      const bullet = stripLeadingMarker(trimmed)
+      if (bullet) currentRole.bullets.push(bullet)
+    } else if (currentRole && trimmed.length > 0 && !isHeading(trimmed)) {
+      const bullet = stripLeadingMarker(trimmed)
+      if (bullet) currentRole.bullets.push(bullet)
     }
   }
   
@@ -377,7 +444,15 @@ function parseRoleLine(line: string) {
 }
 
 function isBulletPoint(line: string): boolean {
-  return /^[•\-\*]/.test(line) || /^[0-9]+\./.test(line)
+  return /^[\u2022•\-\*\u2014\u2013]/.test(line) || /^[0-9]+\./.test(line)
+}
+
+function stripLeadingMarker(line: string): string {
+  return line
+    .replace(/^[\u2022•\-\*\+\u2014\u2013]+[\s]*/, '')
+    .replace(/^[0-9]+[.)]\s*/, '')
+    .replace(/^[0-9]+\s*[-–]\s*/, '')
+    .trim()
 }
 
 function parseSkills(section: string) {
@@ -392,4 +467,105 @@ function parseSkills(section: string) {
     .slice(0, 60)
   
   return skills
+}
+
+function parseProjects(section: string) {
+  const projects: Array<{ name: string; bullets: string[] }> = []
+  const lines = section.split('\n').map(l => l.trim()).filter(Boolean)
+  
+  let currentProject: { name: string; bullets: string[] } | null = null
+  
+  for (const line of lines) {
+    if (!line) continue
+    
+    if (isHeading(line)) {
+      // Skip section headings that may have slipped in
+      continue
+    }
+    
+    if (isBulletPoint(line)) {
+      if (!currentProject) {
+        currentProject = { name: 'Project', bullets: [] }
+      }
+      const bullet = stripLeadingMarker(line)
+      if (bullet) currentProject.bullets.push(bullet)
+      continue
+    }
+    
+    const looksLikeNewProject = !currentProject || currentProject.bullets.length > 0
+    
+    if (looksLikeNewProject) {
+      if (currentProject) {
+        projects.push(currentProject)
+      }
+      currentProject = {
+        name: cleanProjectTitle(line),
+        bullets: []
+      }
+    } else if (currentProject) {
+      const bullet = stripLeadingMarker(line)
+      if (bullet) currentProject.bullets.push(bullet)
+    }
+  }
+  
+  if (currentProject) {
+    projects.push(currentProject)
+  }
+  
+  return projects.filter(project => project.name || project.bullets.length > 0)
+}
+
+function cleanProjectTitle(line: string): string {
+  return stripLeadingMarker(line)
+    .replace(/\s*[–—\-:]\s*$/, '')
+    .trim()
+}
+
+function buildAdditionalSections(parsed: ParsedSections) {
+  const consumedKeys = new Set<string>([
+    'experience',
+    'work',
+    'work experience',
+    'professional experience',
+    'employment',
+    'work history',
+    'skills',
+    'core competencies',
+    'technical skills',
+    'key skills',
+    'tech stack',
+    'competencies',
+    'technologies',
+    'summary',
+    'profile',
+    'objective',
+    'about',
+    'education',
+    'academic background',
+    'certifications',
+    'certificates',
+    'certs',
+    'projects',
+    'project experience',
+    'key projects',
+    'project portfolio'
+  ])
+  
+  return parsed.order
+    .filter(key => !consumedKeys.has(key))
+    .map(key => {
+      const lines = splitSectionLines(parsed.sections[key])
+      return {
+        heading: parsed.headings[key] || formatHeading(key),
+        lines
+      }
+    })
+    .filter(section => section.lines.length > 0)
+}
+
+function splitSectionLines(content: string): string[] {
+  return content
+    .split('\n')
+    .map(line => stripLeadingMarker(line.trim()))
+    .filter(Boolean)
 }

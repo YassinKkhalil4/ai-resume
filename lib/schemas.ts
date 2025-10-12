@@ -14,7 +14,7 @@ export const TailoredResultSchema = z.object({
   experience: z.array(RoleSchema).min(1, 'At least one experience required').max(10, 'Too many experiences'),
   skills_section: z.array(z.string().min(1, 'Skill cannot be empty')).min(1, 'At least 1 skill required').max(30, 'Too many skills'),
   notes_to_user: z.array(z.string().min(1, 'Note cannot be empty')).max(5, 'Too many notes').optional().default([])
-}).strict()
+}).passthrough()
 
 export type TailoredResultType = z.infer<typeof TailoredResultSchema>
 
@@ -41,7 +41,7 @@ export function validateTailoredResult(data: any): {
 
 // Coercion helpers for common data issues
 export function coerceTailoredResult(data: any): TailoredResultType {
-  const coerced: any = {}
+  const coerced: any = { ...data }
   
   // Coerce summary
   coerced.summary = typeof data.summary === 'string' ? data.summary.trim() : ''
@@ -56,6 +56,10 @@ export function coerceTailoredResult(data: any): TailoredResultType {
       .split(/[,;|•\n]/)
       .map(s => s.trim())
       .filter(s => s.length > 0)
+  } else if (data.skills && Array.isArray(data.skills)) {
+    coerced.skills_section = data.skills
+      .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
+      .map(skill => skill.trim())
   } else {
     coerced.skills_section = []
   }
@@ -68,9 +72,9 @@ export function coerceTailoredResult(data: any): TailoredResultType {
   }
   
   // Coerce optional fields
-  coerced.skills_matched = Array.isArray(data.skills_matched) ? data.skills_matched : []
-  coerced.skills_missing_but_relevant = Array.isArray(data.skills_missing_but_relevant) ? data.skills_missing_but_relevant : []
-  coerced.notes_to_user = Array.isArray(data.notes_to_user) ? data.notes_to_user : []
+  coerced.skills_matched = sanitizeStringArray(data.skills_matched)
+  coerced.skills_missing_but_relevant = sanitizeStringArray(data.skills_missing_but_relevant)
+  coerced.notes_to_user = sanitizeStringArray(data.notes_to_user)
   
   return coerced as TailoredResultType
 }
@@ -78,12 +82,45 @@ export function coerceTailoredResult(data: any): TailoredResultType {
 function coerceRole(exp: any): any {
   if (!exp || typeof exp !== 'object') return null
   
-  return {
-    company: typeof exp.company === 'string' ? exp.company.trim() : 'Unknown Company',
-    role: typeof exp.role === 'string' ? exp.role.trim() : 'Unknown Role',
-    dates: typeof exp.dates === 'string' ? exp.dates.trim() : '',
-    bullets: Array.isArray(exp.bullets) 
-      ? exp.bullets.filter(b => typeof b === 'string' && b.trim().length > 0).map(b => b.trim())
-      : []
+  const coerced: any = { ...exp }
+
+  coerced.company = typeof exp.company === 'string' && exp.company.trim().length > 0
+    ? exp.company.trim()
+    : 'Unknown Company'
+  coerced.role = typeof exp.role === 'string' && exp.role.trim().length > 0
+    ? exp.role.trim()
+    : 'Unknown Role'
+  coerced.dates = typeof exp.dates === 'string' ? exp.dates.trim() : ''
+  coerced.bullets = sanitizeBulletArray(exp.bullets)
+
+  return coerced
+}
+
+function sanitizeStringArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(item => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
   }
+
+  return []
+}
+
+function sanitizeBulletArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(item => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/[•\n]/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  return []
 }

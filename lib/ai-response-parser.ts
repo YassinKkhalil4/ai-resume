@@ -91,7 +91,7 @@ async function validateAndCoerceResponse(parsed: any, attempt: number): Promise<
 }
 
 function coerceToSchema(parsed: any): any {
-  const coerced: any = {}
+  const coerced: any = { ...parsed }
   
   // Coerce summary
   if (parsed.summary && typeof parsed.summary === 'string') {
@@ -105,20 +105,13 @@ function coerceToSchema(parsed: any): any {
   
   // Coerce skills_section
   if (Array.isArray(parsed.skills_section)) {
-    coerced.skills_section = parsed.skills_section.filter(skill => 
-      typeof skill === 'string' && skill.trim().length > 0
-    ).map(skill => skill.trim())
+    coerced.skills_section = sanitizeStringArray(parsed.skills_section)
   } else if (parsed.skills_section && typeof parsed.skills_section === 'string') {
     // If skills is a string, split it
-    coerced.skills_section = parsed.skills_section
-      .split(/[,;|•\n]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 0)
+    coerced.skills_section = sanitizeStringArray(parsed.skills_section.split(/[,;|•\n]/))
   } else if (parsed.skills && Array.isArray(parsed.skills)) {
     // Alternative field name
-    coerced.skills_section = parsed.skills.filter(skill => 
-      typeof skill === 'string' && skill.trim().length > 0
-    ).map(skill => skill.trim())
+    coerced.skills_section = sanitizeStringArray(parsed.skills)
   } else {
     coerced.skills_section = []
   }
@@ -132,6 +125,11 @@ function coerceToSchema(parsed: any): any {
   } else {
     coerced.experience = []
   }
+
+  // Ensure optional arrays are well-formed
+  coerced.skills_matched = sanitizeStringArray(parsed.skills_matched)
+  coerced.skills_missing_but_relevant = sanitizeStringArray(parsed.skills_missing_but_relevant)
+  coerced.notes_to_user = sanitizeNotesArray(parsed.notes_to_user)
   
   return coerced
 }
@@ -139,7 +137,7 @@ function coerceToSchema(parsed: any): any {
 function coerceExperience(exp: any): any {
   if (!exp || typeof exp !== 'object') return null
   
-  const coerced: any = {}
+  const coerced: any = { ...exp }
   
   // Coerce company
   if (typeof exp.company === 'string') {
@@ -158,29 +156,78 @@ function coerceExperience(exp: any): any {
   } else {
     coerced.role = 'Unknown Role'
   }
+
+  // Coerce dates
+  if (typeof exp.dates === 'string') {
+    coerced.dates = exp.dates.trim()
+  } else if (exp.dates && typeof exp.dates === 'object') {
+    coerced.dates = extractTextFromObject(exp.dates) || ''
+  } else {
+    coerced.dates = ''
+  }
   
   // Coerce bullets
   if (Array.isArray(exp.bullets)) {
-    coerced.bullets = exp.bullets.filter(bullet => 
-      typeof bullet === 'string' && bullet.trim().length > 0
-    ).map(bullet => bullet.trim())
+    coerced.bullets = sanitizeBulletArray(exp.bullets)
   } else if (exp.bullets && typeof exp.bullets === 'string') {
     // If bullets is a string, split it
-    coerced.bullets = exp.bullets
-      .split(/[•\n]/)
-      .map(b => b.trim())
-      .filter(b => b.length > 0)
+    coerced.bullets = sanitizeBulletArray(exp.bullets.split(/[•\n]/))
   } else if (exp.description && typeof exp.description === 'string') {
     // Alternative field name
-    coerced.bullets = exp.description
-      .split(/[•\n]/)
-      .map(b => b.trim())
-      .filter(b => b.length > 0)
+    coerced.bullets = sanitizeBulletArray(exp.description.split(/[•\n]/))
   } else {
     coerced.bullets = []
   }
   
   return coerced
+}
+
+function sanitizeStringArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(item => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/[,;|•\n]/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  return []
+}
+
+function sanitizeNotesArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return sanitizeStringArray(value)
+  }
+
+  if (typeof value === 'string') {
+    return [value.trim()].filter(item => item.length > 0)
+  }
+
+  return []
+}
+
+function sanitizeBulletArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(item => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/[•\n]/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  return []
 }
 
 function extractTextFromObject(obj: any): string | null {
@@ -496,4 +543,3 @@ async function validateTailoredContent(result: TailoredResultType, attempt: numb
     return { valid: false, reason: `Validation error: ${error.message}` }
   }
 }
-

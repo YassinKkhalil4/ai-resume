@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
       existingSession = getSession(sessionId)
     }
 
+    const originalRawText = existingSession?.originalRawText || experienceText
+
     if (existingSession) {
       // Use existing resume structure and update experience
       originalResume = {
@@ -117,10 +119,11 @@ export async function POST(req: NextRequest) {
         original: originalResume,
         tailored: tailored,
         jdText: jdText,
-        keywordStats: keywordStats
+        keywordStats: keywordStats,
+        originalRawText
       })
     } else {
-      session = createSession(originalResume, tailored, jdText, keywordStats)
+      session = createSession(originalResume, tailored, jdText, keywordStats, originalRawText)
     }
 
     if (!session) {
@@ -140,6 +143,7 @@ export async function POST(req: NextRequest) {
       session_id: session.id,
       session_version: session.version,
       original_sections_json: originalResume,
+      original_raw_text: originalRawText,
       preview_sections_json: tailored,
       keyword_stats: keywordStats,
       tokens_used: tokens,

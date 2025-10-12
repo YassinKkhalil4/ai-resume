@@ -35,8 +35,21 @@ export function modernTemplate(resume: ResumeJSON, options:{ includeSkills:boole
       </div>
     `).join('')}
   </div>
+  ${Array.isArray(resume?.projects) && resume.projects.length ? `<div class="section"><h2>Projects</h2><div class="divider"></div>${resume.projects.map(p=>`
+      <div class="entry">
+        <div class="role">${esc(p?.name || '')}</div>
+        <ul>${(Array.isArray(p?.bullets) ? p.bullets : []).map(b=>`<li>${esc(b)}</li>`).join('')}</ul>
+      </div>
+    `).join('')}</div>`:''}
   ${options.includeSkills && Array.isArray(resume?.skills) && resume.skills.length ? `<div class="section"><h2>Skills</h2><div class="chips">${resume.skills.map(s=>`<span>${esc(s)}</span>`).join('')}</div></div>`:''}
   ${Array.isArray(resume?.education) && resume.education.length ? `<div class="section"><h2>Education</h2><ul>${resume.education.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>`:''}
+  ${Array.isArray(resume?.certifications) && resume.certifications.length ? `<div class="section"><h2>Certifications</h2><ul>${resume.certifications.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`:''}
+  ${Array.isArray(resume?.additional_sections) && resume.additional_sections.length ? resume.additional_sections.map(section=>`
+    <div class="section">
+      <h2>${esc(section?.heading || '')}</h2>
+      <ul>${(Array.isArray(section?.lines) ? section.lines : []).map(line=>`<li>${esc(line)}</li>`).join('')}</ul>
+    </div>
+  `).join(''):''}
 </body></html>`
 }
 

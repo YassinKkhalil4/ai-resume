@@ -4,6 +4,7 @@ export interface SessionData {
   session_id: string
   version: string
   original_sections_json: ResumeJSON
+  original_raw_text?: string
   preview_sections_json: TailoredResult
   keyword_stats: any
   tokens_used?: number

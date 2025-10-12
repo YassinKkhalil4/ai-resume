@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('Creating session...')
-    const session = createSession(original, tailored, jd_text_raw, keywordStats)
+    const session = createSession(original, tailored, jd_text_raw, keywordStats, resumeText)
     console.log('Session created:', session.id)
 
     // Log successful request telemetry
@@ -151,6 +151,7 @@ export async function POST(req: NextRequest) {
       session_id: session.id,
       version: session.version,
       original_sections_json: original,
+      original_raw_text: resumeText,
       preview_sections_json: tailored,
       keyword_stats: keywordStats,
       tokens_used: tokens,

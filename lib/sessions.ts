@@ -9,6 +9,7 @@ type Session = {
   tailored: TailoredResult
   jdText: string
   keywordStats: KeywordStats
+  originalRawText?: string
 }
 
 const store = new Map<string, Session>()
@@ -20,11 +21,17 @@ function purgeExpired(ttlMs = 60 * 60 * 1000) {
   }
 }
 
-export function createSession(original: ResumeJSON, tailored: TailoredResult, jdText: string, keywordStats: KeywordStats) {
+export function createSession(
+  original: ResumeJSON, 
+  tailored: TailoredResult, 
+  jdText: string, 
+  keywordStats: KeywordStats,
+  originalRawText?: string
+) {
   purgeExpired()
   const id = uuid()
   const version = generateSessionVersion(original, tailored)
-  const s: Session = { id, version, createdAt: Date.now(), original, tailored, jdText, keywordStats }
+  const s: Session = { id, version, createdAt: Date.now(), original, tailored, jdText, keywordStats, originalRawText }
   store.set(id, s)
   return s
 }

@@ -14,7 +14,8 @@ export type ResumeJSON = {
   experience?: Role[]
   education?: string[]
   certifications?: string[]
-  projects?: Array<{ name:string, bullets:string[] }>
+  projects?: Array<{ name: string; bullets: string[] }>
+  additional_sections?: Array<{ heading: string; lines: string[] }>
 }
 
 // Re-export the schema-based type to maintain compatibility

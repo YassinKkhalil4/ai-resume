@@ -7,10 +7,9 @@ interface ParsingErrorBannerProps {
   validation: ParsingValidationResult
   onAction: (action: string) => void
   onDismiss?: () => void
-  resumeText?: string
 }
 
-export default function ParsingErrorBanner({ validation, onAction, onDismiss, resumeText }: ParsingErrorBannerProps) {
+export default function ParsingErrorBanner({ validation, onAction, onDismiss }: ParsingErrorBannerProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
   const errorState = createErrorState(validation)
@@ -22,81 +21,111 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss, re
   const isBlocking = errorState.type === 'error'
   
   return (
-    <div className={`fixed top-0 left-0 right-0 z-50 ${isBlocking ? 'bg-red-50 border-b border-red-200' : 'bg-yellow-50 border-b border-yellow-200'}`}>
-      <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`flex-shrink-0 ${isBlocking ? 'text-red-400' : 'text-yellow-400'}`}>
+    <div className="fixed inset-x-0 top-4 z-50 px-5 sm:px-8">
+      <div
+        className={`relative mx-auto max-w-3xl overflow-hidden rounded-3xl border backdrop-blur-xl ${
+          isBlocking
+            ? 'border-rose-400/40 bg-rose-100/80 text-rose-800 shadow-2xl shadow-rose-300/40 dark:border-rose-500/30 dark:bg-rose-900/40 dark:text-rose-100'
+            : 'border-amber-300/50 bg-amber-50/90 text-amber-800 shadow-2xl shadow-amber-200/40 dark:border-amber-400/30 dark:bg-amber-900/40 dark:text-amber-100'
+        }`}
+      >
+        <div className="pointer-events-none absolute -top-20 right-0 h-48 w-48 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-2xl" />
+        <div className="relative z-10 flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+          <div className="flex gap-3">
+            <div
+              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+                isBlocking
+                  ? 'bg-rose-500/20 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200'
+                  : 'bg-amber-400/20 text-amber-600 dark:bg-amber-400/25 dark:text-amber-100'
+              }`}
+            >
               {isBlocking ? (
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M9.88 4.17L3.94 14.04C3.35 15.02 4.06 16.29 5.18 16.29H18.82C19.94 16.29 20.65 15.02 20.06 14.04L14.12 4.17C13.55 3.23 12.45 3.23 11.88 4.17L9.88 4.17Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M12 9V12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 15.5H12.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               ) : (
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M12 6V13"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9 10H15"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               )}
             </div>
             <div>
-              <h3 className={`text-sm font-medium ${isBlocking ? 'text-red-800' : 'text-yellow-800'}`}>
-                {errorState.title}
-              </h3>
-              <p className={`text-sm ${isBlocking ? 'text-red-700' : 'text-yellow-700'}`}>
-                {errorState.message}
-              </p>
+              <h3 className="text-sm font-semibold">{errorState.title}</h3>
+              <p className="mt-1 text-sm leading-snug">{errorState.message}</p>
+              {isExpanded && validation.suggestions.length > 0 && (
+                <ul className="mt-3 space-y-2 text-xs leading-relaxed">
+                  {validation.suggestions.map((suggestion, index) => (
+                    <li key={index}>• {suggestion}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
+
+          <div className="flex flex-col gap-2 sm:items-end">
             {validation.suggestions.length > 0 && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className={`text-sm font-medium ${isBlocking ? 'text-red-600 hover:text-red-500' : 'text-yellow-600 hover:text-yellow-500'}`}
+                className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+                  isBlocking ? 'text-rose-600 hover:text-rose-500 dark:text-rose-200 dark:hover:text-rose-100' : 'text-amber-600 hover:text-amber-500 dark:text-amber-100 dark:hover:text-amber-50'
+                }`}
               >
-                {isExpanded ? 'Hide' : 'Show'} Suggestions
+                {isExpanded ? 'Hide suggestions' : 'Show suggestions'}
               </button>
             )}
-            
+
+            <div className="flex flex-wrap justify-end gap-2">
+              {errorState.actions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={() => onAction(action.action)}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                    isBlocking
+                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 hover:bg-rose-600'
+                      : 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/30 hover:bg-amber-300'
+                  }`}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+
             {onDismiss && !isBlocking && (
               <button
                 onClick={onDismiss}
-                className="text-yellow-600 hover:text-yellow-500"
+                className="text-xs font-semibold text-amber-500 underline underline-offset-4 hover:text-amber-400 dark:text-amber-200 dark:hover:text-amber-100"
               >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
+                Dismiss for now
               </button>
             )}
-          </div>
-        </div>
-        
-        {isExpanded && validation.suggestions.length > 0 && (
-          <div className="mt-3 pl-8">
-            <ul className="list-disc list-inside space-y-1">
-              {validation.suggestions.map((suggestion, index) => (
-                <li key={index} className={`text-sm ${isBlocking ? 'text-red-700' : 'text-yellow-700'}`}>
-                  {suggestion}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-        <div className="mt-3 pl-8">
-          <div className="flex flex-wrap gap-2">
-            {errorState.actions.map((action, index) => (
-              <button
-                key={index}
-                onClick={() => onAction(action.action)}
-                className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  isBlocking 
-                    ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                }`}
-              >
-                {action.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>

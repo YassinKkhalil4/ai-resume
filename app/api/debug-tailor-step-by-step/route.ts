@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     
     // Step 9: Create session
     console.log('Step 9: Create session...')
-    const session = createSession(original, tailored, jd_text_raw, keywordStats)
+    const session = createSession(original, tailored, jd_text_raw, keywordStats, resumeText)
     console.log('Step 9: Session created successfully', {
       sessionId: session.id
     })
@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
       ],
       data: {
         original: original,
+        original_raw_text: resumeText,
         tailored: tailored,
         validation: validation,
         keywordStats: keywordStats,
