@@ -9,16 +9,24 @@ import { honestyScan } from './honesty'
 export async function parseAIResponse(raw: string, maxRetries: number = 3): Promise<TailoredResultType> {
   let lastError: Error | null = null
   
+  console.log('parseAIResponse: Starting with raw length:', raw.length)
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`parseAIResponse: Attempt ${attempt}`)
+      
       // Clean the response
       const cleaned = cleanAIResponse(raw)
+      console.log('parseAIResponse: Cleaned response length:', cleaned.length)
       
       // Try to parse
       const parsed = JSON.parse(cleaned)
+      console.log('parseAIResponse: JSON parsed successfully')
       
       // Validate and coerce into schema
+      console.log('parseAIResponse: Starting schema validation')
       const validated = await validateAndCoerceResponse(parsed, attempt)
+      console.log('parseAIResponse: Schema validation successful')
       
       // Post-processing validation: check for fabricated content (temporarily disabled for debugging)
       // const validationResult = await validateTailoredContent(validated, attempt)

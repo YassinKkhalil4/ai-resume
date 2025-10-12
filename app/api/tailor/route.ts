@@ -180,6 +180,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Tailor API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('Error type:', typeof error)
+    console.error('Error constructor:', error?.constructor?.name)
     
     // Create detailed error information
     const errorDetails = {
