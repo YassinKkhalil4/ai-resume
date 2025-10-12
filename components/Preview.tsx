@@ -177,7 +177,7 @@ export default function Preview({ session }:{ session:any }) {
         </div>
       )}
 
-      {showExport && <ExportModal sessionId={session.session_id} onClose={()=>setShowExport(false)} />}
+      {showExport && <ExportModal onClose={()=>setShowExport(false)} />}
     </section>
   )
 }

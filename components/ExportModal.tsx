@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export default function ExportModal({ sessionId, onClose }:{ sessionId:string, onClose:()=>void }) {
+export default function ExportModal({ onClose }:{ onClose:()=>void }) {
   const [template, setTemplate] = useState<'classic'|'modern'|'minimal'>('minimal')
   const [format, setFormat] = useState<'pdf'|'docx'>('pdf')
   const [includeSkills, setIncludeSkills] = useState(true)
@@ -12,11 +12,14 @@ export default function ExportModal({ sessionId, onClose }:{ sessionId:string, o
   async function exportFile() {
     setLoading(true)
     try {
-      // Get the snapshot directly from the preview state, not window
+      // Get the snapshot directly from the preview state
       const previewJson = (typeof window !== 'undefined' && (window as any).__TAILOR_SESSION__) || null;
       
+      // Guard clause: ensure we have preview data
       if (!previewJson) {
-        throw new Error('No preview data available. Please tailor your resume first.')
+        alert('Nothing to export yet. Please tailor your resume first.');
+        setLoading(false);
+        return;
       }
       
       // inside your export handler
