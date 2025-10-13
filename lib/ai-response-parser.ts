@@ -563,8 +563,10 @@ export async function getTailoredResume(
       logAIResponse(attempt, false, (error as Error).message)
       
       if (attempt < maxRetries) {
-        // Wait before retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)))
+        const waitMs = Math.min(500, Math.max(0, deadline - Date.now() - 500))
+        if (waitMs > 50) {
+          await new Promise(resolve => setTimeout(resolve, waitMs))
+        }
       }
     }
   }
@@ -588,10 +590,12 @@ export async function getTailoredResume(
 async function handleMissingExperience(
   original: ResumeJSON, 
   jdText: string, 
-  tone: 'professional' | 'concise' | 'impact-heavy'
+  tone: 'professional' | 'concise' | 'impact-heavy',
+  options: TailorOptions = {}
 ): Promise<{ tailored: TailoredResultType, tokens: number, ats: KeywordStatsComparison }> {
   console.log('Handling missing experience - attempting extraction from free text')
-  const baselineATS = atsCheck(original, jdText)
+  const deadline = options.deadline ?? Date.now() + 25000
+  const baselineATS = atsCheck(original as ResumeJSON, jdText)
   
   try {
     // First, try to extract experience from free text
@@ -601,6 +605,14 @@ Resume text: ${JSON.stringify(original)}
 
 Return only valid JSON.`
 
+    const remainingExtractionTime = deadline - Date.now()
+    if (remainingExtractionTime <= 1000) {
+      throw new Error('Tailoring exceeded time budget before extraction')
+    }
+
+    const extractionController = new AbortController()
+    const extractionTimeout = setTimeout(() => extractionController.abort(), Math.max(500, remainingExtractionTime - 500))
+
     const extractionChat = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -609,8 +621,11 @@ Return only valid JSON.`
       ],
       temperature: 0.3,
       response_format: { type: 'json_object' },
-      max_tokens: 4000 // Increased for better experience extraction
+      max_tokens: 4000
+    }, {
+      signal: extractionController.signal
     })
+    clearTimeout(extractionTimeout)
 
     const extractionRaw = extractionChat.choices[0]?.message?.content || '{}'
     const extractedData = JSON.parse(extractionRaw)
@@ -621,7 +636,8 @@ Return only valid JSON.`
       const tailored = await getTailoredResume(
         { ...original, experience: extractedData.experience }, 
         jdText, 
-        tone
+        tone,
+        { deadline }
       )
       return tailored
     }

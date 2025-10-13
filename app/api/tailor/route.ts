@@ -134,14 +134,8 @@ export async function POST(req: NextRequest) {
 
     console.log('Tailoring resume...')
     console.log('About to call getTailoredResume...')
-    
-    // Add timeout wrapper to prevent hanging
-    const tailorPromise = getTailoredResume(original, jd_text_raw, tone)
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Tailoring timeout - operation took too long')), 25000)
-    )
-    
-    const { tailored, tokens, ats } = await Promise.race([tailorPromise, timeoutPromise]) as any
+    const deadline = Date.now() + 25000
+    const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone, { deadline })
     console.log('getTailoredResume completed successfully')
     console.log('Resume tailored successfully:', {
       hasSummary: !!tailored.summary,
@@ -218,6 +212,9 @@ export async function POST(req: NextRequest) {
     console.error('Error type:', typeof error)
     console.error('Error constructor:', error?.constructor?.name)
     
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const isTimeoutError = /time budget|timeout/i.test(errorMessage)
+    
     // Create detailed error information
     const errorDetails = {
       route: 'tailor',
@@ -225,7 +222,7 @@ export async function POST(req: NextRequest) {
       hasResumeFile: !!resume_file,
       jdLength: jd_text_raw.length,
       tone: tone || 'unknown',
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage,
       errorStack: error instanceof Error ? error.stack : undefined
     }
     
@@ -234,6 +231,15 @@ export async function POST(req: NextRequest) {
     
     // Create user-friendly error message
     const userMessage = createUserFriendlyError(error as Error, errorDetails)
+    
+    if (isTimeoutError) {
+      return NextResponse.json({
+        code: 'function_timeout',
+        message: 'Tailoring took too long and was cancelled. Please try again with a shorter resume or job description.',
+        timestamp: new Date().toISOString(),
+        error_type: error instanceof Error ? error.constructor.name : 'UnknownError'
+      }, { status: 504 })
+    }
     
     // Ensure we always return a proper JSON response
     try {
