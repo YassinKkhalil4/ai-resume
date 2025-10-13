@@ -474,11 +474,11 @@ export async function getTailoredResume(
       }
       const originalProjects = sanitizeProjectArray(original.projects)
       if (originalProjects.length > 0) {
-        tailored.projects = mergeProjects(originalProjects, tailored.projects || [])
+        tailored.projects = mergeProjects(originalProjects, sanitizeProjectArray(tailored.projects))
       }
       const originalAdditional = sanitizeAdditionalSections(original.additional_sections)
       if (originalAdditional.length > 0) {
-        tailored.additional_sections = mergeAdditionalSections(originalAdditional, tailored.additional_sections || [])
+        tailored.additional_sections = mergeAdditionalSections(originalAdditional, sanitizeAdditionalSections(tailored.additional_sections))
       }
       const originalSkills = sanitizeStringArray(original.skills)
       if (originalSkills.length > 0) {
@@ -487,7 +487,7 @@ export async function getTailoredResume(
       
       // Extract token usage and compute ATS delta
       const tokens = chat.usage?.total_tokens || 0
-      const tailoredATS = atsCheck(tailored, jdText)
+      const tailoredATS = atsCheck(tailored as ResumeJSON, jdText)
       const atsComparison = compareKeywordStats(baselineATS, tailoredATS)
       const coverageGain = atsComparison.deltas.coverage
       const needsAggressiveRetry = baselineATS.coverage < 0.85 && coverageGain < 0.05
@@ -541,7 +541,7 @@ export async function getTailoredResume(
   })
   
   const fallback = createFallbackResponse(original, jdText)
-  const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback, jdText))
+  const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback as ResumeJSON, jdText))
   return { tailored: fallback, tokens: 0, ats: fallbackATS }
 }
 
@@ -591,7 +591,7 @@ Return only valid JSON.`
   
   // If extraction fails, return fallback
   const fallback = createFallbackResponse(original, jdText)
-  const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback, jdText))
+  const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback as ResumeJSON, jdText))
   return { tailored: fallback, tokens: 0, ats: fallbackATS }
 }
 

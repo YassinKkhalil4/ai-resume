@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import JDInput from '../components/JDInput'
 import Preview from '../components/Preview'
@@ -24,7 +24,7 @@ export default function Home() {
   const [showBanner, setShowBanner] = useState(true)
   const [resumeText, setResumeText] = useState<string>('')
   const gate = useInviteGate()
-  const toneOptions = [
+  const toneOptions = useMemo(() => [
     {
       id: 'professional' as const,
       label: 'Professional',
@@ -43,7 +43,7 @@ export default function Home() {
       tagline: 'Quantified wins front-and-center',
       example: 'Accelerated roadmap velocity 32% by orchestrating PM/Engineering alignment and shipping milestone releases ahead of schedule.'
     }
-  ]
+  ], [])
   const highlightPhrases = [
     'busy product leads',
     'staff-level ICs',
@@ -97,14 +97,14 @@ export default function Home() {
       setHighlightIndex(prev => (prev + 1) % highlightPhrases.length)
     }, 5200)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [highlightPhrases.length])
 
   useEffect(() => {
     const selected = toneOptions.find(option => option.id === tone)
     if (selected) {
       setTonePreview(prev => (prev.id === selected.id ? prev : selected))
     }
-  }, [tone])
+  }, [tone, toneOptions])
 
   // Helper function to get invite code from cookie
   function getInviteCode(): string {
