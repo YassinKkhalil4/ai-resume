@@ -1,10 +1,11 @@
 import { TailoredResultSchema, type TailoredResultType } from './schemas'
-import { ResumeJSON } from './types'
+import { KeywordStatsComparison, ResumeJSON } from './types'
 import { logAIResponse, logError } from './telemetry'
 import { extractKeywords } from './jd'
 import { getOpenAI, OPENAI_MODEL } from './openai'
 import { SYSTEM_PROMPT, makeUserPrompt } from './prompts'
 import { honestyScan } from './honesty'
+import { atsCheck, compareKeywordStats } from './ats'
 
 export async function parseAIResponse(raw: string, maxRetries: number = 3): Promise<TailoredResultType> {
   let lastError: Error | null = null
@@ -130,6 +131,10 @@ function coerceToSchema(parsed: any): any {
   coerced.skills_matched = sanitizeStringArray(parsed.skills_matched)
   coerced.skills_missing_but_relevant = sanitizeStringArray(parsed.skills_missing_but_relevant)
   coerced.notes_to_user = sanitizeNotesArray(parsed.notes_to_user)
+  coerced.education = sanitizeLineArray(parsed.education)
+  coerced.certifications = sanitizeLineArray(parsed.certifications)
+  coerced.projects = sanitizeProjectArray(parsed.projects)
+  coerced.additional_sections = sanitizeAdditionalSections(parsed.additional_sections)
   
   return coerced
 }
@@ -230,6 +235,117 @@ function sanitizeBulletArray(value: any): string[] {
   return []
 }
 
+function sanitizeLineArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(item => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n|[•]/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  return []
+}
+
+function sanitizeProjectArray(value: any): Array<{ name: string; bullets: string[] }> {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(project => {
+      if (!project || typeof project !== 'object') return null
+      const name = typeof project.name === 'string' ? project.name.trim() : ''
+      const bullets = sanitizeBulletArray(project.bullets)
+      if (!name && bullets.length === 0) return null
+      return {
+        name: name || 'Untitled Project',
+        bullets
+      }
+    })
+    .filter(Boolean) as Array<{ name: string; bullets: string[] }>
+}
+
+function sanitizeAdditionalSections(value: any): Array<{ heading: string; lines: string[] }> {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(section => {
+      if (!section || typeof section !== 'object') return null
+      const heading = typeof section.heading === 'string' ? section.heading.trim() : ''
+      const lines = sanitizeLineArray(section.lines)
+      if (!heading || lines.length === 0) return null
+      return { heading, lines }
+    })
+    .filter(Boolean) as Array<{ heading: string; lines: string[] }>
+}
+
+function normalizeForComparison(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+function mergeLineArrays(original: string[], tailored: string[]): string[] {
+  const merged = [...tailored]
+  const existing = new Set(tailored.map(normalizeForComparison))
+  for (const line of original) {
+    const key = normalizeForComparison(line)
+    if (!existing.has(key)) {
+      merged.push(line)
+      existing.add(key)
+    }
+  }
+  return merged
+}
+
+function mergeProjects(
+  original: Array<{ name: string; bullets: string[] }>,
+  tailored: Array<{ name: string; bullets: string[] }>
+): Array<{ name: string; bullets: string[] }> {
+  const merged = [...tailored]
+  const existing = new Set(merged.map(project => normalizeForComparison(project.name || '')))
+  
+  for (const project of original) {
+    const key = normalizeForComparison(project.name || '')
+    if (!existing.has(key)) {
+      merged.push(project)
+      existing.add(key)
+      continue
+    }
+    
+    const existingProject = merged.find(p => normalizeForComparison(p.name || '') === key)
+    if (existingProject) {
+      existingProject.bullets = mergeLineArrays(project.bullets, existingProject.bullets || [])
+    }
+  }
+  
+  return merged
+}
+
+function mergeAdditionalSections(
+  original: Array<{ heading: string; lines: string[] }>,
+  tailored: Array<{ heading: string; lines: string[] }>
+): Array<{ heading: string; lines: string[] }> {
+  const merged = [...tailored]
+  const indexByHeading = new Map(
+    merged.map((section, idx) => [normalizeForComparison(section.heading), idx] as const)
+  )
+  
+  for (const section of original) {
+    const key = normalizeForComparison(section.heading)
+    const existingIdx = indexByHeading.get(key)
+    if (existingIdx === undefined) {
+      merged.push(section)
+      indexByHeading.set(key, merged.length - 1)
+    } else {
+      merged[existingIdx].lines = mergeLineArrays(section.lines, merged[existingIdx].lines || [])
+    }
+  }
+  
+  return merged
+}
+
 function extractTextFromObject(obj: any): string | null {
   if (typeof obj === 'string') return obj
   if (typeof obj === 'number') return obj.toString()
@@ -282,9 +398,10 @@ export async function getTailoredResume(
   original: ResumeJSON, 
   jdText: string, 
   tone: 'professional' | 'concise' | 'impact-heavy'
-): Promise<{ tailored: TailoredResultType, tokens: number }> {
+): Promise<{ tailored: TailoredResultType, tokens: number, ats: KeywordStatsComparison }> {
   const maxRetries = 3
   let lastError: Error | null = null
+  const baselineATS = atsCheck(original, jdText)
   
   // Enhanced validation - check if we have meaningful data to work with
   if (!original.experience || original.experience.length === 0) {
@@ -296,7 +413,7 @@ export async function getTailoredResume(
     try {
       const messages = [
         { role: 'system' as const, content: SYSTEM_PROMPT },
-        { role: 'user' as const, content: makeUserPrompt({ resume_json: original, job_text: jdText, tone }) }
+        { role: 'user' as const, content: makeUserPrompt({ resume_json: original, job_text: jdText, tone, baseline_stats: baselineATS, attempt }) }
       ]
 
       const chat = await getOpenAI().chat.completions.create({
@@ -326,14 +443,70 @@ export async function getTailoredResume(
         console.warn('AI response missing experience, preserving original experience')
         tailored.experience = original.experience || []
       }
+      if ((!tailored.education || tailored.education.length === 0) && original.education) {
+        console.warn('AI response missing education, preserving original education')
+        tailored.education = sanitizeLineArray(original.education)
+      }
+      if ((!tailored.certifications || tailored.certifications.length === 0) && original.certifications) {
+        console.warn('AI response missing certifications, preserving original certifications')
+        tailored.certifications = sanitizeLineArray(original.certifications)
+      }
+      if ((!tailored.projects || tailored.projects.length === 0) && original.projects) {
+        console.warn('AI response missing projects, preserving original projects')
+        tailored.projects = sanitizeProjectArray(original.projects)
+      }
+      if ((!tailored.additional_sections || tailored.additional_sections.length === 0) && original.additional_sections) {
+        console.warn('AI response missing additional sections, preserving originals')
+        tailored.additional_sections = sanitizeAdditionalSections(original.additional_sections)
+      }
+      if ((!tailored.skills_section || tailored.skills_section.length === 0) && original.skills) {
+        console.warn('AI response missing skills section, preserving original skills')
+        tailored.skills_section = sanitizeStringArray(original.skills)
+      }
+
+      const originalEducation = sanitizeLineArray(original.education)
+      if (originalEducation.length > 0) {
+        tailored.education = mergeLineArrays(originalEducation, tailored.education || [])
+      }
+      const originalCerts = sanitizeLineArray(original.certifications)
+      if (originalCerts.length > 0) {
+        tailored.certifications = mergeLineArrays(originalCerts, tailored.certifications || [])
+      }
+      const originalProjects = sanitizeProjectArray(original.projects)
+      if (originalProjects.length > 0) {
+        tailored.projects = mergeProjects(originalProjects, tailored.projects || [])
+      }
+      const originalAdditional = sanitizeAdditionalSections(original.additional_sections)
+      if (originalAdditional.length > 0) {
+        tailored.additional_sections = mergeAdditionalSections(originalAdditional, tailored.additional_sections || [])
+      }
+      const originalSkills = sanitizeStringArray(original.skills)
+      if (originalSkills.length > 0) {
+        tailored.skills_section = mergeLineArrays(originalSkills, tailored.skills_section || [])
+      }
       
-      // Extract token usage
+      // Extract token usage and compute ATS delta
       const tokens = chat.usage?.total_tokens || 0
+      const tailoredATS = atsCheck(tailored, jdText)
+      const atsComparison = compareKeywordStats(baselineATS, tailoredATS)
+      const coverageGain = atsComparison.deltas.coverage
+      const needsAggressiveRetry = baselineATS.coverage < 0.85 && coverageGain < 0.05
+      const coverageRegression = coverageGain < 0
+
+      if ((coverageRegression || needsAggressiveRetry) && attempt < maxRetries) {
+        console.warn('ATS coverage insufficient, retrying with stronger instructions', {
+          coverageGain,
+          baseline: baselineATS.coverage,
+          tailored: tailoredATS.coverage,
+          attempt
+        })
+        throw new Error('ATS improvement insufficient, retrying')
+      }
       
       // Log successful AI request
       logAIResponse(attempt, true, undefined, raw.length)
       
-      return { tailored, tokens }
+      return { tailored, tokens, ats: atsComparison }
       
     } catch (error) {
       lastError = error as Error
@@ -347,7 +520,7 @@ export async function getTailoredResume(
       })
       
       // Log failed attempt with detailed context
-      logAIResponse(attempt, false, error.message)
+      logAIResponse(attempt, false, (error as Error).message)
       
       if (attempt < maxRetries) {
         // Wait before retry with exponential backoff
@@ -367,15 +540,18 @@ export async function getTailoredResume(
     attempts: maxRetries
   })
   
-  return { tailored: createFallbackResponse(original, jdText), tokens: 0 }
+  const fallback = createFallbackResponse(original, jdText)
+  const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback, jdText))
+  return { tailored: fallback, tokens: 0, ats: fallbackATS }
 }
 
 async function handleMissingExperience(
   original: ResumeJSON, 
   jdText: string, 
   tone: 'professional' | 'concise' | 'impact-heavy'
-): Promise<{ tailored: TailoredResultType, tokens: number }> {
+): Promise<{ tailored: TailoredResultType, tokens: number, ats: KeywordStatsComparison }> {
   console.log('Handling missing experience - attempting extraction from free text')
+  const baselineATS = atsCheck(original, jdText)
   
   try {
     // First, try to extract experience from free text
@@ -414,18 +590,34 @@ Return only valid JSON.`
   }
   
   // If extraction fails, return fallback
-  return { tailored: createFallbackResponse(original, jdText), tokens: 0 }
+  const fallback = createFallbackResponse(original, jdText)
+  const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback, jdText))
+  return { tailored: fallback, tokens: 0, ats: fallbackATS }
 }
 
 function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredResultType {
-  // Extract keywords from job description
-  const keywords = extractKeywords(jdText, 10)
-  
-  // Create a minimal tailored response that preserves original data
+  const summary =
+    original.summary ||
+    'Experienced professional with relevant skills and experience.'
+
+  const originalSkills = sanitizeStringArray(original.skills)
+  const skills_section = originalSkills.length > 0 ? originalSkills : extractKeywords(jdText, 10)
+  const experience =
+    (Array.isArray(original.experience) && original.experience.length > 0
+      ? original.experience
+      : []) as TailoredResultType['experience']
+
   return {
-    summary: original.summary || 'Experienced professional with relevant skills and experience.',
-    skills_section: original.skills || [],
-    experience: original.experience || []
+    summary,
+    skills_section,
+    experience,
+    education: sanitizeLineArray(original.education),
+    certifications: sanitizeLineArray(original.certifications),
+    projects: sanitizeProjectArray(original.projects),
+    additional_sections: sanitizeAdditionalSections(original.additional_sections),
+    skills_matched: [],
+    skills_missing_but_relevant: [],
+    notes_to_user: []
   }
 }
 

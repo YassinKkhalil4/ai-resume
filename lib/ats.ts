@@ -1,6 +1,5 @@
 import { extractKeywords2 } from './jd'
-import { ResumeJSON, KeywordStats } from './types'
-import OpenAI from 'openai'
+import { ResumeJSON, KeywordStats, KeywordStatsComparison } from './types'
 
 export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   const { all, must, nice } = extractKeywords2(jdText, 20)
@@ -30,9 +29,43 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
     mustCoverage: must.length ? mustMatched.length / must.length : 0,
     niceCoverage: nice.length ? niceMatched.length / nice.length : 0,
     mustMatched, mustMissing, niceMatched, niceMissing,
-    topMissing: missing.slice(0,5)
+    topMissing: missing.slice(0,5),
+    allKeywords: all
   }
   return base
+}
+
+export function compareKeywordStats(original: KeywordStats, tailored: KeywordStats): KeywordStatsComparison {
+  const coverageDelta = (tailored.coverage || 0) - (original.coverage || 0)
+  const mustDelta = (tailored.mustCoverage || 0) - (original.mustCoverage || 0)
+  const niceDelta = (tailored.niceCoverage || 0) - (original.niceCoverage || 0)
+
+  const normalize = (keyword: string) => keyword.toLowerCase()
+  const originalMatchedSet = new Set((original.matched || []).map(normalize))
+  const tailoredMatchedSet = new Set((tailored.matched || []).map(normalize))
+
+  const matchedGain = (tailored.matched || []).filter(k => !originalMatchedSet.has(normalize(k)))
+  const regressions = (original.matched || []).filter(k => !tailoredMatchedSet.has(normalize(k)))
+
+  const originalMissingSet = new Set((original.missing || []).map(normalize))
+  const tailoredMissingSet = new Set((tailored.missing || []).map(normalize))
+
+  const resolvedMissing = (original.missing || []).filter(k => !tailoredMissingSet.has(normalize(k)))
+  const remainingMissing = (tailored.missing || [])
+
+  return {
+    original,
+    tailored,
+    deltas: {
+      coverage: coverageDelta,
+      mustCoverage: mustDelta,
+      niceCoverage: niceDelta,
+      matchedGain,
+      resolvedMissing,
+      remainingMissing,
+      regressions
+    }
+  }
 }
 
 function hasExperienceSection(resume: ResumeJSON): boolean {
@@ -68,6 +101,18 @@ function stringifyResume(resume: ResumeJSON): string {
   }
   if (resume.education?.length) parts.push(resume.education.join(' '))
   if (resume.certifications?.length) parts.push(resume.certifications.join(' '))
+  if (resume.projects?.length) {
+    resume.projects.forEach(project => {
+      if (project.name) parts.push(project.name)
+      if (project.bullets?.length) parts.push(project.bullets.join(' '))
+    })
+  }
+  if (resume.additional_sections?.length) {
+    resume.additional_sections.forEach(section => {
+      if (section.heading) parts.push(section.heading)
+      if (section.lines?.length) parts.push(section.lines.join(' '))
+    })
+  }
   
   return parts.join(' ')
 }

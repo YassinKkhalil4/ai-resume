@@ -95,9 +95,9 @@ Responsibilities:
     console.log(`📋 Session ID: ${data.session_id}`);
     console.log(`📋 Original Experience Count: ${data.original_sections_json?.experience?.length || 0}`);
     console.log(`📋 Tailored Experience Count: ${data.preview_sections_json?.experience?.length || 0}`);
-    console.log(`📋 Keywords Matched: ${data.keyword_stats?.matched?.length || 0}`);
-    console.log(`📋 Keywords Missing: ${data.keyword_stats?.missing?.length || 0}`);
-    console.log(`📋 Coverage: ${((data.keyword_stats?.coverage || 0) * 100).toFixed(1)}%`);
+    console.log(`📋 Original Coverage: ${((data.keyword_stats?.original?.coverage || 0) * 100).toFixed(1)}%`);
+    console.log(`📋 Tailored Coverage: ${((data.keyword_stats?.tailored?.coverage || 0) * 100).toFixed(1)}%`);
+    console.log(`📋 Coverage Delta: ${((data.keyword_stats?.deltas?.coverage || 0) * 100).toFixed(1)} pts`);
     
     if (data.ai_tokens_used) {
       console.log(`📊 AI Tokens Used: ${data.ai_tokens_used}`);

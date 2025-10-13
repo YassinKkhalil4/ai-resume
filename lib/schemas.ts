@@ -7,12 +7,26 @@ export const RoleSchema = z.object({
   bullets: z.array(z.string().min(1, 'Bullet point cannot be empty').max(200, 'Bullet point too long')).min(1, 'At least one bullet required').max(8, 'Too many bullet points')
 }).strict()
 
+const ProjectSchema = z.object({
+  name: z.string().min(1, 'Project name is required').max(120, 'Project name too long'),
+  bullets: z.array(z.string().min(1, 'Bullet cannot be empty').max(200, 'Bullet too long')).min(1, 'At least one bullet required').max(6, 'Too many bullets')
+}).strict()
+
+const AdditionalSectionSchema = z.object({
+  heading: z.string().min(1, 'Section heading is required').max(120, 'Section heading too long'),
+  lines: z.array(z.string().min(1, 'Line cannot be empty').max(200, 'Line too long')).min(1, 'At least one line required').max(12, 'Too many lines')
+}).strict()
+
 export const TailoredResultSchema = z.object({
   skills_matched: z.array(z.string().min(1, 'Skill cannot be empty')).max(20, 'Too many matched skills').optional().default([]),
   skills_missing_but_relevant: z.array(z.string().min(1, 'Skill cannot be empty')).max(15, 'Too many missing skills').optional().default([]),
   summary: z.string().min(1, 'Summary is required').max(500, 'Summary too long').optional().default(''),
   experience: z.array(RoleSchema).min(1, 'At least one experience required').max(10, 'Too many experiences'),
   skills_section: z.array(z.string().min(1, 'Skill cannot be empty')).min(1, 'At least 1 skill required').max(30, 'Too many skills'),
+  education: z.array(z.string().min(1, 'Education entry cannot be empty').max(200, 'Education entry too long')).optional().default([]),
+  certifications: z.array(z.string().min(1, 'Certification cannot be empty').max(200, 'Certification entry too long')).optional().default([]),
+  projects: z.array(ProjectSchema).optional().default([]),
+  additional_sections: z.array(AdditionalSectionSchema).optional().default([]),
   notes_to_user: z.array(z.string().min(1, 'Note cannot be empty')).max(5, 'Too many notes').optional().default([])
 }).passthrough()
 
@@ -75,6 +89,10 @@ export function coerceTailoredResult(data: any): TailoredResultType {
   coerced.skills_matched = sanitizeStringArray(data.skills_matched)
   coerced.skills_missing_but_relevant = sanitizeStringArray(data.skills_missing_but_relevant)
   coerced.notes_to_user = sanitizeStringArray(data.notes_to_user)
+  coerced.education = sanitizeLineArray(data.education)
+  coerced.certifications = sanitizeLineArray(data.certifications)
+  coerced.projects = sanitizeProjectArray(data.projects)
+  coerced.additional_sections = sanitizeAdditionalSections(data.additional_sections)
   
   return coerced as TailoredResultType
 }
@@ -107,6 +125,24 @@ function sanitizeStringArray(value: any): string[] {
   return []
 }
 
+function sanitizeLineArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(item => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n|[•]/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  return []
+}
+
 function sanitizeBulletArray(value: any): string[] {
   if (Array.isArray(value)) {
     return value
@@ -123,4 +159,33 @@ function sanitizeBulletArray(value: any): string[] {
   }
 
   return []
+}
+
+function sanitizeProjectArray(value: any): Array<{ name: string; bullets: string[] }> {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(project => {
+      if (!project || typeof project !== 'object') return null
+      const name = typeof project.name === 'string' ? project.name.trim() : ''
+      const bullets = sanitizeBulletArray(project.bullets)
+      if (!name && bullets.length === 0) return null
+      return {
+        name: name || 'Untitled Project',
+        bullets
+      }
+    })
+    .filter(Boolean) as Array<{ name: string; bullets: string[] }>
+}
+
+function sanitizeAdditionalSections(value: any): Array<{ heading: string; lines: string[] }> {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(section => {
+      if (!section || typeof section !== 'object') return null
+      const heading = typeof section.heading === 'string' ? section.heading.trim() : ''
+      const lines = sanitizeLineArray(section.lines)
+      if (!heading || lines.length === 0) return null
+      return { heading, lines }
+    })
+    .filter(Boolean) as Array<{ heading: string; lines: string[] }>
 }

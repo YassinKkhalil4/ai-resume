@@ -23,13 +23,15 @@ export async function POST(req: NextRequest) {
     console.log('Testing AI call with test resume...')
     
     // Test AI call
-    const { tailored, tokens } = await getTailoredResume(testResume, 'Looking for a senior developer with React experience', 'professional')
+    const { tailored, tokens, ats } = await getTailoredResume(testResume, 'Looking for a senior developer with React experience', 'professional')
     
     console.log('AI call successful', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
       experienceCount: tailored.experience?.length || 0,
-      tokens
+      tokens,
+      atsOriginal: ats.original.coverage,
+      atsTailored: ats.tailored.coverage
     })
     
     return NextResponse.json({
@@ -37,7 +39,8 @@ export async function POST(req: NextRequest) {
       message: 'AI call working',
       data: {
         tailored: tailored,
-        tokens: tokens
+        tokens: tokens,
+        keywordStats: ats
       }
     })
     

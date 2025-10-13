@@ -1,4 +1,4 @@
-import { ResumeJSON, TailoredResult } from './types'
+import { ResumeJSON, TailoredResult, KeywordStatsComparison } from './types'
 
 export interface SessionData {
   session_id: string
@@ -6,7 +6,7 @@ export interface SessionData {
   original_sections_json: ResumeJSON
   original_raw_text?: string
   preview_sections_json: TailoredResult
-  keyword_stats: any
+  keyword_stats: KeywordStatsComparison
   tokens_used?: number
 }
 

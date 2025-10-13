@@ -35,4 +35,19 @@ export type KeywordStats = {
   topMissing?: string[]
   semanticCoverage?: number
   gaps?: Array<{ requirement:string, nearestBullet:string, score:number }>
+  allKeywords?: string[]
+}
+
+export type KeywordStatsComparison = {
+  original: KeywordStats
+  tailored: KeywordStats
+  deltas: {
+    coverage: number
+    mustCoverage: number
+    niceCoverage: number
+    matchedGain: string[]
+    resolvedMissing: string[]
+    remainingMissing: string[]
+    regressions: string[]
+  }
 }

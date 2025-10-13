@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
-import { atsCheck } from '../../../lib/ats'
 import { createSession } from '../../../lib/sessions'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
@@ -83,26 +82,20 @@ export async function POST(req: NextRequest) {
     
     // Step 7: AI tailoring
     console.log('Step 7: AI tailoring...')
-    const { tailored, tokens } = await getTailoredResume(original, jd_text_raw, tone)
+    const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone)
     console.log('Step 7: AI tailoring completed', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
       experienceCount: tailored.experience?.length || 0,
-      tokens
+      tokens,
+      atsOriginal: ats.original.coverage,
+      atsTailored: ats.tailored.coverage
     })
     
-    // Step 8: ATS check
-    console.log('Step 8: ATS check...')
-    const keywordStats = atsCheck(original, jd_text_raw)
-    console.log('Step 8: ATS check completed', {
-      coverage: keywordStats.coverage,
-      matchedKeywords: keywordStats.matched?.length || 0
-    })
-    
-    // Step 9: Create session
-    console.log('Step 9: Create session...')
-    const session = createSession(original, tailored, jd_text_raw, keywordStats, resumeText)
-    console.log('Step 9: Session created successfully', {
+    // Step 8: Create session
+    console.log('Step 8: Create session...')
+    const session = createSession(original, tailored, jd_text_raw, ats, resumeText)
+    console.log('Step 8: Session created successfully', {
       sessionId: session.id
     })
     
@@ -118,7 +111,6 @@ export async function POST(req: NextRequest) {
         'Validation',
         'Experience banner check',
         'AI tailoring',
-        'ATS check',
         'Session creation'
       ],
       data: {
@@ -126,7 +118,7 @@ export async function POST(req: NextRequest) {
         original_raw_text: resumeText,
         tailored: tailored,
         validation: validation,
-        keywordStats: keywordStats,
+        keywordStats: ats,
         tokens: tokens
       }
     })

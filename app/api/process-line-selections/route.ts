@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { processLineSelections, validateProcessedExperience, createProcessingSummary, LineSelection } from '../../../lib/line-marking-parser'
 import { enforceGuards } from '../../../lib/guards'
 import { createSession, getSession, updateSession } from '../../../lib/sessions'
-import { ResumeJSON, TailoredResult, KeywordStats } from '../../../lib/types'
+import { ResumeJSON } from '../../../lib/types'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
-import { atsCheck } from '../../../lib/ats'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -100,22 +99,16 @@ export async function POST(req: NextRequest) {
       certificationsCount: originalResume.certifications.length
     })
 
-    // Run ATS check
-    const keywordStats = atsCheck(originalResume, jdText)
-    console.log('ATS check completed:', {
-      coverage: keywordStats.coverage,
-      matchedKeywords: keywordStats.matched?.length || 0,
-      missingKeywords: keywordStats.missing?.length || 0
-    })
-
     // Tailor the resume with AI
     console.log('Starting AI tailoring...')
-    const { tailored, tokens } = await getTailoredResume(originalResume, jdText, tone)
+    const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone)
     console.log('AI tailoring completed:', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
       experienceCount: tailored.experience?.length || 0,
-      tokensUsed: tokens
+      tokensUsed: tokens,
+      atsOriginal: ats.original.coverage,
+      atsTailored: ats.tailored.coverage
     })
 
     // Create or update session
@@ -125,11 +118,11 @@ export async function POST(req: NextRequest) {
         original: originalResume,
         tailored: tailored,
         jdText: jdText,
-        keywordStats: keywordStats,
+        keywordStats: ats,
         originalRawText
       })
     } else {
-      session = createSession(originalResume, tailored, jdText, keywordStats, originalRawText)
+      session = createSession(originalResume, tailored, jdText, ats, originalRawText)
     }
 
     if (!session) {
@@ -154,7 +147,7 @@ export async function POST(req: NextRequest) {
       original_sections_json: originalResume,
       original_raw_text: originalRawText,
       preview_sections_json: tailored,
-      keyword_stats: keywordStats,
+      keyword_stats: ats,
       tokens_used: tokens,
       processing_summary: summary,
       message: 'Line selections processed and resume tailored successfully'

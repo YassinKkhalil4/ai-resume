@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
-import { atsCheck } from '../../../lib/ats'
 import { createSession } from '../../../lib/sessions'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
@@ -134,23 +133,17 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('Tailoring resume...')
-    const { tailored, tokens } = await getTailoredResume(original, jd_text_raw, tone)
+    const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone)
     console.log('Resume tailored successfully:', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
-      experienceCount: tailored.experience?.length || 0
-    })
-
-    console.log('Running ATS check...')
-    const keywordStats = atsCheck(original, jd_text_raw)
-    console.log('ATS check completed:', {
-      coverage: keywordStats.coverage,
-      matchedKeywords: keywordStats.matched?.length || 0,
-      missingKeywords: keywordStats.missing?.length || 0
+      experienceCount: tailored.experience?.length || 0,
+      atsOriginal: ats.original.coverage,
+      atsTailored: ats.tailored.coverage
     })
 
     console.log('Creating session...')
-    const session = createSession(original, tailored, jd_text_raw, keywordStats, resumeText)
+    const session = createSession(original, tailored, jd_text_raw, ats, resumeText)
     console.log('Session created:', session.id)
 
     // Log successful request telemetry
@@ -164,7 +157,9 @@ export async function POST(req: NextRequest) {
         jd_length: jd_text_raw.length,
         tone,
         tokens_used: tokens,
-        ats_coverage: keywordStats.coverage,
+        ats_original_coverage: ats.original.coverage,
+        ats_tailored_coverage: ats.tailored.coverage,
+        ats_coverage_gain: ats.deltas.coverage,
         original_experience_count: original.experience?.length || 0,
         tailored_experience_count: tailored.experience?.length || 0,
         validation_errors: validation.errors.length,
@@ -175,7 +170,7 @@ export async function POST(req: NextRequest) {
     // Run honesty scan to detect fabricated content
     const honestyResult = honestyScan(original.experience || [], tailored.experience || [])
     
-    trace.end(true, { session_id: session.id, tokens, ats_coverage: keywordStats.coverage })
+    trace.end(true, { session_id: session.id, tokens, ats_original: ats.original.coverage, ats_tailored: ats.tailored.coverage })
     
     return NextResponse.json({
       session_id: session.id,
@@ -183,7 +178,7 @@ export async function POST(req: NextRequest) {
       original_sections_json: original,
       original_raw_text: resumeText,
       preview_sections_json: tailored,
-      keyword_stats: keywordStats,
+      keyword_stats: ats,
       tokens_used: tokens,
       message: 'Resume tailored successfully',
       validation,

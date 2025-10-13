@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { ResumeJSON, TailoredResult, KeywordStats } from './types'
+import { ResumeJSON, TailoredResult, KeywordStatsComparison } from './types'
 
 type Session = {
   id: string
@@ -8,7 +8,7 @@ type Session = {
   original: ResumeJSON
   tailored: TailoredResult
   jdText: string
-  keywordStats: KeywordStats
+  keywordStats: KeywordStatsComparison
   originalRawText?: string
 }
 
@@ -25,7 +25,7 @@ export function createSession(
   original: ResumeJSON, 
   tailored: TailoredResult, 
   jdText: string, 
-  keywordStats: KeywordStats,
+  keywordStats: KeywordStatsComparison,
   originalRawText?: string
 ) {
   purgeExpired()
