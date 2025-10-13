@@ -179,7 +179,19 @@ export default function Home() {
           'x-invite-code': inviteCode
         }
       })
-      const data = await res.json()
+      
+      // Check content-type before parsing JSON
+      const contentType = res.headers.get('content-type') || ''
+      let data
+      
+      if (contentType.includes('application/json')) {
+        data = await res.json()
+      } else {
+        // If not JSON, get the text response
+        const text = await res.text()
+        console.error('Non-JSON response received:', text)
+        throw new Error(`Server returned non-JSON response: ${text.slice(0, 200)}`)
+      }
       
       if (!res.ok) {
         if (data.code === 'missing_experience') {
