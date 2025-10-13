@@ -7,7 +7,11 @@ import { SYSTEM_PROMPT, makeUserPrompt } from './prompts'
 import { honestyScan } from './honesty'
 import { atsCheck, compareKeywordStats } from './ats'
 
-export async function parseAIResponse(raw: string, maxRetries: number = 3): Promise<TailoredResultType> {
+type TailorOptions = {
+  deadline?: number
+}
+
+export async function parseAIResponse(raw: string, maxRetries: number = 2): Promise<TailoredResultType> {
   let lastError: Error | null = null
   
   console.log('parseAIResponse: Starting with raw length:', raw.length)
@@ -397,11 +401,14 @@ function cleanAIResponse(raw: string): string {
 export async function getTailoredResume(
   original: ResumeJSON, 
   jdText: string, 
-  tone: 'professional' | 'concise' | 'impact-heavy'
+  tone: 'professional' | 'concise' | 'impact-heavy',
+  options: TailorOptions = {}
 ): Promise<{ tailored: TailoredResultType, tokens: number, ats: KeywordStatsComparison }> {
-  const maxRetries = 3
+  const maxRetries = 2
   let lastError: Error | null = null
-  const baselineATS = atsCheck(original, jdText)
+  const baselineATS = atsCheck(original as ResumeJSON, jdText)
+  let lastRawResponse = ''
+  const deadline = options.deadline ?? Date.now() + 25000
   
   // Enhanced validation - check if we have meaningful data to work with
   if (!original.experience || original.experience.length === 0) {
@@ -411,6 +418,7 @@ export async function getTailoredResume(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`Starting attempt ${attempt} of ${maxRetries}`)
       const messages = [
         { role: 'system' as const, content: SYSTEM_PROMPT },
         { role: 'user' as const, content: makeUserPrompt({ resume_json: original, job_text: jdText, tone, baseline_stats: baselineATS, attempt }) }
@@ -419,13 +427,19 @@ export async function getTailoredResume(
       console.log('Making OpenAI API call...')
       let chat
       try {
+        // Add timeout to prevent hanging
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 25000) // 25 second timeout
+        
         chat = await getOpenAI().chat.completions.create({
           model: OPENAI_MODEL,
           messages,
           temperature: 0.3,
           response_format: { type: 'json_object' },
-          max_tokens: 8000 // Increased limit for long resumes
+          max_tokens: 4000 // Reduced to prevent timeout
         })
+        
+        clearTimeout(timeoutId)
         console.log('OpenAI API call successful, response received')
       } catch (openaiError: any) {
         console.error('OpenAI API call failed:', openaiError)
@@ -433,13 +447,25 @@ export async function getTailoredResume(
         console.error('OpenAI error message:', openaiError?.message)
         console.error('OpenAI error status:', openaiError?.status)
         console.error('OpenAI error code:', openaiError?.code)
+        
+        // Handle timeout specifically
+        if (openaiError?.name === 'AbortError' || openaiError?.message?.includes('timeout')) {
+          throw new Error('OpenAI API timeout - request took too long')
+        }
+        
         throw new Error(`OpenAI API error: ${openaiError?.message || 'Unknown error'}`)
       }
 
       const raw = chat.choices[0]?.message?.content || '{}'
+      lastRawResponse = raw
       
       if (!raw || raw.trim() === '') {
         throw new Error('Empty response from AI')
+      }
+      const trimmedRaw = raw.trim()
+      if (trimmedRaw.indexOf('{') === -1 || trimmedRaw.lastIndexOf('}') === -1) {
+        console.warn('AI response missing JSON object structure', trimmedRaw.slice(0, 200))
+        throw new Error('AI response missing JSON object structure')
       }
       
       // Parse and validate with detailed error reporting
@@ -528,7 +554,9 @@ export async function getTailoredResume(
         stack: error.stack,
         originalExperienceLength: original.experience?.length || 0,
         jdLength: jdText.length,
-        attempt
+        attempt,
+        lastRawResponseSnippet: lastRawResponse?.slice(0, 200),
+        remainingTime: deadline - Date.now()
       })
       
       // Log failed attempt with detailed context

@@ -134,7 +134,14 @@ export async function POST(req: NextRequest) {
 
     console.log('Tailoring resume...')
     console.log('About to call getTailoredResume...')
-    const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone)
+    
+    // Add timeout wrapper to prevent hanging
+    const tailorPromise = getTailoredResume(original, jd_text_raw, tone)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Tailoring timeout - operation took too long')), 25000)
+    )
+    
+    const { tailored, tokens, ats } = await Promise.race([tailorPromise, timeoutPromise]) as any
     console.log('getTailoredResume completed successfully')
     console.log('Resume tailored successfully:', {
       hasSummary: !!tailored.summary,
