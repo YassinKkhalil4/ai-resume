@@ -416,13 +416,25 @@ export async function getTailoredResume(
         { role: 'user' as const, content: makeUserPrompt({ resume_json: original, job_text: jdText, tone, baseline_stats: baselineATS, attempt }) }
       ]
 
-      const chat = await getOpenAI().chat.completions.create({
-        model: OPENAI_MODEL,
-        messages,
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-        max_tokens: 8000 // Increased limit for long resumes
-      })
+      console.log('Making OpenAI API call...')
+      let chat
+      try {
+        chat = await getOpenAI().chat.completions.create({
+          model: OPENAI_MODEL,
+          messages,
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+          max_tokens: 8000 // Increased limit for long resumes
+        })
+        console.log('OpenAI API call successful, response received')
+      } catch (openaiError: any) {
+        console.error('OpenAI API call failed:', openaiError)
+        console.error('OpenAI error type:', openaiError?.constructor?.name)
+        console.error('OpenAI error message:', openaiError?.message)
+        console.error('OpenAI error status:', openaiError?.status)
+        console.error('OpenAI error code:', openaiError?.code)
+        throw new Error(`OpenAI API error: ${openaiError?.message || 'Unknown error'}`)
+      }
 
       const raw = chat.choices[0]?.message?.content || '{}'
       

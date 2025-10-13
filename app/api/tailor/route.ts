@@ -133,7 +133,9 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('Tailoring resume...')
+    console.log('About to call getTailoredResume...')
     const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone)
+    console.log('getTailoredResume completed successfully')
     console.log('Resume tailored successfully:', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
