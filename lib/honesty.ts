@@ -11,7 +11,16 @@ function tokenize(s: string) {
 }
 
 export function honestyScan(original: Role[], tailored: Role[]) {
+  const threshold = 0.28
   const flags: Array<{ role: string, bullet: string, score: number, backing: string[] }> = []
+  const results: Array<{
+    role: string
+    bullet: string
+    score: number
+    status: 'supported' | 'flagged'
+    backing: string[]
+    overlap: string[]
+  }> = []
   const map = new Map<string, Role>()
   
   for (const r of original) map.set(r.company + '|' + r.role, r)
@@ -23,29 +32,42 @@ export function honestyScan(original: Role[], tailored: Role[]) {
     
     for (const tb of t.bullets) {
       const tTok = tokenize(tb)
-      let best = 0, backs: string[] = []
+      let best = 0, bestBack: string | null = null
       
       for (const ob of o.bullets) {
         const score = jaccard(tTok, tokenize(ob))
-        if (score > best) { 
+        if (score > best) {
           best = score
-          backs = [ob] 
+          bestBack = ob
         }
       }
-      
-      // Strict threshold: flag bullets with <0.28 overlap with sources
-      if (best < 0.28) {
+
+      const backingArray = bestBack ? [bestBack] : []
+      const overlap = bestBack
+        ? [...tTok].filter(token => tokenize(bestBack!).has(token))
+        : []
+
+      if (best < threshold) {
         flags.push({ 
           role: `${t.role} @ ${t.company}`, 
           bullet: tb, 
           score: Number(best.toFixed(2)), 
-          backing: backs 
+          backing: backingArray 
         })
       }
+
+      results.push({
+        role: `${t.role} @ ${t.company}`,
+        bullet: tb,
+        score: Number(best.toFixed(2)),
+        status: best >= threshold ? 'supported' : 'flagged',
+        backing: backingArray,
+        overlap
+      })
     }
   }
   
-  return { flags }
+  return { flags, results }
 }
 
 // Enhanced honesty scan with semantic analysis

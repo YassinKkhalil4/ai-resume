@@ -21,6 +21,16 @@ export type ResumeJSON = {
 // Re-export the schema-based type to maintain compatibility
 export type { TailoredResultType as TailoredResult } from './schemas'
 
+export type IndustryKeywordStats = {
+  key: string
+  label: string
+  jdKeywords: string[]
+  canonicalKeywords: string[]
+  matched: string[]
+  missing: string[]
+  coverage: number
+}
+
 export type KeywordStats = {
   coverage: number
   matched: string[]
@@ -36,6 +46,7 @@ export type KeywordStats = {
   semanticCoverage?: number
   gaps?: Array<{ requirement:string, nearestBullet:string, score:number }>
   allKeywords?: string[]
+  industry?: IndustryKeywordStats
 }
 
 export type KeywordStatsComparison = {
@@ -49,5 +60,13 @@ export type KeywordStatsComparison = {
     resolvedMissing: string[]
     remainingMissing: string[]
     regressions: string[]
+  }
+  industry?: {
+    label?: string
+    baseline: number
+    current: number
+    delta: number
+    newlyMatched: string[]
+    remainingMissing: string[]
   }
 }

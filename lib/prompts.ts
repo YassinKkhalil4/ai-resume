@@ -24,18 +24,36 @@ export function makeUserPrompt({
   const baselineCoverage = baseline_stats ? Math.round((baseline_stats.coverage || 0) * 100) : null
   const mustMissing = baseline_stats?.mustMissing || []
   const topMissing = baseline_stats?.topMissing || baseline_stats?.missing?.slice(0, 10) || []
+  const industryMissing = baseline_stats?.industry?.missing || []
+  const combinedHighPriority = Array.from(new Set([
+    ...mustMissing,
+    ...industryMissing,
+    ...topMissing
+  ])).slice(0, 15)
 
   const atsImprovementDirective = baseline_stats ? `
 BASELINE ATS SUMMARY:
 - Current coverage: ${baselineCoverage}%
 - Must-have keywords still missing: ${mustMissing.length ? mustMissing.join(', ') : 'None'}
-- High-priority keywords to weave in (only if factual): ${topMissing.length ? topMissing.join(', ') : 'None'}
+- High-priority keywords to weave in (only if factual): ${combinedHighPriority.length ? combinedHighPriority.join(', ') : 'None'}
 
 OPTIMIZATION GOAL:
 - Increase overall ATS coverage by incorporating the missing keywords above wherever the original resume provides support.
 - Prioritise adding the exact missing keywords into relevant bullets, skills, or sections without fabricating experience.
 - Do not remove keywords that are already matched unless they are irrelevant to the job description.
 ${attempt > 1 ? '- Coverage improvement was insufficient previously; aggressively integrate the missing keywords while staying truthful.\n' : ''}` : ''
+
+  const industryDirective = baseline_stats?.industry ? `
+INDUSTRY CONTEXT:
+- Domain focus: ${baseline_stats.industry.label}
+- JD domain keywords: ${baseline_stats.industry.jdKeywords.join(', ') || 'None explicitly'}
+- Domain keywords missing from the candidate content: ${industryMissing.length ? industryMissing.join(', ') : 'None'}
+
+INDUSTRY OPTIMISATION:
+- Use language, responsibilities, and tool names that align with ${baseline_stats.industry.label}, drawing ONLY from the JD and original resume.
+- Where the resume supports it, weave the missing domain keywords above into bullets, summary, and skills.
+- Avoid generic phrasing—favour domain terminology that strengthens ATS alignment for this industry.
+` : ''
 
   return `RESUME (STRUCTURED JSON):
 ${JSON.stringify(resume_json)}
@@ -74,6 +92,7 @@ Return:
 }
 
 ${atsImprovementDirective}
+${industryDirective}
 
 TONE: ${tone}
 If the JOB DESCRIPTION content is very short (< 400 chars), only optimize wording and ordering; do not add any new keywords beyond what appears in the resume or JD.

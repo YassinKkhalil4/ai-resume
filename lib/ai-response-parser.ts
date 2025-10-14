@@ -528,14 +528,24 @@ export async function getTailoredResume(
       const tailoredATS = atsCheck(tailored as ResumeJSON, jdText)
       const atsComparison = compareKeywordStats(baselineATS, tailoredATS)
       const coverageGain = atsComparison.deltas.coverage
-      const needsAggressiveRetry = baselineATS.coverage < 0.85 && coverageGain < 0.05
-      const coverageRegression = coverageGain < 0
+      const industryBaseline = baselineATS.industry?.coverage || 0
+      const industryCurrent = tailoredATS.industry?.coverage || 0
+      const industryGain = industryCurrent - industryBaseline
+      const industryNeedsBoost =
+        (baselineATS.industry?.jdKeywords?.length || 0) > 0 && industryCurrent < 0.7
+      const needsAggressiveRetry =
+        (baselineATS.coverage < 0.85 && coverageGain < 0.08) ||
+        (industryNeedsBoost && industryGain < 0.08)
+      const coverageRegression = coverageGain < 0 || industryGain < -0.01
 
       if ((coverageRegression || needsAggressiveRetry) && attempt < maxRetries) {
         console.warn('ATS coverage insufficient, retrying with stronger instructions', {
           coverageGain,
           baseline: baselineATS.coverage,
           tailored: tailoredATS.coverage,
+          industryBaseline,
+          industryCurrent,
+          industryGain,
           attempt
         })
         throw new Error('ATS improvement insufficient, retrying')

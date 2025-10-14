@@ -255,30 +255,88 @@ export default function Preview({ session }:{ session:any }) {
 
       {honesty && (
         <div className="glass-panel rounded-3xl border border-emerald-400/30 p-5 shadow-lg dark:border-emerald-400/20">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">Honesty scan results</div>
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-200">
-              {honesty.flags?.length ? `${honesty.flags.length} review needed` : 'All clear'}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">Honesty scan results</div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                Proof each bullet traces back to your original resume
+              </div>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                honesty.flags?.length
+                  ? 'border border-amber-400/40 bg-amber-100/60 text-amber-700 dark:border-amber-400/30 dark:bg-amber-900/30 dark:text-amber-200'
+                  : 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-200'
+              }`}
+            >
+              {honesty.flags?.length
+                ? `${honesty.flags.length} bullet${honesty.flags.length > 1 ? 's' : ''} needs review`
+                : 'All tailored bullets backed by source'}
             </span>
           </div>
-          {honesty.flags?.length ? (
-            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
-              {honesty.flags.map((f: any, i: number) => (
-                <div key={i} className="rounded-2xl border border-amber-400/30 bg-amber-50/70 p-3 dark:border-amber-400/30 dark:bg-amber-900/30">
-                  <div className="font-semibold text-amber-700 dark:text-amber-200">
-                    ⚠️ {f.role}: {f.bullet}
+
+          <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+            {(honesty.results || []).map((result: any, idx: number) => {
+              const isFlagged = result.status === 'flagged'
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-2xl border p-3 transition ${
+                    isFlagged
+                      ? 'border-amber-400/40 bg-amber-50/70 dark:border-amber-400/30 dark:bg-amber-900/30'
+                      : 'border-emerald-400/30 bg-emerald-50/60 dark:border-emerald-400/30 dark:bg-emerald-900/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="font-semibold text-slate-800 dark:text-slate-100">
+                      {isFlagged ? '⚠️ Requires review' : '✅ Backed by original resume'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                      Match score: {result.score?.toFixed(2)}
+                    </div>
                   </div>
-                  <div className="mt-1 text-[11px] text-amber-700/80 dark:text-amber-200/70">
-                    Supported by: {(f.backing || []).join(' | ') || 'No close match detected in the original resume.'}
+                  <div className="mt-1 text-slate-500 dark:text-slate-400">{result.role}</div>
+
+                  <div className="mt-2 rounded-xl bg-white/70 p-2 text-slate-700 shadow-inner dark:bg-slate-900/60 dark:text-slate-200">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                      Tailored bullet
+                    </div>
+                    <div className="mt-1 leading-relaxed">{result.bullet}</div>
                   </div>
+
+                  <div className="mt-2 rounded-xl bg-white/80 p-2 text-slate-600 shadow-inner dark:bg-slate-900/50 dark:text-slate-300">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                      Backing evidence
+                    </div>
+                    {result.backing?.length ? (
+                      result.backing.map((back: string, i: number) => (
+                        <div key={i} className="mt-1 leading-relaxed">
+                          {back}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="mt-1 italic text-amber-600 dark:text-amber-200">
+                        No matching bullet found in the original resume.
+                      </div>
+                    )}
+                  </div>
+
+                  {result.overlap?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {result.overlap.map((tok: string, i: number) => (
+                        <span
+                          key={i}
+                          className="rounded-full border border-slate-200/60 bg-white/80 px-2 py-[2px] text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400"
+                        >
+                          {tok}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-emerald-400/30 bg-emerald-50/70 p-3 text-xs text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-900/30 dark:text-emerald-200">
-              Every tailored bullet is backed by your original experience. You’re good to go.
-            </div>
-          )}
+              )
+            })}
+          </div>
         </div>
       )}
 

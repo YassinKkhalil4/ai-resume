@@ -2,7 +2,7 @@ import { extractKeywords2 } from './jd'
 import { ResumeJSON, KeywordStats, KeywordStatsComparison } from './types'
 
 export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
-  const { all, must, nice } = extractKeywords2(jdText, 20)
+  const { all, must, nice, industry } = extractKeywords2(jdText, 20)
   const resumeText = stringifyResume(resume).toLowerCase()
 
   const matched = all.filter(k => resumeText.includes(k.toLowerCase()))
@@ -30,7 +30,23 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
     niceCoverage: nice.length ? niceMatched.length / nice.length : 0,
     mustMatched, mustMissing, niceMatched, niceMissing,
     topMissing: missing.slice(0,5),
-    allKeywords: all
+    allKeywords: all,
+    industry: (() => {
+      if (!industry || industry.jdKeywords.length === 0) return undefined
+      const domainKeywords = industry.jdKeywords
+      const domainMatched = domainKeywords.filter(k => resumeText.includes(k.toLowerCase()))
+      const domainMissing = domainKeywords.filter(k => !resumeText.includes(k.toLowerCase()))
+      const domainCoverage = domainKeywords.length ? domainMatched.length / domainKeywords.length : 0
+      return {
+        key: industry.key,
+        label: industry.label,
+        canonicalKeywords: industry.canonicalKeywords,
+        jdKeywords: domainKeywords,
+        matched: domainMatched,
+        missing: domainMissing,
+        coverage: domainCoverage
+      }
+    })()
   }
   return base
 }
@@ -53,6 +69,26 @@ export function compareKeywordStats(original: KeywordStats, tailored: KeywordSta
   const resolvedMissing = (original.missing || []).filter(k => !tailoredMissingSet.has(normalize(k)))
   const remainingMissing = (tailored.missing || [])
 
+  const industryComparison = (() => {
+    const baseline = original.industry
+    const current = tailored.industry
+    if (!baseline && !current) return undefined
+    const baselineCoverage = baseline?.coverage || 0
+    const currentCoverage = current?.coverage || 0
+    const baseMatchedSet = new Set((baseline?.matched || []).map(normalize))
+    const currentMatched = current?.matched || []
+    const newlyMatched = currentMatched.filter(k => !baseMatchedSet.has(normalize(k)))
+    const remaining = current?.missing || []
+    return {
+      label: current?.label || baseline?.label,
+      baseline: baselineCoverage,
+      current: currentCoverage,
+      delta: currentCoverage - baselineCoverage,
+      newlyMatched,
+      remainingMissing: remaining
+    }
+  })()
+
   return {
     original,
     tailored,
@@ -64,7 +100,8 @@ export function compareKeywordStats(original: KeywordStats, tailored: KeywordSta
       resolvedMissing,
       remainingMissing,
       regressions
-    }
+    },
+    industry: industryComparison
   }
 }
 

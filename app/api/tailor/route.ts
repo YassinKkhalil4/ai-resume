@@ -187,6 +187,7 @@ export async function POST(req: NextRequest) {
       validation,
       honesty_scan: {
         flags: honestyResult.flags,
+        results: honestyResult.results,
         flagged_count: honestyResult.flags.length,
         has_concerns: honestyResult.flags.length > 0
       },

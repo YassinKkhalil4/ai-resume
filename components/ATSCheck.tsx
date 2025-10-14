@@ -21,6 +21,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
   }
 
   const { original, tailored, deltas } = stats
+  const industry = stats.industry
 
   const originalCoverage = formatPercent(original.coverage)
   const tailoredCoverage = formatPercent(tailored.coverage)
@@ -162,6 +163,53 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
           </div>
         )}
       </div>
+
+      {industry && (
+        <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                Industry alignment
+              </div>
+              <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {industry.label || 'Domain keywords'}
+              </div>
+              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Coverage: {formatPercent(industry.baseline)}% → {formatPercent(industry.current)}% ({industry.delta >= 0 ? '+' : ''}{Math.round(industry.delta * 100)} pts)
+              </div>
+            </div>
+            {industry.newlyMatched.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {industry.newlyMatched.slice(0, 12).map((keyword, idx) => (
+                  <span
+                    key={idx}
+                    className="badge border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-200"
+                  >
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {industry.remainingMissing.length > 0 && (
+            <div className="mt-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                Remaining domain gaps
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {industry.remainingMissing.slice(0, 12).map((keyword, idx) => (
+                  <span
+                    key={idx}
+                    className="badge border border-amber-400/40 bg-amber-100/60 text-amber-700 dark:border-amber-400/30 dark:bg-amber-900/30 dark:text-amber-200"
+                  >
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
         <div className="grid gap-4 md:grid-cols-2">

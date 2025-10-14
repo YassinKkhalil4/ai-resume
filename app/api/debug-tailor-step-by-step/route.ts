@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
     
     // Step 7: AI tailoring
     console.log('Step 7: AI tailoring...')
-    const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone)
+    const deadline = Date.now() + 25000
+    const { tailored, tokens, ats } = await getTailoredResume(original, jd_text_raw, tone, { deadline })
     console.log('Step 7: AI tailoring completed', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,

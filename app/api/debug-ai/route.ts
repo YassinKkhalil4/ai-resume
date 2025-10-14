@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     console.log('Testing AI call with test resume...')
     
     // Test AI call
-    const { tailored, tokens, ats } = await getTailoredResume(testResume, 'Looking for a senior developer with React experience', 'professional')
+    const deadline = Date.now() + 25000
+    const { tailored, tokens, ats } = await getTailoredResume(testResume, 'Looking for a senior developer with React experience', 'professional', { deadline })
     
     console.log('AI call successful', {
       hasSummary: !!tailored.summary,

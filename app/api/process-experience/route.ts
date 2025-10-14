@@ -95,7 +95,8 @@ export async function POST(req: NextRequest) {
 
     // Tailor the resume with AI
     console.log('Starting AI tailoring...')
-    const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone)
+    const deadline = Date.now() + 25000
+    const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone, { deadline })
     console.log('AI tailoring completed:', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
@@ -147,6 +148,14 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Process experience error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    const message = error instanceof Error ? error.message : String(error)
+    if (/time budget|timeout/i.test(message)) {
+      return NextResponse.json({
+        code: 'function_timeout',
+        message: 'Tailoring took too long and was cancelled. Please try again with a shorter selection.',
+        timestamp: new Date().toISOString()
+      }, { status: 504 })
+    }
     
     return NextResponse.json({
       code: 'processing_failed',
