@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { useSession, signOut } from 'next-auth/react'
 import JDInput from '../components/JDInput'
 import Preview from '../components/Preview'
 import ParsingErrorBanner from '../components/ParsingErrorBanner'
@@ -9,20 +10,27 @@ import ExperienceInputModal from '../components/ExperienceInputModal'
 import LineMarkingModal, { LineSelection } from '../components/LineMarkingModal'
 import useInviteGate from '../components/useInviteGate'
 import { ParsingValidationResult } from '../lib/parsing-validation'
+import LoginModal from '../components/auth/LoginModal'
+import SignupModal from '../components/auth/SignupModal'
+import CreditDisplay from '../components/billing/CreditDisplay'
 
 const FileDrop = dynamic(() => import('../components/FileDrop'), { ssr: false })
 
 export default function Home() {
+  const { data: session, status } = useSession()
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [jdText, setJdText] = useState<string>('')
   const [tone, setTone] = useState<'professional'|'concise'|'impact-heavy'>('professional')
-  const [session, setSession] = useState<any>(null)
+  const [tailorSession, setTailorSession] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [validation, setValidation] = useState<ParsingValidationResult | null>(null)
   const [showExperienceModal, setShowExperienceModal] = useState(false)
   const [showLineMarkingModal, setShowLineMarkingModal] = useState(false)
   const [showBanner, setShowBanner] = useState(true)
   const [resumeText, setResumeText] = useState<string>('')
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showSignupModal, setShowSignupModal] = useState(false)
+  const [credits, setCredits] = useState<number | null>(null)
   const gate = useInviteGate()
   const toneOptions = useMemo(() => [
     {
@@ -99,6 +107,25 @@ export default function Home() {
     return () => window.clearInterval(timer)
   }, [highlightPhrases.length])
 
+  // Fetch credits when authenticated
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      fetchCredits()
+    }
+  }, [status, session])
+
+  const fetchCredits = async () => {
+    try {
+      const response = await fetch('/api/billing/credits')
+      if (response.ok) {
+        const data = await response.json()
+        setCredits(data.creditsRemaining)
+      }
+    } catch (error) {
+      console.error('Failed to fetch credits:', error)
+    }
+  }
+
   useEffect(() => {
     const selected = toneOptions.find(option => option.id === tone)
     if (selected) {
@@ -152,6 +179,19 @@ export default function Home() {
   async function handleTailor() {
     if (!resumeFile) return alert('Upload a resume and paste a job description.')
     if (!jdText) return alert('Paste a job description.')
+    
+    // Check authentication
+    if (status !== 'authenticated') {
+      setShowLoginModal(true)
+      return
+    }
+
+    // Check credits
+    if (credits !== null && credits <= 0) {
+      alert('You have no credits remaining. Please purchase credits to continue.')
+      return
+    }
+
     setLoading(true)
     try {
       // Extract resume text for line marking feature
@@ -194,6 +234,17 @@ export default function Home() {
       }
       
       if (!res.ok) {
+        if (data.code === 'unauthorized') {
+          setShowLoginModal(true)
+          setLoading(false)
+          return
+        }
+        if (data.code === 'no_credits') {
+          alert('You have no credits remaining. Please purchase credits to continue.')
+          setCredits(0)
+          setLoading(false)
+          return
+        }
         if (data.code === 'missing_experience') {
           // Handle missing experience case
           setValidation(data.validation)
@@ -204,9 +255,17 @@ export default function Home() {
         throw new Error(data?.message || 'Tailoring failed.')
       }
       
-      setSession(data)
+      setTailorSession(data)
       setValidation(data.validation)
       setShowBanner(false) // Hide banner on success
+      
+      // Update credits if returned
+      if (data.credits_remaining !== undefined) {
+        setCredits(data.credits_remaining)
+      } else {
+        // Refresh credits
+        await fetchCredits()
+      }
     } catch (e:any) {
       alert(e?.message || 'Failed to tailor.')
     } finally {
@@ -228,7 +287,7 @@ export default function Home() {
         break
       case 'upload_new':
         setResumeFile(null)
-        setSession(null)
+        setTailorSession(null)
         setValidation(null)
         setShowBanner(false)
         break
@@ -258,7 +317,7 @@ export default function Home() {
           experienceText: experience,
           jdText,
           tone,
-          sessionId: session?.session_id
+          sessionId: tailorSession?.session_id
         })
       })
 
@@ -269,7 +328,7 @@ export default function Home() {
       }
 
       // Update session with the processed results
-      setSession(data)
+      setTailorSession(data)
       setValidation(null) // Clear validation since we've processed the experience
       setShowBanner(false) // Hide banner
       setShowExperienceModal(false)
@@ -304,7 +363,7 @@ export default function Home() {
           selectedLines,
           jdText,
           tone,
-          sessionId: session?.session_id
+          sessionId: tailorSession?.session_id
         })
       })
 
@@ -315,7 +374,7 @@ export default function Home() {
       }
 
       // Update session with the processed results
-      setSession(data)
+      setTailorSession(data)
       setValidation(null) // Clear validation since we've processed the experience
       setShowBanner(false) // Hide banner
       setShowLineMarkingModal(false)
@@ -350,7 +409,7 @@ export default function Home() {
                 Continue
               </button>
             </div>
-            <p className="mt-4 text-xs text-slate-500">No invite? Join the waitlist at resume-tailor.ai</p>
+            <p className="mt-4 text-xs text-slate-500">No invite? Join the waitlist at tailora.ai</p>
           </div>
         </section>
       </main>
@@ -363,7 +422,7 @@ export default function Home() {
   const workflow = [
     { label: 'Upload resume', complete: Boolean(resumeFile) },
     { label: 'Paste job description', complete: Boolean(jdText) },
-    { label: 'Tailor & review', complete: Boolean(session) }
+    { label: 'Tailor & review', complete: Boolean(tailorSession) }
   ]
   const activeStepIndex = workflow.findIndex(step => !step.complete)
   const highlightedStepIndex = activeStepIndex === -1 ? workflow.length - 1 : activeStepIndex
@@ -448,6 +507,34 @@ export default function Home() {
             <div>
               <div className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Tailoring workspace</div>
               <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">Upload, align, export.</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {status === 'authenticated' ? (
+                <>
+                  <CreditDisplay />
+                  <button
+                    onClick={() => signOut()}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => setShowSignupModal(true)}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {workflow.map((step, index) => (
@@ -558,9 +645,9 @@ export default function Home() {
             <button
               className="button w-full sm:w-auto"
               onClick={handleTailor}
-              disabled={loading || !resumeFile || !jdText}
+              disabled={loading || !resumeFile || !jdText || (credits !== null && credits <= 0)}
             >
-              {loading ? 'Tailoring...' : 'Tailor my resume'}
+              {loading ? 'Tailoring...' : credits !== null && credits <= 0 ? 'No Credits' : 'Tailor my resume'}
             </button>
           </div>
         </div>
@@ -587,7 +674,29 @@ export default function Home() {
         </aside>
       </section>
 
-      {session && <Preview session={session} />}
+      {tailorSession && <Preview session={tailorSession} />}
+
+      {showLoginModal && (
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onSwitchToSignup={() => {
+            setShowLoginModal(false)
+            setShowSignupModal(true)
+          }}
+        />
+      )}
+
+      {showSignupModal && (
+        <SignupModal
+          isOpen={showSignupModal}
+          onClose={() => setShowSignupModal(false)}
+          onSwitchToLogin={() => {
+            setShowSignupModal(false)
+            setShowLoginModal(true)
+          }}
+        />
+      )}
 
       {showExperienceModal && (
         <ExperienceInputModal
@@ -603,7 +712,7 @@ export default function Home() {
           onClose={() => setShowLineMarkingModal(false)}
           onSubmit={handleLineMarkingSubmit}
           resumeText={resumeText}
-          originalResume={session?.original_sections_json}
+          originalResume={tailorSession?.original_sections_json}
         />
       )}
     </main>

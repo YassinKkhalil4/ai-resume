@@ -1,5 +1,5 @@
 import fs from 'fs'
-const CONFIG_PATH = '/tmp/ai-resume-tailor-config.json'
+const CONFIG_PATH = '/tmp/tailora-config.json'
 
 export type AppConfig = {
   rate: { ipPerMin: number, sessionPerMin: number },

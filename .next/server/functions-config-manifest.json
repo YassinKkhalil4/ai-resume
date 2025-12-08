@@ -1,1 +1,0 @@
-{"version":1,"functions":{"/api/admin/config":{},"/api/admin/login":{},"/api/diff":{},"/api/export":{"maxDuration":30},"/api/export/[file]":{},"/api/honesty":{},"/api/parse-resume":{},"/api/process-experience":{"maxDuration":30},"/api/tailor-test":{},"/api/process-line-selections":{"maxDuration":30},"/api/test":{},"/api/tailor":{"maxDuration":30}}}

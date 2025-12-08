@@ -1,4 +1,4 @@
-# AI Resume Tailor — v2 (Complete)
+# tailora — v2 (Complete)
 
 Upload resume (PDF/DOCX/TXT) → paste JD text/URL → tailor bullets with guardrails → preview diffs + ATS → honesty scan → export ATS-safe PDF/DOCX.
 Privacy-first (no persistence), invite-only + rate limits, admin console, telemetry, QA harness, and marketing kit.
@@ -18,8 +18,8 @@ npm run dev
 - **Render/VM/Docker**: `puppeteer` works without the serverless build.
 - **Docker**:
   ```bash
-  docker build -t ai-resume-tailor .
-  docker run -p 3000:3000     -e OPENAI_API_KEY=sk-...     -e INVITE_CODES=alpha123,beta456     -e ADMIN_KEY=supersecret     -e USE_LAMBDA_CHROMIUM=0     ai-resume-tailor
+  docker build -t tailora .
+  docker run -p 3000:3000     -e OPENAI_API_KEY=sk-...     -e INVITE_CODES=alpha123,beta456     -e ADMIN_KEY=supersecret     -e USE_LAMBDA_CHROMIUM=0     tailora
   ```
 
 ## Privacy & Integrity

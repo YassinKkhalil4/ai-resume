@@ -1,5 +1,5 @@
 import { TailoredResultSchema, type TailoredResultType } from './schemas'
-import { KeywordStatsComparison, ResumeJSON } from './types'
+import { KeywordStatsComparison, ResumeJSON, KeywordStats } from './types'
 import { logAIResponse, logError } from './telemetry'
 import { extractKeywords } from './jd'
 import { getOpenAI, OPENAI_MODEL } from './openai'
@@ -350,6 +350,24 @@ function mergeAdditionalSections(
   return merged
 }
 
+function ensureIndustrySkills(skills: string[], baselineATS: KeywordStats): string[] {
+  if (!Array.isArray(skills) || skills.length === 0) return skills
+  const normalizedSkills = new Set(skills.map(normalizeForComparison))
+  const matchedKeywords = new Set((baselineATS.matched || []).map(normalizeForComparison))
+  const domainKeywords = baselineATS.industry?.jdKeywords || []
+  const result = [...skills]
+
+  for (const keyword of domainKeywords) {
+    const normalizedKeyword = normalizeForComparison(keyword)
+    if (matchedKeywords.has(normalizedKeyword) && !normalizedSkills.has(normalizedKeyword)) {
+      result.push(keyword)
+      normalizedSkills.add(normalizedKeyword)
+    }
+  }
+
+  return result
+}
+
 function extractTextFromObject(obj: any): string | null {
   if (typeof obj === 'string') return obj
   if (typeof obj === 'number') return obj.toString()
@@ -522,6 +540,7 @@ export async function getTailoredResume(
       if (originalSkills.length > 0) {
         tailored.skills_section = mergeLineArrays(originalSkills, tailored.skills_section || [])
       }
+      tailored.skills_section = ensureIndustrySkills(tailored.skills_section || [], baselineATS)
       
       // Extract token usage and compute ATS delta
       const tokens = chat.usage?.total_tokens || 0
@@ -656,18 +675,20 @@ Return only valid JSON.`
   }
   
   // If extraction fails, return fallback
-  const fallback = createFallbackResponse(original, jdText)
+  const fallback = createFallbackResponse(original, jdText, baselineATS)
   const fallbackATS = compareKeywordStats(baselineATS, atsCheck(fallback as ResumeJSON, jdText))
   return { tailored: fallback, tokens: 0, ats: fallbackATS }
 }
 
-function createFallbackResponse(original: ResumeJSON, jdText: string): TailoredResultType {
+function createFallbackResponse(original: ResumeJSON, jdText: string, baselineATS?: KeywordStats): TailoredResultType {
   const summary =
     original.summary ||
     'Experienced professional with relevant skills and experience.'
 
   const originalSkills = sanitizeStringArray(original.skills)
-  const skills_section = originalSkills.length > 0 ? originalSkills : extractKeywords(jdText, 10)
+  const baseline = baselineATS ?? atsCheck(original as ResumeJSON, jdText)
+  const baseSkills = originalSkills.length > 0 ? originalSkills : extractKeywords(jdText, 10)
+  const skills_section = ensureIndustrySkills(baseSkills, baseline)
   const experience =
     (Array.isArray(original.experience) && original.experience.length > 0
       ? original.experience

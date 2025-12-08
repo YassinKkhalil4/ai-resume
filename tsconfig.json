@@ -17,6 +17,9 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "baseUrl": ".",
+    "paths": {
+      "@/lib/*": ["./lib/*"]
+    },
     "incremental": true,
     "plugins": [
       {

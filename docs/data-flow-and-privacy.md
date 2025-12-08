@@ -39,7 +39,7 @@ sequenceDiagram
 | Uploaded file binaries        | Memory during request        | Discarded immediately post-parse | No persistent storage; scanned PDFs rejected |
 | Export outputs                | Buffer streamed to client    | Optional `/tmp/resume.pdf` until download | File deleted after GET /api/export/[file] |
 | Telemetry logs                | `/tmp/*.jsonl` (JSON Lines)  | Ephemeral (tmpfs)             | Can stream to external drain via env vars |
-| Config overrides              | `/tmp/ai-resume-tailor-config.json` | Until container restart | Stores admin-edited rate limits, invite list, override key |
+| Config overrides              | `/tmp/tailora-config.json` | Until container restart | Stores admin-edited rate limits, invite list, override key |
 
 ## Deletion & Privacy Guarantees
 
@@ -57,4 +57,3 @@ If stricter guarantees are required:
 1. Extend `lib/sessions.ts` with an explicit `destroySession` endpoint invoked when the user leaves the workspace.
 2. Mount `/tmp` on tmpfs or container ephemeral storage to guarantee deletion on restart.
 3. Pipe telemetry to external logging platform with data retention policies aligned to compliance requirements.
-

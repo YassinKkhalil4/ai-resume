@@ -9,6 +9,25 @@ CRITICAL CONSTRAINTS:
 - ONLY rephrase, reorder, and emphasize existing content using synonyms
 - ONLY use keywords that appear in either the original resume OR the job description
 
+KEYWORD EXPANSION RULES (Safe Enhancements Only):
+You are allowed to slightly expand or clarify terminology ONLY IF:
+- The expansion represents the same underlying responsibility
+- It introduces no new achievements, tools, technologies, or certifications
+- It only adds professional terminology, synonyms, or clarifying descriptors
+- It does not add claims that cannot be directly inferred from the original bullet
+
+You may add:
+- Synonyms (e.g., "API" → "RESTful API" or "HTTP endpoints")
+- Industry-standard phrasings (e.g., "cloud" → "cloud infrastructure" or "AWS environment")
+- Clarifying adjectives (e.g., "backend" → "backend services" or "server-side")
+- Expanded terminology for APIs, cloud, data, backend, frontend, project work, or skills
+
+You may NOT add:
+- New job responsibilities
+- New metrics or achievements
+- Tools, frameworks, or technologies not present or implied
+- Certifications or job titles
+
 TARGET: ATS-friendly, concise impact bullets: Action verb + what + tools/skills + measurable outcome or scope.
 Bullets must be 1–2 lines each, no first-person, no fluff.
 
@@ -25,6 +44,8 @@ export function makeUserPrompt({
   const mustMissing = baseline_stats?.mustMissing || []
   const topMissing = baseline_stats?.topMissing || baseline_stats?.missing?.slice(0, 10) || []
   const industryMissing = baseline_stats?.industry?.missing || []
+  const matchedKeywords = baseline_stats?.matched || []
+  const industryMatched = baseline_stats?.industry?.matched || []
   const combinedHighPriority = Array.from(new Set([
     ...mustMissing,
     ...industryMissing,
@@ -42,6 +63,12 @@ OPTIMIZATION GOAL:
 - Prioritise adding the exact missing keywords into relevant bullets, skills, or sections without fabricating experience.
 - Do not remove keywords that are already matched unless they are irrelevant to the job description.
 ${attempt > 1 ? '- Coverage improvement was insufficient previously; aggressively integrate the missing keywords while staying truthful.\n' : ''}` : ''
+
+  const matchedDirective = baseline_stats ? `
+KEYWORDS ALREADY SUPPORTED (MUST KEEP IN SOME FORM):
+- Core keywords already present: ${matchedKeywords.length ? matchedKeywords.join(', ') : 'None detected'}
+- Domain-specific keywords already present: ${industryMatched.length ? industryMatched.join(', ') : 'None detected'}
+` : ''
 
   const industryDirective = baseline_stats?.industry ? `
 INDUSTRY CONTEXT:
@@ -70,6 +97,14 @@ STRICT TASKS:
 6) Every word in tailored bullets must trace back to original resume or JD keywords.
 7) Keep volunteer/extracurricular/community sections under "additional_sections" with the same headings from the original resume.
 
+KEYWORD EXPANSION GUIDELINES:
+- You may expand terms like "API" to "RESTful API" or "backend" to "backend services" if the original context supports it
+- You may use industry-standard synonyms (e.g., "cloud" → "cloud infrastructure", "data" → "data processing")
+- You may add clarifying descriptors that don't change the core meaning (e.g., "developed APIs" → "developed RESTful backend APIs")
+- DO NOT add new tools, frameworks, or technologies not mentioned or implied in the original
+- DO NOT add new metrics, numbers, or achievements
+- DO NOT add new responsibilities or job titles
+
 Return:
 {
   "skills_matched": [...],
@@ -92,6 +127,7 @@ Return:
 }
 
 ${atsImprovementDirective}
+${matchedDirective}
 ${industryDirective}
 
 TONE: ${tone}

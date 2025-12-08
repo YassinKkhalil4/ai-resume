@@ -1,17 +1,47 @@
 import { extractKeywords2 } from './jd'
 import { ResumeJSON, KeywordStats, KeywordStatsComparison } from './types'
+import { normalizeKeyword, keywordsMatch, extractKeyTerms } from './keyword-utils'
 
 export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   const { all, must, nice, industry } = extractKeywords2(jdText, 20)
-  const resumeText = stringifyResume(resume).toLowerCase()
+  const resumeText = stringifyResume(resume)
+  const resumeTerms = extractKeyTerms(resumeText)
 
-  const matched = all.filter(k => resumeText.includes(k.toLowerCase()))
-  const missing = all.filter(k => !resumeText.includes(k.toLowerCase()))
+  // Use normalized matching for better accuracy
+  const matched = all.filter(k => {
+    const normalizedK = normalizeKeyword(k)
+    // Check exact match first
+    if (resumeText.toLowerCase().includes(k.toLowerCase())) {
+      return true
+    }
+    // Check normalized/fuzzy match
+    for (const term of resumeTerms) {
+      if (keywordsMatch(normalizedK, term, 0.80)) {
+        return true
+      }
+    }
+    return false
+  })
+  const missing = all.filter(k => !matched.includes(k))
 
-  const mustMatched = must.filter(k => resumeText.includes(k.toLowerCase()))
-  const mustMissing = must.filter(k => !resumeText.includes(k.toLowerCase()))
-  const niceMatched = nice.filter(k => resumeText.includes(k.toLowerCase()))
-  const niceMissing = nice.filter(k => !resumeText.includes(k.toLowerCase()))
+  const mustMatched = must.filter(k => {
+    const normalizedK = normalizeKeyword(k)
+    if (resumeText.toLowerCase().includes(k.toLowerCase())) return true
+    for (const term of resumeTerms) {
+      if (keywordsMatch(normalizedK, term, 0.80)) return true
+    }
+    return false
+  })
+  const mustMissing = must.filter(k => !mustMatched.includes(k))
+  const niceMatched = nice.filter(k => {
+    const normalizedK = normalizeKeyword(k)
+    if (resumeText.toLowerCase().includes(k.toLowerCase())) return true
+    for (const term of resumeTerms) {
+      if (keywordsMatch(normalizedK, term, 0.80)) return true
+    }
+    return false
+  })
+  const niceMissing = nice.filter(k => !niceMatched.includes(k))
 
   const warnings:string[] = []
   
@@ -34,8 +64,15 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
     industry: (() => {
       if (!industry || industry.jdKeywords.length === 0) return undefined
       const domainKeywords = industry.jdKeywords
-      const domainMatched = domainKeywords.filter(k => resumeText.includes(k.toLowerCase()))
-      const domainMissing = domainKeywords.filter(k => !resumeText.includes(k.toLowerCase()))
+      const domainMatched = domainKeywords.filter(k => {
+        const normalizedK = normalizeKeyword(k)
+        if (resumeText.toLowerCase().includes(k.toLowerCase())) return true
+        for (const term of resumeTerms) {
+          if (keywordsMatch(normalizedK, term, 0.80)) return true
+        }
+        return false
+      })
+      const domainMissing = domainKeywords.filter(k => !domainMatched.includes(k))
       const domainCoverage = domainKeywords.length ? domainMatched.length / domainKeywords.length : 0
       return {
         key: industry.key,
@@ -56,7 +93,7 @@ export function compareKeywordStats(original: KeywordStats, tailored: KeywordSta
   const mustDelta = (tailored.mustCoverage || 0) - (original.mustCoverage || 0)
   const niceDelta = (tailored.niceCoverage || 0) - (original.niceCoverage || 0)
 
-  const normalize = (keyword: string) => keyword.toLowerCase()
+  const normalize = (keyword: string) => normalizeKeyword(keyword)
   const originalMatchedSet = new Set((original.matched || []).map(normalize))
   const tailoredMatchedSet = new Set((tailored.matched || []).map(normalize))
 

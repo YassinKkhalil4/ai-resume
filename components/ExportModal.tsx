@@ -9,6 +9,16 @@ export default function ExportModal({ onClose }:{ onClose:()=>void }) {
   const [includeSummary, setIncludeSummary] = useState(true)
   const [loading, setLoading] = useState(false)
 
+  const getInviteCode = () => {
+    const inviteCode = typeof document !== 'undefined'
+      ? document.cookie
+          .split('; ')
+          .find(row => row.startsWith('invite='))
+          ?.split('=')[1]
+      : ''
+    return inviteCode ? decodeURIComponent(inviteCode) : ''
+  }
+
   async function exportFile() {
     setLoading(true)
     try {
@@ -25,7 +35,10 @@ export default function ExportModal({ onClose }:{ onClose:()=>void }) {
       // inside your export handler
       const res = await fetch('/api/export', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-invite-code': getInviteCode()
+        },
         body: JSON.stringify({
           format,                  // 'pdf' | 'docx'
           template,                // 'classic' | 'modern' | 'minimal'

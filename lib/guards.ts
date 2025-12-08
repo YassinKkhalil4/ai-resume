@@ -3,6 +3,8 @@ import { getConfig } from './config'
 
 const ipHits = new Map<string, number[]>()
 const sidHits = new Map<string, number[]>()
+const urlFetchIpHits = new Map<string, number[]>()
+const urlFetchSidHits = new Map<string, number[]>()
 
 function now() { return Date.now() }
 
@@ -75,10 +77,52 @@ function pruneMaps(windowMs:number = 60_000, maxKeys = 5000) {
     while (arr.length && (nowMs - arr[0]) > windowMs) arr.shift()
     if (arr.length === 0) sidHits.delete(k)
   }
+  for (const [k, arr] of urlFetchIpHits) {
+    while (arr.length && (nowMs - arr[0]) > 3600_000) arr.shift() // 1 hour window
+    if (arr.length === 0) urlFetchIpHits.delete(k)
+  }
+  for (const [k, arr] of urlFetchSidHits) {
+    while (arr.length && (nowMs - arr[0]) > 3600_000) arr.shift() // 1 hour window
+    if (arr.length === 0) urlFetchSidHits.delete(k)
+  }
   if (ipHits.size > maxKeys) {
     for (const k of ipHits.keys()) { ipHits.delete(k); if (ipHits.size <= maxKeys) break }
   }
   if (sidHits.size > maxKeys) {
     for (const k of sidHits.keys()) { sidHits.delete(k); if (sidHits.size <= maxKeys) break }
   }
+  if (urlFetchIpHits.size > maxKeys) {
+    for (const k of urlFetchIpHits.keys()) { urlFetchIpHits.delete(k); if (urlFetchIpHits.size <= maxKeys) break }
+  }
+  if (urlFetchSidHits.size > maxKeys) {
+    for (const k of urlFetchSidHits.keys()) { urlFetchSidHits.delete(k); if (urlFetchSidHits.size <= maxKeys) break }
+  }
+}
+
+// Rate limiting specifically for URL fetching (more restrictive)
+export function enforceUrlFetchRateLimit(req: NextRequest) {
+  const ip = clientIP(req)
+  const sid = sessionID(req)
+  const ipArr = pushHit(urlFetchIpHits, ip)
+  const sidArr = pushHit(urlFetchSidHits, sid)
+  slide(ipArr, 3600_000); slide(sidArr, 3600_000) // 1 hour window
+  pruneMaps()
+  
+  // Per-IP: 10 requests per hour
+  if (ipArr.length > 10) {
+    return { ok: false, res: NextResponse.json({ 
+      code: 'rate_limit', 
+      message: 'Too many URL fetch requests. Please wait before trying again.' 
+    }, { status: 429 }) }
+  }
+  
+  // Per-session: 5 requests per hour
+  if (sidArr.length > 5) {
+    return { ok: false, res: NextResponse.json({ 
+      code: 'rate_limit', 
+      message: 'Too many URL fetch requests. Please wait before trying again.' 
+    }, { status: 429 }) }
+  }
+  
+  return { ok: true }
 }

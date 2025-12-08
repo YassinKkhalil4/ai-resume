@@ -1,9 +1,6 @@
-import { minimalTemplate } from './templates/minimal'
-import { modernTemplate } from './templates/modern'
-import { classicTemplate } from './templates/classic'
-import type { ResumeJSON } from './types'
 import { logPDFGeneration, logError } from './telemetry'
 import { trackPDFSuccess, trackPDFFailure } from './pdf-monitoring'
+import type { TailoredResume } from './export-normalize'
 
 // Null-safe HTML builder with proper defaults
 type Opts = { includeSummary?: boolean; includeSkills?: boolean };
@@ -13,43 +10,120 @@ const esc = (s: string) =>
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-export function renderTemplateHTML(tailored: any, template: 'classic'|'modern'|'minimal', opts: Opts) {
-  const name = esc(tailored?.contact?.name || '');
-  const summary = esc(tailored?.summary || '');
-  const skills: string[] = Array.isArray(tailored?.skills) ? tailored.skills : [];
-  const experience: any[] = Array.isArray(tailored?.experience) ? tailored.experience : [];
+const deriveName = (contact: TailoredResume['contact']) =>
+  contact?.name ||
+  `${contact?.first_name || ''} ${contact?.last_name || ''}`.trim() ||
+  contact?.full_name ||
+  '';
 
-  const skillsHtml = (opts?.includeSkills !== false && skills.length)
-    ? `<h2>Skills</h2><ul>${skills.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : '';
+const buildContactBlock = (contact: TailoredResume['contact']) => {
+  if (!contact) return '';
+  const parts: string[] = [];
+  if (contact.email) {
+    const mail = esc(contact.email);
+    parts.push(`<a href="mailto:${mail}">${mail}</a>`);
+  }
+  if (contact.phone) {
+    const phone = esc(contact.phone);
+    parts.push(`<a href="tel:${phone.replace(/[^0-9+]/g, '')}">${phone}</a>`);
+  }
+  if (contact.location) {
+    parts.push(`<span>${esc(contact.location)}</span>`);
+  }
+  const custom = Object.entries(contact)
+    .filter(([key]) => !['name', 'email', 'phone', 'location', 'first_name', 'last_name', 'full_name'].includes(key))
+    .map(([, value]) => (typeof value === 'string' ? value.trim() : ''))
+    .filter(Boolean)
+    .map(value => `<span>${esc(value)}</span>`);
+  parts.push(...custom);
+  if (!parts.length) return '';
+  return `<div class="contact">${parts.join(' • ')}</div>`;
+};
 
-  const summaryHtml = (opts?.includeSummary !== false && summary)
-    ? `<h2>Summary</h2><p>${summary}</p>` : '';
+const listHtml = (heading: string, items: string[]) => {
+  if (!items.length) return '';
+  return `<section><h2>${esc(heading)}</h2><ul>${items.map(item => `<li>${esc(item)}</li>`).join('')}</ul></section>`;
+};
 
-  const expHtml = experience.length
-    ? `<h2>Experience</h2>${experience.map(e => `
-        <div class="exp">
-          <div class="exp-h"><strong>${esc(e?.title || '')}</strong> — ${esc(e?.company || '')} <span>${esc(e?.dates || '')}</span></div>
-          <ul>${(Array.isArray(e?.bullets) ? e.bullets : []).map((b: string) => `<li>${esc(b)}</li>`).join('')}</ul>
-        </div>`).join('')}`
+const paragraphsHtml = (heading: string, items: string[]) => {
+  if (!items.length) return '';
+  return `<section><h2>${esc(heading)}</h2>${items.map(item => `<p>${esc(item)}</p>`).join('')}</section>`;
+};
+
+export function renderTemplateHTML(tailored: TailoredResume, template: 'classic'|'modern'|'minimal', opts: Opts) {
+  const name = esc(deriveName(tailored.contact) || 'Resume');
+  const contactHtml = buildContactBlock(tailored.contact);
+  const summaryHtml = opts?.includeSummary !== false && tailored.summary
+    ? `<section><h2>Summary</h2><p>${esc(tailored.summary)}</p></section>`
+    : '';
+  const skillsHtml = opts?.includeSkills !== false
+    ? listHtml('Skills', tailored.skills)
     : '';
 
-  // minimal inline CSS that works well in PDF & DOCX
+  const experienceHtml = tailored.experience.length
+    ? `<section><h2>Experience</h2>${tailored.experience.map(exp => {
+        const role = esc(exp.role || exp.title || '');
+        const company = esc(exp.company || '');
+        const dates = esc(exp.dates || '');
+        const location = exp.location ? `<span>${esc(exp.location)}</span>` : '';
+        const headingParts = [`<strong>${role}</strong>`];
+        if (company) headingParts.push(`&mdash; ${company}`);
+        const meta = [dates, location].filter(Boolean).join(' • ');
+        const bullets = exp.bullets.length
+          ? `<ul>${exp.bullets.map(bullet => `<li>${esc(bullet)}</li>`).join('')}</ul>`
+          : '';
+        return `<div class="exp">
+          <div class="exp-h">
+            ${headingParts.join(' ')}
+            ${meta ? `<span class="meta">${meta}</span>` : ''}
+          </div>
+          ${bullets}
+        </div>`;
+      }).join('')}</section>`
+    : '';
+
+  const educationHtml = paragraphsHtml('Education', tailored.education);
+  const certsHtml = listHtml('Certifications', tailored.certifications);
+  const projectsHtml = tailored.projects.length
+    ? `<section><h2>Projects</h2>${tailored.projects.map(project => `
+        <div class="project">
+          <div class="project-h"><strong>${esc(project.name)}</strong></div>
+          ${project.bullets.length ? `<ul>${project.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
+        </div>`).join('')}</section>`
+    : '';
+
+  const additionalHtml = tailored.additional_sections.length
+    ? tailored.additional_sections.map(section => paragraphsHtml(section.heading, section.lines)).join('')
+    : '';
+
   const css = `
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:12pt;line-height:1.35;color:#111}
-  h1,h2{margin:0 0 8pt} .exp{margin:8pt 0} .exp-h{display:flex;gap:8px;align-items:baseline}
-  ul{margin:4pt 0 8pt 18pt;padding:0} li{margin:0 0 4pt}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:12pt;line-height:1.35;color:#111;margin:0;padding:32px;background:#fff}
+  h1{margin:0 0 4pt;font-size:22pt;font-weight:700;color:#0f172a}
+  h2{margin:16pt 0 6pt;font-size:12pt;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;color:#1e293b}
+  section + section{margin-top:14pt}
+  .contact{margin-top:6pt;font-size:10pt;color:#334155;display:flex;flex-wrap:wrap;gap:8px}
+  .exp{margin-top:10pt}
+  .exp-h{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;font-size:11.5pt;color:#0f172a}
+  .exp-h .meta{margin-left:auto;font-size:10pt;color:#475569;white-space:nowrap}
+  ul{margin:6pt 0 0 16pt;padding:0;list-style:disc;color:#0f172a}
+  li{margin:0 0 4pt}
+  p{margin:0 0 6pt}
   @page{margin:18mm 16mm}
   `;
 
-  // route by template if you have separate generators; this shows an inline minimal
   const html = `
     <!doctype html><html><head><meta charset="utf-8">
       <style>${css}</style>
     </head><body>
-      <h1>${name || 'Resume'}</h1>
+      <h1>${name}</h1>
+      ${contactHtml}
       ${summaryHtml}
       ${skillsHtml}
-      ${expHtml}
+      ${experienceHtml}
+      ${educationHtml}
+      ${certsHtml}
+      ${projectsHtml}
+      ${additionalHtml}
     </body></html>
   `;
 
@@ -57,7 +131,7 @@ export function renderTemplateHTML(tailored: any, template: 'classic'|'modern'|'
 }
 
 export async function renderHTML(
-  resume: ResumeJSON,
+  resume: TailoredResume,
   template: 'classic' | 'modern' | 'minimal',
   options: { includeSkills: boolean; includeSummary: boolean }
 ) {
@@ -73,58 +147,76 @@ export async function htmlToDOCX(html: string): Promise<Buffer> {
 }
 
 export async function htmlToPDF(html: string): Promise<Buffer> {
-  const maxRetries = 3
   let lastError: Error | null = null
 
-  console.log('Starting PDF generation with HTML length:', html.length)
+  if (!html || html.trim().length === 0) {
+    throw new Error('HTML content is empty or invalid')
+  }
 
-  // Try external PDF service first (most reliable)
+  console.log('[PDF] Starting PDF generation with HTML length:', html.length)
+
+  // Try external PDF service first (most reliable) - PDFShift
   try {
-    console.log('Attempting external PDF service...')
+    console.log('[PDF] Attempting PDFShift service...')
     const startTime = Date.now()
     const pdfBuffer = await generatePDFWithExternalService(html)
     const responseTime = Date.now() - startTime
     
     if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error('External PDF service returned empty buffer')
+      throw new Error('PDFShift returned empty buffer')
     }
     
-    console.log('External PDF service successful, size:', pdfBuffer.length)
-    await trackPDFSuccess('external_service', responseTime, 'high')
-    logPDFGeneration(1, true, undefined, 'external_service', pdfBuffer.length)
+    if (pdfBuffer.length < 1024) {
+      throw new Error(`PDFShift returned suspiciously small PDF (${pdfBuffer.length} bytes)`)
+    }
+    
+    console.log(`[PDF] PDFShift successful: ${pdfBuffer.length} bytes in ${responseTime}ms`)
+    await trackPDFSuccess('pdfshift', responseTime, 'high')
+    logPDFGeneration(1, true, undefined, 'pdfshift', pdfBuffer.length)
     return pdfBuffer
   } catch (error) {
-    console.warn('External PDF service failed:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.warn('[PDF] PDFShift failed:', errorMessage)
     lastError = error as Error
-    await trackPDFFailure('external_service', String(error))
-    logPDFGeneration(1, false, String(error), 'external_service')
+    await trackPDFFailure('pdfshift', errorMessage)
+    logPDFGeneration(1, false, errorMessage, 'pdfshift')
   }
 
-  // Try Puppeteer as fallback (if available)
-  try {
-    console.log('Attempting Puppeteer fallback...')
-    const startTime = Date.now()
-    const pdfBuffer = await generatePDFWithPuppeteer(html)
-    const responseTime = Date.now() - startTime
-    
-    if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error('Puppeteer returned empty buffer')
+  // Try Puppeteer as fallback (if available - mainly for local development)
+  const isVercel = process.env.VERCEL === '1'
+  if (!isVercel) {
+    try {
+      console.log('[PDF] Attempting Puppeteer fallback...')
+      const startTime = Date.now()
+      const pdfBuffer = await generatePDFWithPuppeteer(html)
+      const responseTime = Date.now() - startTime
+      
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('Puppeteer returned empty buffer')
+      }
+      
+      if (pdfBuffer.length < 1024) {
+        throw new Error(`Puppeteer returned suspiciously small PDF (${pdfBuffer.length} bytes)`)
+      }
+      
+      console.log(`[PDF] Puppeteer fallback successful: ${pdfBuffer.length} bytes in ${responseTime}ms`)
+      await trackPDFSuccess('puppeteer_fallback', responseTime, 'high')
+      logPDFGeneration(2, true, undefined, 'puppeteer_fallback', pdfBuffer.length)
+      return pdfBuffer
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.warn('[PDF] Puppeteer fallback failed:', errorMessage)
+      lastError = error as Error
+      await trackPDFFailure('puppeteer_fallback', errorMessage)
+      logPDFGeneration(2, false, errorMessage, 'puppeteer_fallback')
     }
-    
-    console.log('Puppeteer fallback successful, size:', pdfBuffer.length)
-    await trackPDFSuccess('puppeteer_fallback', responseTime, 'high')
-    logPDFGeneration(2, true, undefined, 'puppeteer_fallback', pdfBuffer.length)
-    return pdfBuffer
-  } catch (error) {
-    console.warn('Puppeteer fallback failed:', error)
-    lastError = error as Error
-    await trackPDFFailure('puppeteer_fallback', String(error))
-    logPDFGeneration(2, false, String(error), 'puppeteer_fallback')
+  } else {
+    console.log('[PDF] Skipping Puppeteer (not available on Vercel)')
   }
 
   // Try basic PDF generation as final fallback
   try {
-    console.log('Attempting basic PDF fallback...')
+    console.log('[PDF] Attempting basic PDF fallback (low quality)...')
     const startTime = Date.now()
     const pdfBuffer = await createBasicPDF(html)
     const responseTime = Date.now() - startTime
@@ -133,67 +225,158 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
       throw new Error('Basic PDF generation returned empty buffer')
     }
     
-    console.log('Basic PDF fallback successful, size:', pdfBuffer.length)
+    console.log(`[PDF] Basic PDF fallback successful: ${pdfBuffer.length} bytes in ${responseTime}ms`)
+    console.warn('[PDF] WARNING: Using low-quality basic PDF fallback. PDFShift should be configured for production.')
     await trackPDFSuccess('basic_pdf', responseTime, 'low')
     logPDFGeneration(3, true, undefined, 'basic_pdf', pdfBuffer.length)
     return pdfBuffer
   } catch (error) {
-    console.error('All PDF generation methods failed:', error)
-    await trackPDFFailure('basic_pdf', String(error))
-    logPDFGeneration(3, false, String(error), 'basic_pdf')
-    logError(error as Error, { htmlLength: html.length, lastError: lastError?.message })
-    throw new Error(`PDF generation failed: ${lastError?.message}`)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('[PDF] All PDF generation methods failed!')
+    console.error('[PDF] Last error:', lastError?.message || errorMessage)
+    await trackPDFFailure('basic_pdf', errorMessage)
+    logPDFGeneration(3, false, errorMessage, 'basic_pdf')
+    logError(error as Error, { 
+      htmlLength: html.length, 
+      lastError: lastError?.message,
+      pdfshiftConfigured: !!process.env.PDF_SERVICE_API_KEY
+    })
+    
+    // Provide helpful error message
+    const helpfulMessage = process.env.PDF_SERVICE_API_KEY 
+      ? `PDF generation failed after all fallbacks. Last error: ${lastError?.message || errorMessage}`
+      : `PDF generation failed. PDF_SERVICE_API_KEY is not configured. Please set it in your environment variables.`
+    
+    throw new Error(helpfulMessage)
   }
 }
 
-// External PDF service integration
+// External PDF service integration - PDFShift
 async function generatePDFWithExternalService(html: string): Promise<Buffer> {
   const apiKey = process.env.PDF_SERVICE_API_KEY
-  const apiUrl = process.env.PDF_SERVICE_URL || 'https://api.html-pdf-service.com/generate'
+  const apiUrl = process.env.PDF_SERVICE_URL || 'https://api.pdfshift.io/v3/convert/pdf'
+  const serviceType = process.env.PDF_SERVICE_TYPE || 'pdfshift'
   
   if (!apiKey) {
-    throw new Error('PDF service API key not configured')
+    throw new Error('PDF service API key not configured. Set PDF_SERVICE_API_KEY environment variable.')
   }
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      html,
-      format: 'A4',
-      margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' },
-      printBackground: true,
-      preferCSSPageSize: true,
-      timeout: 30000 // 30 second timeout
+  // PDFShift uses Basic Auth with format: api:api_key
+  const authHeader = `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`
+  
+  // PDFShift API request body
+  const requestBody = {
+    source: html,
+    format: 'A4',
+    margin: '18mm 16mm',
+    print_media: true,
+    use_print_media: true,
+    landscape: false,
+    wait_for: 'networkidle0', // Wait for network to be idle
+    wait: 2000, // Additional wait time in milliseconds
+  }
+
+  console.log(`[PDFShift] Generating PDF with ${serviceType}, HTML length: ${html.length} bytes`)
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+        'User-Agent': 'AI-Resume-Tailor/2.0'
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
-  })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`PDF service API failed: ${response.status} ${response.statusText} - ${errorText}`)
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      let errorMessage = `PDFShift API failed: ${response.status} ${response.statusText}`
+      
+      try {
+        const errorData = await response.json()
+        if (errorData.error || errorData.message) {
+          errorMessage += ` - ${errorData.error || errorData.message}`
+        }
+        console.error('[PDFShift] API error response:', errorData)
+      } catch {
+        // If JSON parsing fails, try text
+        const errorText = await response.text()
+        if (errorText) {
+          errorMessage += ` - ${errorText.substring(0, 200)}`
+          console.error('[PDFShift] API error text:', errorText)
+        }
+      }
+      
+      throw new Error(errorMessage)
+    }
+
+    // Check content type
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
+      const errorText = await response.text()
+      throw new Error(`PDFShift returned non-PDF content: ${contentType}. Response: ${errorText.substring(0, 200)}`)
+    }
+
+    const pdfBuffer = await response.arrayBuffer()
+    
+    if (!pdfBuffer || pdfBuffer.byteLength < 1024) {
+      throw new Error(`PDFShift returned invalid or empty PDF (${pdfBuffer.byteLength} bytes)`)
+    }
+    
+    console.log(`[PDFShift] PDF generated successfully: ${pdfBuffer.byteLength} bytes`)
+    return Buffer.from(pdfBuffer)
+    
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('PDFShift API request timed out after 30 seconds')
+    }
+    
+    // Re-throw if it's already our formatted error
+    if (error.message && error.message.includes('PDFShift')) {
+      throw error
+    }
+    
+    // Wrap other errors
+    throw new Error(`PDFShift API error: ${error.message || String(error)}`)
   }
-
-  const pdfBuffer = await response.arrayBuffer()
-  return Buffer.from(pdfBuffer)
 }
 
-// Puppeteer fallback (for local development)
+// Puppeteer fallback (for local development only - not available on Vercel)
 async function generatePDFWithPuppeteer(html: string): Promise<Buffer> {
   try {
-    const puppeteer = await import('puppeteer')
+    console.log('[Puppeteer] Launching browser...')
+    // Dynamic import with error handling - puppeteer is optional
+    // Use Function constructor to prevent webpack from statically analyzing this import
+    const puppeteerModule = 'puppeteer'
+    const puppeteer = await new Function('return import("' + puppeteerModule + '")')()
+    
     const browser = await puppeteer.launch({ 
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     })
     
     try {
       const page = await browser.newPage()
       await page.emulateMediaType('screen')
-      await page.setContent(html, { waitUntil: 'domcontentloaded' })
       
+      console.log('[Puppeteer] Setting HTML content...')
+      await page.setContent(html, { 
+        waitUntil: 'networkidle0',
+        timeout: 15000 
+      })
+      
+      console.log('[Puppeteer] Generating PDF...')
       const pdf = await page.pdf({
         format: 'a4',
         printBackground: true,
@@ -201,12 +384,24 @@ async function generatePDFWithPuppeteer(html: string): Promise<Buffer> {
         margin: { top: '18mm', right: '16mm', bottom: '18mm', left: '16mm' }
       })
       
+      if (!pdf || pdf.length === 0) {
+        throw new Error('Puppeteer generated empty PDF')
+      }
+      
+      if (pdf.length < 1024) {
+        throw new Error(`Puppeteer generated suspiciously small PDF (${pdf.length} bytes)`)
+      }
+      
+      console.log(`[Puppeteer] PDF generated: ${pdf.length} bytes`)
       return pdf
     } finally {
       await browser.close()
     }
-  } catch (error) {
-    throw new Error(`Puppeteer failed: ${error}`)
+  } catch (error: any) {
+    if (error.message && error.message.includes('Cannot find module')) {
+      throw new Error('Puppeteer is not installed. Install with: npm install puppeteer')
+    }
+    throw new Error(`Puppeteer failed: ${error.message || String(error)}`)
   }
 }
 
@@ -358,7 +553,7 @@ export async function generatePDFWithAlternativeService(html: string, serviceNam
       },
       body: JSON.stringify({
         html,
-        base_url: process.env.BASE_URL || 'https://ai-resume-tailor.vercel.app'
+        base_url: process.env.BASE_URL || 'https://tailora.vercel.app'
       })
     }
   }

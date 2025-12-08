@@ -34,18 +34,18 @@ npm run dev
 
 1. Build image:
    ```bash
-   docker build -t ai-resume-tailor .
+   docker build -t tailora .
    ```
 2. Run container:
    ```bash
-   docker run -d --name resume-tailor \
+   docker run -d --name tailora \
      -p 3000:3000 \
      -e OPENAI_API_KEY=sk-... \
      -e INVITE_CODES=alpha123,beta456 \
      -e ADMIN_KEY=supersecret \
      -e PDF_RENDERER_URL=https://pdf-service.internal \
      -e RENDERER_KEY=renderer-secret \
-     ai-resume-tailor
+     tailora
    ```
 3. Front with reverse proxy (Caddy, Nginx, Traefik) to terminate TLS and add basic auth if required.
 4. Persist logs by mounting `/tmp` to host tmpfs if you need to inspect telemetry.
@@ -84,4 +84,3 @@ npm run dev
 - Restrict `/admin` behind VPN/SAML or additional auth.
 - Regularly rotate `ADMIN_KEY` and invite codes.
 - Set explicit CORS policy if integrating with external clients.
-

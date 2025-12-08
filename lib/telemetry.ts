@@ -133,6 +133,31 @@ export function logRequestTelemetry(data: {
   void sendToDrain(logEntry)
 }
 
+export function logUrlFetch(data: {
+  url: string
+  success: boolean
+  duration: number
+  extractedLength?: number
+  truncated?: boolean
+  validationScore?: number
+  validationValid?: boolean
+  error?: string
+  method?: string
+}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    type: 'url_fetch',
+    ...data
+  }
+  
+  try {
+    fs.appendFileSync(TELEMETRY_PATH, JSON.stringify(logEntry) + '\n')
+  } catch (e) {
+    console.warn('Failed to log URL fetch:', e)
+  }
+  void sendToDrain(logEntry)
+}
+
 async function sendToDrain(entry: any) {
   if (!LOG_DRAIN_URL) return
   try {

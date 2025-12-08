@@ -1,4 +1,4 @@
-# AI Resume Tailor — Integrity-first resume customization
+# tailora — Integrity-first resume customization
 
 **Outcome:** Upload resume + paste JD → rewrite bullets to match → export ATS-safe PDF/DOCX. No fabricated credentials. Ever.
 

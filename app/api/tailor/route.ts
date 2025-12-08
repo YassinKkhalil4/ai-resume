@@ -9,14 +9,19 @@ import { createUserFriendlyError, logAIError } from '../../../lib/ai-error-handl
 import { validateParsingResult, shouldShowExperienceBanner } from '../../../lib/parsing-validation'
 import { Tone } from '../../../lib/types'
 import { honestyScan } from '../../../lib/honesty'
-import { extractJDFromUrl } from '../../../lib/jd'
+import { extractJDFromUrl, validateUrl } from '../../../lib/jd'
+import { enforceUrlFetchRateLimit } from '../../../lib/guards'
+import { logUrlFetch } from '../../../lib/telemetry'
+import { requireAuth } from '../../../lib/auth/utils'
+import { deductCredit, NoCreditsError } from '../../../lib/billing/deduct-credit'
+import { createHash } from 'crypto'
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  console.log('Tailor API called:', {
+  console.log('tailora API called:', {
     method: req.method,
     url: req.url,
     timestamp: new Date().toISOString()
@@ -39,6 +44,17 @@ export async function POST(req: NextRequest) {
     }
     console.log('Guard check passed')
 
+    // Authenticate user and check credits
+    let user
+    try {
+      user = await requireAuth()
+    } catch (error) {
+      return NextResponse.json(
+        { code: 'unauthorized', message: 'Authentication required. Please sign in to tailor your resume.' },
+        { status: 401 }
+      )
+    }
+
     const trace = startTrace({ route: 'tailor' })
     console.log('Trace started')
 
@@ -60,24 +76,78 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ code: 'missing_jd_url', message: 'Job description URL is required' }, { status: 400 })
       }
 
+      // Apply rate limiting for URL fetching
+      const rateLimitCheck = enforceUrlFetchRateLimit(req)
+      if (!rateLimitCheck.ok) {
+        return rateLimitCheck.res
+      }
+
       try {
         console.log('Fetch-only mode: fetching JD from URL', { jd_url })
-        const jdText = await extractJDFromUrl(jd_url)
-        if (!jdText) {
-          return NextResponse.json({ code: 'empty_jd_text', message: 'Could not extract text from the provided URL' }, { status: 422 })
+        
+        // Validate URL security
+        try {
+          validateUrl(jd_url)
+        } catch (validationError) {
+          return NextResponse.json({
+            code: 'invalid_url',
+            message: validationError instanceof Error ? validationError.message : 'Invalid or unsafe URL'
+          }, { status: 400 })
         }
 
+        // Extract job description with new enhanced extraction
+        const extractionResult = await extractJDFromUrl(jd_url)
+        
+        if (!extractionResult.text || extractionResult.text.trim().length < 50) {
+          return NextResponse.json({ 
+            code: 'empty_jd_text', 
+            message: 'Could not extract meaningful content from the provided URL. The page may not contain a job description.' 
+          }, { status: 422 })
+        }
+
+        // Return enhanced response with validation info
         return NextResponse.json({
           success: true,
           mode: 'fetchOnly',
-          jd_text: jdText
+          jd_text: extractionResult.text,
+          truncated: extractionResult.truncated,
+          originalLength: extractionResult.originalLength,
+          validation: {
+            valid: extractionResult.validation.valid,
+            score: extractionResult.validation.score,
+            issues: extractionResult.validation.issues
+          }
         })
       } catch (fetchError) {
         console.error('Failed to fetch JD text:', fetchError)
+        
+        // Provide better error messages based on error type
+        let errorCode = 'jd_fetch_failed'
+        let statusCode = 500
+        let errorMessage = 'Failed to fetch job description'
+        
+        if (fetchError instanceof Error) {
+          errorMessage = fetchError.message
+          
+          if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+            errorCode = 'timeout'
+            statusCode = 408
+          } else if (errorMessage.includes('HTTP 4')) {
+            errorCode = 'http_error'
+            statusCode = 422
+          } else if (errorMessage.includes('security') || errorMessage.includes('Invalid URL')) {
+            errorCode = 'invalid_url'
+            statusCode = 400
+          } else if (errorMessage.includes('Could not find')) {
+            errorCode = 'no_content'
+            statusCode = 422
+          }
+        }
+        
         return NextResponse.json({
-          code: 'jd_fetch_failed',
-          message: fetchError instanceof Error ? fetchError.message : 'Failed to fetch job description'
-        }, { status: 500 })
+          code: errorCode,
+          message: errorMessage
+        }, { status: statusCode })
       }
     }
 
@@ -132,6 +202,25 @@ export async function POST(req: NextRequest) {
       }, { status: 422 }) // Unprocessable Entity
     }
 
+    // Deduct credit before AI processing
+    const resumeHash = createHash('sha256').update(resumeText).digest('hex')
+    try {
+      await deductCredit(user.id, resumeHash)
+      console.log('Credit deducted successfully for user:', user.id)
+    } catch (error) {
+      if (error instanceof NoCreditsError) {
+        return NextResponse.json(
+          {
+            code: 'no_credits',
+            message: 'You have no credits remaining. Please purchase credits to continue.',
+            creditsRemaining: user.creditsRemaining,
+          },
+          { status: 402 } // Payment Required
+        )
+      }
+      throw error
+    }
+
     console.log('Tailoring resume...')
     console.log('About to call getTailoredResume...')
     const deadline = Date.now() + 25000
@@ -175,6 +264,10 @@ export async function POST(req: NextRequest) {
     
     trace.end(true, { session_id: session.id, tokens, ats_original: ats.original.coverage, ats_tailored: ats.tailored.coverage })
     
+    // Get updated credit balance
+    const { getUserCredits } = await import('../../../lib/auth/utils')
+    const updatedCredits = await getUserCredits(user.id)
+    
     return NextResponse.json({
       session_id: session.id,
       version: session.version,
@@ -184,6 +277,8 @@ export async function POST(req: NextRequest) {
       keyword_stats: ats,
       tokens_used: tokens,
       message: 'Resume tailored successfully',
+      credits_remaining: updatedCredits,
+      credit_used: true,
       validation,
       honesty_scan: {
         flags: honestyResult.flags,
@@ -208,7 +303,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Tailor API error:', error)
+    console.error('tailora API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     console.error('Error type:', typeof error)
     console.error('Error constructor:', error?.constructor?.name)

@@ -8,10 +8,6 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ code: 'no_openai_key', message: 'Server not configured' }, { status: 503 })
-    }
-    
     const guard = enforceGuards(req)
     if (!guard.ok) return guard.res
 
