@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '../../../../lib/auth/utils'
+import { requireEmailVerification } from '../../../../lib/guards'
 import { stripe, isValidPriceId, getCreditsForPriceId } from '../../../../lib/stripe/config'
 import { db, users } from '../../../../lib/db'
 import { eq } from 'drizzle-orm'
+import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth()
+    const verificationCheck = await requireEmailVerification(req)
+    if (!verificationCheck.ok) {
+      return verificationCheck.res
+    }
+    const user = verificationCheck.user
     const body = await req.json()
     const { priceId } = body
 
@@ -68,6 +74,14 @@ export async function POST(req: NextRequest) {
         credits: credits.toString(),
       },
     })
+
+    // Track checkout started
+    const context = getContext(req)
+    await trackEvent('checkout_started', {
+      priceId,
+      credits,
+      sessionId: session.id,
+    }, context, user.id)
 
     return NextResponse.json({
       success: true,

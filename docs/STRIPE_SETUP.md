@@ -30,13 +30,12 @@ This will open your browser to authenticate the CLI with your Stripe account.
 
 | Product Name | Description | Price | Credits |
 |-------------|-------------|-------|---------|
-| 10 Credits | Small credit pack | $4.99 | 10 |
-| 25 Credits | Medium credit pack | $9.99 | 25 |
-| 50 Credits | Large credit pack | $17.99 | 50 |
-| 100 Credits | Extra large credit pack | $29.99 | 100 |
+| 5 Credits | Starter pack | $5.99 | 5 |
+| 15 Credits | Job Seeker pack | $12.99 | 15 |
+| 40 Credits | Power Apply pack | $24.99 | 40 |
 
 **For each product:**
-- **Name:** "X Credits" (e.g., "10 Credits")
+- **Name:** "X Credits" (e.g., "5 Credits")
 - **Description:** "Tailora Credits - Resume Tailoring"
 - **Pricing:** One-time payment
 - **Price:** Set the amount (e.g., $4.99)
@@ -50,10 +49,9 @@ Edit `lib/stripe/config.ts` and update the `CREDIT_PACKAGES` object:
 
 ```typescript
 export const CREDIT_PACKAGES: Record<string, number> = {
-  'price_xxxxxxxxxxxxx': 10,   // Replace with your 10 credits Price ID
-  'price_yyyyyyyyyyyyy': 25,   // Replace with your 25 credits Price ID
-  'price_zzzzzzzzzzzzz': 50,   // Replace with your 50 credits Price ID
-  'price_aaaaaaaaaaaaa': 100,  // Replace with your 100 credits Price ID
+  'price_xxxxxxxxxxxxx': 5,    // Replace with your 5 credits Price ID (Starter)
+  'price_yyyyyyyyyyyyy': 15,   // Replace with your 15 credits Price ID (Job Seeker)
+  'price_zzzzzzzzzzzzz': 40,   // Replace with your 40 credits Price ID (Power Apply)
 }
 ```
 

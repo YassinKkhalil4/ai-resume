@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
 import { createSectionMapper, createParsingResult } from '../../../lib/section-mapper'
 import { enforceGuards } from '../../../lib/guards'
+import { trackEvent, getContext } from '../../../lib/analytics/tracker'
+import { getCurrentUser } from '../../../lib/auth/utils'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = enforceGuards(req)
+    const guard = await enforceGuards(req)
     if (!guard.ok) return guard.res
 
     const formData = await req.formData()
@@ -40,13 +42,18 @@ export async function POST(req: NextRequest) {
     // Create section mapper
     const mapper = createSectionMapper()
     
-    // Check if we need user confirmation
+    // AI hallucination prevention: heuristic or zero-bullet roles require confirmation; never auto-tailor without user confirmation
     const confidence = calculateParsingConfidence(resume)
-    const needsConfirmation = confidence < 0.8
-    
+    const hasZeroBulletRole = (resume.experience ?? []).some(
+      (exp: any) => exp.hasBullets === false || (exp.bullets && exp.bullets.length === 0)
+    )
+    const hasHeuristicExperience = resume.experienceSource === 'heuristic'
+    const needsConfirmation =
+      confidence < 0.8 || hasZeroBulletRole || hasHeuristicExperience
+
     let mapping = {}
     let suggestedMapping = undefined
-    
+
     if (needsConfirmation) {
       // Find unknown sections and suggest mappings
       const unknownSections = findUnknownSections(resume)
@@ -54,6 +61,23 @@ export async function POST(req: NextRequest) {
     }
     
     const result = createParsingResult(resume, mapping, confidence)
+    result.needsConfirmation = needsConfirmation
+
+    // Track resume parse success
+    try {
+      const user = await getCurrentUser().catch(() => null)
+      const context = getContext(req)
+      await trackEvent('resume_parse_success', {
+        confidence,
+        needsConfirmation,
+        hasSummary: !!resume.summary,
+        skillsCount: resume.skills?.length || 0,
+        experienceCount: resume.experience?.length || 0,
+      }, context, user?.id)
+    } catch (trackError) {
+      // Don't fail the request if tracking fails
+      console.error('Failed to track parse success:', trackError)
+    }
     
     return NextResponse.json({
       success: true,
@@ -68,6 +92,18 @@ export async function POST(req: NextRequest) {
     
   } catch (error) {
     console.error('Resume parsing error:', error)
+    
+    // Track resume parse failed
+    try {
+      const user = await getCurrentUser().catch(() => null)
+      const context = getContext(req)
+      await trackEvent('resume_parse_failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, context, user?.id)
+    } catch (trackError) {
+      // Don't fail the request if tracking fails
+    }
+    
     return NextResponse.json({ 
       code: 'parsing_failed', 
       message: 'Failed to parse resume',
@@ -76,36 +112,41 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Parsing confidence; penalizes zero-bullet roles and heuristic experience (AI hallucination prevention).
+ */
 function calculateParsingConfidence(resume: any): number {
   let score = 0
   let maxScore = 0
-  
+
   // Check for meaningful content in each section
   const sections = ['summary', 'skills', 'experience', 'education', 'certifications']
-  
+
   for (const section of sections) {
     maxScore += 1
     if (resume[section] && resume[section].length > 0) {
       score += 1
     }
   }
-  
-  // Bonus for experience with bullets
+
+  // Bonus for experience with bullets; penalize roles with zero bullets (no fabrication eligibility)
   if (resume.experience && resume.experience.length > 0) {
-    const hasBullets = resume.experience.some((exp: any) => 
-      exp.bullets && exp.bullets.length > 0
+    const rolesWithBullets = resume.experience.filter(
+      (exp: any) => exp.bullets && exp.bullets.length > 0
     )
-    if (hasBullets) score += 0.5
+    const hasAnyBullets = rolesWithBullets.length > 0
+    const allRolesHaveBullets = rolesWithBullets.length === resume.experience.length
+    if (hasAnyBullets) score += 0.5
+    if (!allRolesHaveBullets) score -= 0.3 // Penalize zero-bullet roles
     maxScore += 0.5
   }
-  
-  // Bonus for skills with multiple items
-  if (resume.skills && resume.skills.length > 3) {
-    score += 0.5
-    maxScore += 0.5
+
+  // Penalize heuristic-derived experience (must not auto-tailor)
+  if (resume.experienceSource === 'heuristic') {
+    score -= 0.25
   }
-  
-  return maxScore > 0 ? score / maxScore : 0
+
+  return maxScore > 0 ? Math.max(0, score / maxScore) : 0
 }
 
 function findUnknownSections(resume: any): string[] {

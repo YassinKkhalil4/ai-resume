@@ -59,6 +59,13 @@ function jaccardNormalized(a: Set<string>, b: Set<string>): number {
   return union.size ? fuzzyMatches / union.size : 0
 }
 
+/** Similarity between two bullet texts (0–1). Used for strict rewrite validation. */
+export function bulletSimilarity(original: string, rewritten: string): number {
+  const a = tokenizeNormalized(original)
+  const b = tokenizeNormalized(rewritten)
+  return jaccardNormalized(a, b)
+}
+
 export function honestyScan(original: Role[], tailored: Role[]) {
   const threshold = HONESTY_THRESHOLD
   const flags: Array<{ role: string, bullet: string, score: number, backing: string[], reason?: string }> = []

@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-export async function GET(_req: NextRequest, { params }:{ params: { file: string } }) {
+export async function GET(_req: NextRequest, { params }:{ params: Promise<{ file: string }> }) {
   try {
-    const file = params.file
+    const { file } = await params
     if (!file) {
       return NextResponse.json({ 
         error: 'Missing file parameter', 

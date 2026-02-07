@@ -37,11 +37,17 @@ export default function DiffView({ diffs }:{ diffs: Diff[] }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Original</div>
-              <ul className="mt-1 space-y-1 border-l-2 border-dashed border-slate-200 pl-3 text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                {d.original.map((b, bi) => (
-                  <li key={bi} className="line-through decoration-slate-400/70">{b}</li>
-                ))}
-              </ul>
+              {d.original.length === 0 ? (
+                <div className="mt-1 border-l-2 border-dashed border-slate-200 pl-3 text-xs italic text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                  This role could not be tailored because no experience details were provided.
+                </div>
+              ) : (
+                <ul className="mt-1 space-y-1 border-l-2 border-dashed border-slate-200 pl-3 text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  {d.original.map((b, bi) => (
+                    <li key={bi} className="line-through decoration-slate-400/70">{b}</li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Tailored</div>

@@ -5,6 +5,8 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import CreditDisplay from '../../components/billing/CreditDisplay'
 import BuyCreditsModal from '../../components/billing/BuyCreditsModal'
+import ThemeToggle from '../../components/ThemeToggle'
+import { useTracking } from '../../lib/analytics/useTracking'
 
 interface CreditTransaction {
   id: string
@@ -23,14 +25,18 @@ function DashboardContent() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const [credits, setCredits] = useState<number | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [transactions, setTransactions] = useState<CreditTransaction[]>([])
   const [usageLogs, setUsageLogs] = useState<UsageLog[]>([])
   const [loading, setLoading] = useState(true)
   const [showBuyModal, setShowBuyModal] = useState(false)
+  const { track } = useTracking()
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
       fetchDashboardData()
+      // Track credit balance viewed
+      track('credit_balance_viewed', {})
       
       // Check for Stripe redirect
       const sessionId = searchParams.get('session_id')
@@ -45,7 +51,7 @@ function DashboardContent() {
     } else {
       setLoading(false)
     }
-  }, [status, session, searchParams])
+  }, [status, session, searchParams, track])
 
   const fetchDashboardData = async () => {
     try {
@@ -54,6 +60,7 @@ function DashboardContent() {
       if (creditsRes.ok) {
         const creditsData = await creditsRes.json()
         setCredits(creditsData.creditsRemaining)
+        setIsAdmin(creditsData.isAdmin || false)
       }
 
       // TODO: Add endpoints for transactions and usage logs
@@ -91,25 +98,37 @@ function DashboardContent() {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
           <p className="mt-2 text-slate-600 dark:text-slate-400">Manage your credits and view usage history</p>
         </div>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
         <CreditDisplay />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Credit Balance</h2>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">{credits ?? 0}</span>
-            <span className="text-slate-600 dark:text-slate-400">credits</span>
+            <span className={`text-4xl font-bold ${isAdmin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+              {isAdmin ? 'Unlimited' : credits ?? 0}
+            </span>
+            {!isAdmin && <span className="text-slate-600 dark:text-slate-400">credits</span>}
           </div>
           <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
-            Each credit allows you to tailor one resume to a job description.
+            {isAdmin
+              ? 'You have unlimited credits as an administrator.'
+              : 'Each credit allows you to tailor one resume to a job description.'}
           </p>
+          {!isAdmin && (
           <button
-            onClick={() => setShowBuyModal(true)}
+            onClick={() => {
+              track('pricing_page_viewed', { source: 'dashboard' })
+              setShowBuyModal(true)
+            }}
             className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
           >
             Buy More Credits
           </button>
+          )}
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">

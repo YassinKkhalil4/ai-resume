@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { renderHTML, htmlToPDF } from '../../../lib/pdf-service-v2';
 import { htmlToDocxSafe } from '../../../lib/html-to-docx';
 import { normalizeTailored } from '../../../lib/export-normalize';
-import { enforceGuards } from '../../../lib/guards';
+import { enforceGuards, requireEmailVerification } from '../../../lib/guards';
 import { getConfig } from '../../../lib/config';
 
 export const runtime = 'nodejs';
@@ -16,8 +16,12 @@ type ExportBody = {
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = enforceGuards(req);
+    const guard = await enforceGuards(req);
     if (!guard.ok) return guard.res;
+
+    // Check email verification
+    const verificationCheck = await requireEmailVerification(req);
+    if (!verificationCheck.ok) return verificationCheck.res;
 
     const cfg = getConfig();
     if (cfg.pauseExport) {
@@ -49,6 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ code: 'bad_snapshot', message: 'Invalid snapshot shape' }, { status: 400 });
     }
 
+
     const tailored = normalizeTailored(snapshot, {
       fallbackContact: snapshot?.original_sections_json?.contact ?? snapshot?.contact,
       fallbackEducation: snapshot?.original_sections_json?.education,
@@ -57,13 +62,18 @@ export async function POST(req: NextRequest) {
       fallbackAdditional: snapshot?.original_sections_json?.additional_sections,
     });
 
+
     const html = await renderHTML(tailored, template as 'classic' | 'modern' | 'minimal', {
       includeSummary: body.options?.includeSummary ?? true,
       includeSkills: body.options?.includeSkills ?? true
     });
 
+
     if (format === 'docx') {
+
       const docx = await htmlToDocxSafe(html);
+
+
       return new Response(new Uint8Array(docx), {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -74,8 +84,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (format === 'pdf') {
+
       const pdfBuffer = await htmlToPDF(html);
       const pdf = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
+
+
       return new Response(new Uint8Array(pdf), {
         headers: {
           'Content-Type': 'application/pdf',

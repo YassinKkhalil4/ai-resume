@@ -5,6 +5,8 @@ import { ResumeJSON } from '../../../lib/types'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
 import { extractBulletsFromFreeText } from '../../../lib/ai-response-parser'
 
+// extractBulletsFromFreeText is only called here on explicit user action ("Paste your experience") — never automatic (AI hallucination prevention).
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
   })
 
   try {
-    const guard = enforceGuards(req)
+    const guard = await enforceGuards(req)
     if (!guard.ok) return guard.res
 
     const body = await req.json()
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
     let existingSession = null
 
     if (sessionId) {
-      existingSession = getSession(sessionId)
+      existingSession = await getSession(sessionId)
     }
 
     const originalRawText = existingSession?.originalRawText || experienceText
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
     // Create or update session
     let session
     if (existingSession) {
-      session = updateSession(sessionId, {
+      session = await updateSession(sessionId, {
         original: originalResume,
         tailored: tailored,
         jdText: jdText,
@@ -117,7 +119,7 @@ export async function POST(req: NextRequest) {
         originalRawText
       })
     } else {
-      session = createSession(originalResume, tailored, jdText, ats, originalRawText)
+      session = await createSession(originalResume, tailored, jdText, ats, originalRawText)
     }
 
     if (!session) {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, getCreditsForPriceId } from '../../../../lib/stripe/config'
-import { db, users, creditTransactions, webhookLogs } from '../../../../lib/db'
-import { eq } from 'drizzle-orm'
+import { db, users, creditTransactions, creditLots, webhookLogs } from '../../../../lib/db'
+import { and, eq, desc } from 'drizzle-orm'
 import Stripe from 'stripe'
+import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
 
 export const runtime = 'nodejs'
 
@@ -48,13 +49,32 @@ export async function POST(req: NextRequest) {
       // Extract metadata
       const userId = session.metadata?.userId
       const creditsStr = session.metadata?.credits
+      const priceId = session.metadata?.priceId
 
-      if (!userId || !creditsStr) {
-        console.error('Missing metadata in checkout session:', session.id)
+      if (!userId) {
+        console.error('Missing userId in checkout session metadata:', session.id)
         return NextResponse.json({ received: true }, { status: 200 })
       }
 
-      const credits = parseInt(creditsStr, 10)
+      // Derive credits either from explicit metadata or from Stripe price mapping
+      let credits = creditsStr ? parseInt(creditsStr, 10) : 0
+      if (!credits && priceId) {
+        const mapped = getCreditsForPriceId(priceId)
+        if (mapped && mapped > 0) {
+          credits = mapped
+        }
+      }
+
+      if (!credits || Number.isNaN(credits) || credits <= 0) {
+        console.error('No valid credits resolved for checkout session:', {
+          sessionId: session.id,
+          userId,
+          creditsStr,
+          priceId,
+        })
+        return NextResponse.json({ received: true }, { status: 200 })
+      }
+
       const paymentIntentId = session.payment_intent as string
 
       if (!paymentIntentId) {
@@ -69,14 +89,21 @@ export async function POST(req: NextRequest) {
 
       if (existingTransaction) {
         console.log('Duplicate webhook event, already processed:', paymentIntentId)
-        // Update webhook log as processed
-        await db
-          .update(webhookLogs)
-          .set({ processed: true })
-          .where(eq(webhookLogs.id, (await db.query.webhookLogs.findFirst({
-            where: eq(webhookLogs.eventType, event.type),
-            orderBy: (webhookLogs, { desc }) => [desc(webhookLogs.createdAt)],
-          }))?.id || ''))
+        // Update webhook log as processed for this specific event id if possible
+        const latestLog = await db.query.webhookLogs.findFirst({
+          where: and(
+            eq(webhookLogs.eventType, event.type),
+            eq(webhookLogs.processed, false)
+          ),
+          orderBy: (webhookLogs, { desc: orderDesc }) => [orderDesc(webhookLogs.createdAt)],
+        })
+
+        if (latestLog) {
+          await db
+            .update(webhookLogs)
+            .set({ processed: true })
+            .where(eq(webhookLogs.id, latestLog.id))
+        }
 
         return NextResponse.json({ received: true, duplicate: true }, { status: 200 })
       }
@@ -91,7 +118,7 @@ export async function POST(req: NextRequest) {
           amount: ((session.amount_total || 0) / 100).toString(), // Convert from cents to string
         })
 
-        // Update user credits
+        // Update user credits and create credit lot with 1-year expiry
         const user = await tx.query.users.findFirst({
           where: eq(users.id, userId),
         })
@@ -99,6 +126,20 @@ export async function POST(req: NextRequest) {
         if (!user) {
           throw new Error(`User not found: ${userId}`)
         }
+
+        const now = new Date()
+        const expiresAt = new Date(now)
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1)
+
+        await tx.insert(creditLots).values({
+          userId,
+          source: 'checkout',
+          stripePaymentId: paymentIntentId,
+          stripeInvoiceId: null,
+          creditsTotal: credits,
+          creditsRemaining: credits,
+          expiresAt,
+        })
 
         await tx
           .update(users)
@@ -110,8 +151,11 @@ export async function POST(req: NextRequest) {
 
       // Mark webhook as processed
       const webhookLog = await db.query.webhookLogs.findFirst({
-        where: eq(webhookLogs.eventType, event.type),
-        orderBy: (webhookLogs, { desc }) => [desc(webhookLogs.createdAt)],
+        where: and(
+          eq(webhookLogs.eventType, event.type),
+          eq(webhookLogs.processed, false)
+        ),
+        orderBy: (webhookLogs, { desc: orderDesc }) => [orderDesc(webhookLogs.createdAt)],
       })
 
       if (webhookLog) {
@@ -122,6 +166,15 @@ export async function POST(req: NextRequest) {
       }
 
       console.log(`Credits added: ${credits} to user ${userId}`)
+
+      // Track checkout completed
+      const context = getContext(req)
+      await trackEvent('checkout_completed', {
+        priceId: session.metadata?.priceId,
+        credits,
+        amount: (session.amount_total || 0) / 100,
+        sessionId: paymentIntentId,
+      }, context, userId)
     } catch (error) {
       console.error('Error processing webhook:', error)
       // Return 200 to prevent Stripe from retrying (we'll handle manually)

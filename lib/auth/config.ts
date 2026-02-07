@@ -4,6 +4,24 @@ import GoogleProvider from 'next-auth/providers/google'
 import { db, users } from '../db'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+import { detectUniversity } from '../analytics/university-detector'
+import { trackEvent } from '../analytics/tracker'
+
+// Auto-fix NEXTAUTH_URL if it's set to production URL but we're running locally
+if (process.env.NEXTAUTH_URL && process.env.NODE_ENV === 'development') {
+  try {
+    const configuredUrl = new URL(process.env.NEXTAUTH_URL)
+    const isProductionUrl = configuredUrl.hostname.includes('vercel.app') || configuredUrl.hostname.includes('netlify.app') || !configuredUrl.hostname.includes('localhost')
+    
+    if (isProductionUrl) {
+      // Override with localhost for development
+      process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL?.replace(configuredUrl.origin, 'http://localhost:3000') || 'http://localhost:3000'
+      console.warn('[auth] NEXTAUTH_URL was set to production URL in development, auto-corrected to:', process.env.NEXTAUTH_URL)
+    }
+  } catch (e) {
+    // Invalid URL, ignore
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -35,6 +53,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           creditsRemaining: user.creditsRemaining,
+          isAdmin: user.isAdmin,
         }
       },
     }),
@@ -49,24 +68,53 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
-        // Check if user exists
-        const existingUser = await db.query.users.findFirst({
-          where: eq(users.email, user.email || ''),
-        })
+        try {
+          // Check if user exists
+          const existingUser = await db.query.users.findFirst({
+            where: eq(users.email, user.email || ''),
+          })
 
-        if (!existingUser) {
-          // Create new user with 1 free credit
-          const [newUser] = await db
-            .insert(users)
-            .values({
-              email: user.email || '',
-              creditsRemaining: 1, // Free credit on signup
-            })
-            .returning()
+          if (!existingUser) {
+            // Create new user with 1 free credit and auto-verify email (Google OAuth)
+            const [newUser] = await db
+              .insert(users)
+              .values({
+                email: user.email || '',
+                creditsRemaining: 1, // Free credit on signup
+                emailVerified: true, // Auto-verify Google OAuth users
+                emailVerifiedAt: new Date(),
+              })
+              .returning()
 
-          user.id = newUser.id
-        } else {
-          user.id = existingUser.id
+            user.id = newUser.id
+          } else {
+            // Update existing user to verified if not already (in case they signed up with email first)
+            if (!existingUser.emailVerified) {
+              await db
+                .update(users)
+                .set({
+                  emailVerified: true,
+                  emailVerifiedAt: new Date(),
+                })
+                .where(eq(users.id, existingUser.id))
+            }
+            user.id = existingUser.id
+          }
+
+          // Track university domain detection for Google sign-in
+          if (user.email) {
+            const university = detectUniversity(user.email)
+            if (university) {
+              // Track asynchronously to not block sign-in
+              trackEvent('university_domain_detected', {
+                domain: university.domain,
+                universityName: university.name,
+              }, {}, user.id).catch(console.error)
+            }
+          }
+        } catch (error) {
+          console.error('Google signIn callback error:', error)
+          throw error
         }
       }
       return true
@@ -79,6 +127,8 @@ export const authOptions: NextAuthOptions = {
         })
         if (dbUser) {
           token.creditsRemaining = dbUser.creditsRemaining
+          token.emailVerified = dbUser.emailVerified
+          token.isAdmin = dbUser.isAdmin
         }
       }
       return token
@@ -87,6 +137,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string
         session.user.creditsRemaining = token.creditsRemaining as number
+        session.user.emailVerified = token.emailVerified as boolean
+        session.user.isAdmin = token.isAdmin as boolean
       }
       return session
     },

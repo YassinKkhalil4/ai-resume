@@ -1,7 +1,14 @@
 import { Role } from './types'
 import { explainChanges } from './diff_explain'
+import { logEvent } from './trace/tracer'
+import { RESUME_DIFF } from './trace/stages'
+import { extractKeyTerms } from './keyword-utils'
 
-export function buildDiffs(original: Role[], tailored: Role[]) {
+export async function buildDiffs(
+  original: Role[], 
+  tailored: Role[],
+  runId?: string | null
+): Promise<Array<{role:string, original:string[], tailored:string[], reasons?: string[]}>> {
   const diffs: Array<{role:string, original:string[], tailored:string[], reasons?: string[]}> = []
   const map = new Map<string, Role>()
   
@@ -41,6 +48,65 @@ export function buildDiffs(original: Role[], tailored: Role[]) {
         tailored: tailoredBullets, 
         reasons 
       })
+      
+      // Log significant changes (similarity < 0.8) for each bullet
+      for (let i = 0; i < Math.max(originalBullets.length, tailoredBullets.length); i++) {
+        const orig = originalBullets[i] || ''
+        const tailoredItem = tailoredBullets[i] || ''
+        
+        if (!orig && tailoredItem) {
+          // New bullet added
+          const origTokens = tokenize('')
+          const tailoredTokens = tokenize(tailoredItem)
+          const similarity = calculateSimilarity(origTokens, tailoredTokens)
+          
+          if (similarity < 0.8) {
+            const origTerms = extractKeyTerms(orig)
+            const tailoredTerms = extractKeyTerms(tailoredItem)
+            const keywordsAdded = Array.from(tailoredTerms).filter(t => !origTerms.has(t))
+            
+            await logEvent(runId || null, RESUME_DIFF, 'bullet_change', {
+              original: orig,
+              tailored: tailoredItem,
+              change_type: 'add',
+              keywords_added: Array.from(keywordsAdded),
+              keywords_removed: [],
+              semantic_similarity: similarity,
+            })
+          }
+        } else if (orig && !tailoredItem) {
+          // Bullet removed
+          await logEvent(runId || null, RESUME_DIFF, 'bullet_change', {
+            original: orig,
+            tailored: '',
+            change_type: 'remove',
+            keywords_added: [],
+            keywords_removed: Array.from(extractKeyTerms(orig)),
+            semantic_similarity: 0,
+          })
+        } else if (orig && tailoredItem) {
+          // Bullet rewritten
+          const origTokens = tokenize(orig)
+          const tailoredTokens = tokenize(tailoredItem)
+          const similarity = calculateSimilarity(origTokens, tailoredTokens)
+          
+          if (similarity < 0.8) {
+            const origTerms = extractKeyTerms(orig)
+            const tailoredTerms = extractKeyTerms(tailoredItem)
+            const keywordsAdded = Array.from(tailoredTerms).filter(t => !origTerms.has(t))
+            const keywordsRemoved = Array.from(origTerms).filter(t => !tailoredTerms.has(t))
+            
+            await logEvent(runId || null, RESUME_DIFF, 'bullet_change', {
+              original: orig,
+              tailored: tailoredItem,
+              change_type: 'rewrite',
+              keywords_added: Array.from(keywordsAdded),
+              keywords_removed: Array.from(keywordsRemoved),
+              semantic_similarity: similarity,
+            })
+          }
+        }
+      }
     }
   }
   
@@ -49,7 +115,9 @@ export function buildDiffs(original: Role[], tailored: Role[]) {
 
 function checkForContentChanges(original: string[], tailored: string[]): boolean {
   // If different lengths, definitely changed
-  if (original.length !== tailored.length) return true
+  if (original.length !== tailored.length) {
+    return true
+  }
   
   // Check for content differences using token-based comparison
   for (let i = 0; i < original.length; i++) {

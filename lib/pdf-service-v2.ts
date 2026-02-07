@@ -158,6 +158,8 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
   // Try external PDF service first (most reliable) - PDFShift
   try {
     console.log('[PDF] Attempting PDFShift service...')
+    
+    
     const startTime = Date.now()
     const pdfBuffer = await generatePDFWithExternalService(html)
     const responseTime = Date.now() - startTime
@@ -176,6 +178,8 @@ export async function htmlToPDF(html: string): Promise<Buffer> {
     return pdfBuffer
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
+    
+    
     console.warn('[PDF] PDFShift failed:', errorMessage)
     lastError = error as Error
     await trackPDFFailure('pdfshift', errorMessage)
@@ -257,6 +261,7 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
   const apiUrl = process.env.PDF_SERVICE_URL || 'https://api.pdfshift.io/v3/convert/pdf'
   const serviceType = process.env.PDF_SERVICE_TYPE || 'pdfshift'
   
+  
   if (!apiKey) {
     throw new Error('PDF service API key not configured. Set PDF_SERVICE_API_KEY environment variable.')
   }
@@ -264,24 +269,23 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
   // PDFShift uses Basic Auth with format: api:api_key
   const authHeader = `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`
   
-  // PDFShift API request body
+  // PDFShift API v3 request body
+  // Note: v3 API doesn't support print_media, use_print_media, wait, or wait_for fields
   const requestBody = {
     source: html,
     format: 'A4',
     margin: '18mm 16mm',
-    print_media: true,
-    use_print_media: true,
     landscape: false,
-    wait_for: 'networkidle0', // Wait for network to be idle
-    wait: 2000, // Additional wait time in milliseconds
   }
 
   console.log(`[PDFShift] Generating PDF with ${serviceType}, HTML length: ${html.length} bytes`)
+
 
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
 
+    const fetchStartTime = Date.now()
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -292,14 +296,18 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
       body: JSON.stringify(requestBody),
       signal: controller.signal
     })
+    const fetchDuration = Date.now() - fetchStartTime
 
     clearTimeout(timeoutId)
 
+
     if (!response.ok) {
       let errorMessage = `PDFShift API failed: ${response.status} ${response.statusText}`
+      let errorDetails: any = {}
       
       try {
         const errorData = await response.json()
+        errorDetails = errorData
         if (errorData.error || errorData.message) {
           errorMessage += ` - ${errorData.error || errorData.message}`
         }
@@ -307,11 +315,13 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
       } catch {
         // If JSON parsing fails, try text
         const errorText = await response.text()
+        errorDetails = { text: errorText.substring(0, 500) }
         if (errorText) {
           errorMessage += ` - ${errorText.substring(0, 200)}`
           console.error('[PDFShift] API error text:', errorText)
         }
       }
+      
       
       throw new Error(errorMessage)
     }
@@ -320,19 +330,26 @@ async function generatePDFWithExternalService(html: string): Promise<Buffer> {
     const contentType = response.headers.get('content-type') || ''
     if (!contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
       const errorText = await response.text()
+      
+      
       throw new Error(`PDFShift returned non-PDF content: ${contentType}. Response: ${errorText.substring(0, 200)}`)
     }
 
     const pdfBuffer = await response.arrayBuffer()
     
+    
     if (!pdfBuffer || pdfBuffer.byteLength < 1024) {
+      
       throw new Error(`PDFShift returned invalid or empty PDF (${pdfBuffer.byteLength} bytes)`)
     }
     
     console.log(`[PDFShift] PDF generated successfully: ${pdfBuffer.byteLength} bytes`)
+    
+    
     return Buffer.from(pdfBuffer)
     
   } catch (error: any) {
+    
     if (error.name === 'AbortError') {
       throw new Error('PDFShift API request timed out after 30 seconds')
     }
@@ -407,6 +424,7 @@ async function generatePDFWithPuppeteer(html: string): Promise<Buffer> {
 
 // Basic PDF generation fallback
 async function createBasicPDF(html: string): Promise<Buffer> {
+
   // Clean HTML for basic PDF
   const cleanHtml = html
     .replace(/<style[^>]*>.*?<\/style>/gis, '') // Remove complex CSS
@@ -422,8 +440,11 @@ async function createBasicPDF(html: string): Promise<Buffer> {
     .trim()
     // Remove length limit to include full resume content
 
+
   // Create a simple, reliable PDF using a different approach
   const pdfContent = createSimplePDF(textContent)
+
+
   return Buffer.from(pdfContent, 'utf8')
 }
 
@@ -446,23 +467,54 @@ function createSimplePDF(text: string): string {
     lines.push(currentLine.trim())
   }
 
-  // Allow more lines to accommodate longer resumes
-  const maxLines = Math.min(lines.length, 50) // Increased from 25 to 50
+
+  // Remove line limit to include full resume content - this was causing truncation!
+  const maxLines = lines.length // Removed artificial limit
   const displayLines = lines.slice(0, maxLines)
 
-  // Create PDF content
+
+  // Create PDF content with proper text positioning
+  // Use Tm (text matrix) for absolute positioning instead of Td (relative)
   let content = ''
   let y = 750
+  const lineHeight = 14
+  const leftMargin = 50
+  const pageHeight = 792
+  const bottomMargin = 30
+  let currentPage = 1
+  const linesPerPage = Math.floor((pageHeight - (750 - y) - bottomMargin) / lineHeight)
   
-  for (const line of displayLines) {
-    if (y < 30) break // Allow more content by going closer to bottom
-    const escapedLine = line.replace(/[()\\]/g, '\\$&')
-    content += `50 ${y} Td (${escapedLine}) Tj 0 0 Td `
-    y -= 15 // Reduced line height to fit more content
+  for (let i = 0; i < displayLines.length; i++) {
+    const line = displayLines[i]
+    
+    // Check if we need a new page
+    if (y < bottomMargin && i < displayLines.length - 1) {
+      // Start new page
+      currentPage++
+      y = 750
+      // Note: For multi-page support, we'd need to add page objects, but for now
+      // we'll just continue on the same page by resetting Y
+    }
+    
+    // Escape special PDF characters properly (no length limit - PDF can handle long strings)
+    const escapedLine = line
+      .replace(/\\/g, '\\\\')  // Escape backslashes first
+      .replace(/\(/g, '\\(')   // Escape opening parens
+      .replace(/\)/g, '\\)')    // Escape closing parens
+      .replace(/\n/g, ' ')      // Replace newlines with spaces
+      // Removed .substring(0, 100) - this was truncating content!
+    
+    // Use Tm for absolute positioning: x y Tm sets text matrix
+    // Then Tj renders the text
+    // For very long lines, we could split them, but PDF strings can be quite long
+    content += `${leftMargin} ${y} Tm (${escapedLine}) Tj `
+    y -= lineHeight
   }
 
-  const stream = `BT /F1 12 Tf ${content}ET`
+  // Initialize text state: BT (begin text), set font, then render all lines
+  const stream = `BT /F1 11 Tf ${content}ET`
   const streamLength = stream.length
+
 
   return `%PDF-1.4
 1 0 obj

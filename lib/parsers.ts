@@ -1,10 +1,12 @@
 import mammoth from 'mammoth'
-import { ResumeJSON } from './types'
+import { ResumeJSON, type ExperienceSource } from './types'
 
 type ParsedSections = {
   sections: Record<string, string>
   headings: Record<string, string>
   order: string[]
+  /** If set, these sections were created by heuristic (fallback/content-based); triggers needsConfirmation and no auto-tailor (AI hallucination prevention). */
+  source?: ExperienceSource
 }
 
 export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string, error?: string, message?: string}> {
@@ -58,26 +60,28 @@ export function heuristicParseResume(raw: string): ResumeJSON {
     .filter(Boolean)
     .join('\n')
 
-  // Try primary parsing with enhanced heading detection
+  // Try primary parsing with enhanced heading detection (explicit section boundaries)
   let parsedSections = splitByHeadings(text)
   let sections = parsedSections.sections
-  
-  // If primary parsing fails, try fallback segmentation
+  let experienceSource: ExperienceSource = 'explicit'
+
+  // If primary parsing fails, try fallback segmentation (heuristic — must not auto-tailor)
   if (Object.keys(sections).length === 0 || !hasMeaningfulContent(sections)) {
     console.log('Primary parsing failed, attempting fallback segmentation')
     parsedSections = fallbackSegmentation(text)
     sections = parsedSections.sections
+    experienceSource = parsedSections.source ?? 'heuristic'
   }
 
-  const experience = parseExperience(
+  const experienceSectionText =
     sections['experience'] ||
-      sections['work'] ||
-      sections['work experience'] ||
-      sections['professional experience'] ||
-      sections['employment'] ||
-      sections['work history'] ||
-      ''
-  )
+    sections['work'] ||
+    sections['work experience'] ||
+    sections['professional experience'] ||
+    sections['employment'] ||
+    sections['work history'] ||
+    ''
+  const experience = parseExperience(experienceSectionText, experienceSource)
   const projects = parseProjects(
     sections['projects'] ||
       sections['project experience'] ||
@@ -101,7 +105,16 @@ export function heuristicParseResume(raw: string): ResumeJSON {
 
   const additionalSections = buildAdditionalSections(parsedSections)
 
-  return { summary, skills, experience, education, certifications, projects, additional_sections: additionalSections }
+  return {
+    summary,
+    skills,
+    experience,
+    experienceSource,
+    education,
+    certifications,
+    projects,
+    additional_sections: additionalSections,
+  }
 }
 
 function splitByHeadings(text: string): ParsedSections {
@@ -292,12 +305,12 @@ function fallbackSegmentation(text: string): ParsedSections {
     if (!order.includes(currentSection)) order.push(currentSection)
   }
   
-  // If still no sections found, try content-based segmentation
+  // If still no sections found, try content-based segmentation (all sections from here are heuristic)
   if (Object.keys(sections).length === 0) {
     return contentBasedSegmentation(text)
   }
   
-  return { sections, headings, order }
+  return { sections, headings, order, source: 'heuristic' }
 }
 
 function contentBasedSegmentation(text: string): ParsedSections {
@@ -335,7 +348,7 @@ function contentBasedSegmentation(text: string): ParsedSections {
     if (!order.includes(currentSection)) order.push(currentSection)
   }
   
-  return { sections, headings, order }
+  return { sections, headings, order, source: 'heuristic' }
 }
 
 function isLikelyExperience(line: string): boolean {
@@ -361,16 +374,28 @@ function isLikelySkills(line: string): boolean {
   return skillsPatterns.some(pattern => pattern.test(line))
 }
 
-function parseExperience(section: string) {
-  const roles: Array<{company: string, role: string, bullets: string[]}> = []
+/**
+ * Parse experience section into roles. AI hallucination prevention: roles with zero bullets
+ * are marked hasBullets: false and must not be eligible for tailoring (validation hard-fails).
+ */
+function parseExperience(section: string, sectionSource?: ExperienceSource): Array<{ company: string; role: string; dates?: string; bullets: string[]; hasBullets: boolean; source?: ExperienceSource }> {
+  const roles: Array<{ company: string; role: string; dates?: string; bullets: string[]; hasBullets: boolean; source?: ExperienceSource }> = []
   const lines = section.split('\n').filter(Boolean)
-  
-  let currentRole: any = null
-  
+
+  let currentRole: { company: string; role: string; dates?: string; bullets: string[] } | null = null
+
   for (const line of lines) {
     const trimmed = line.trim()
     if (isRoleLine(trimmed)) {
-      if (currentRole) roles.push(currentRole)
+      if (currentRole) {
+        // Finalize previous role: no experience role with zero bullets may proceed to tailoring
+        const hasBullets = currentRole.bullets.length > 0
+        roles.push({
+          ...currentRole,
+          hasBullets,
+          source: sectionSource,
+        })
+      }
       currentRole = parseRoleLine(trimmed)
     } else if (currentRole && isBulletPoint(trimmed)) {
       const bullet = stripLeadingMarker(trimmed)
@@ -380,8 +405,15 @@ function parseExperience(section: string) {
       if (bullet) currentRole.bullets.push(bullet)
     }
   }
-  
-  if (currentRole) roles.push(currentRole)
+
+  if (currentRole) {
+    const hasBullets = currentRole.bullets.length > 0
+    roles.push({
+      ...currentRole,
+      hasBullets,
+      source: sectionSource,
+    })
+  }
   return roles
 }
 

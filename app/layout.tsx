@@ -1,10 +1,12 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import ThemeToggle from '../components/ThemeToggle'
-import { LogoCompact } from '../components/Logo'
 import Image from 'next/image'
 import AuthProvider from '../components/auth/AuthProvider'
+import Navigation from '../components/Navigation'
+import CookieConsent from '../components/CookieConsent'
+import CookiePreferencesLink from '../components/CookiePreferencesLink'
+import ThemeProvider from '../components/ThemeProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -44,8 +46,89 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="light">
-      <body className={`${inter.className} bg-transparent`}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // Apply theme synchronously before render to prevent flash
+                try {
+                  const stored = localStorage.getItem('theme');
+                  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  const shouldBeDark = stored === 'dark' || (!stored && prefersDark);
+                  
+                  if (shouldBeDark) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  } else {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {
+                  // Fallback to light if localStorage fails
+                  document.documentElement.classList.add('light');
+                }
+                
+                function logCSSState(label) {
+                  const htmlBg = getComputedStyle(document.documentElement).backgroundColor;
+                  const bodyBg = getComputedStyle(document.body).backgroundColor;
+                  const htmlBgImage = getComputedStyle(document.documentElement).backgroundImage;
+                  const bodyBgImage = getComputedStyle(document.body).backgroundImage;
+                  const stylesheets = Array.from(document.styleSheets).map(s => s.href || 'inline').filter(Boolean);
+                  
+                  fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      location: 'layout.tsx:css-check',
+                      message: 'CSS state: ' + label,
+                      data: {
+                        htmlBg,
+                        bodyBg,
+                        htmlBgImage: htmlBgImage.substring(0, 100),
+                        bodyBgImage: bodyBgImage.substring(0, 100),
+                        htmlClasses: document.documentElement.className,
+                        bodyClasses: document.body.className,
+                        stylesheetCount: stylesheets.length,
+                        stylesheets: stylesheets.slice(0, 3),
+                        readyState: document.readyState,
+                        timestamp: Date.now()
+                      },
+                      timestamp: Date.now(),
+                      sessionId: 'debug-session',
+                      runId: 'run1',
+                      hypothesisId: 'A'
+                    })
+                  }).catch(() => {});
+                }
+                
+                // Check immediately
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', () => logCSSState('DOMContentLoaded'));
+                } else {
+                  logCSSState('immediate');
+                }
+                
+                // Check after delays to see if CSS loads
+                setTimeout(() => logCSSState('100ms'), 100);
+                setTimeout(() => logCSSState('500ms'), 500);
+                setTimeout(() => logCSSState('1000ms'), 1000);
+                setTimeout(() => logCSSState('2000ms'), 2000);
+                
+                // Monitor stylesheet loading
+                document.addEventListener('load', function(e) {
+                  if (e.target.tagName === 'LINK' && e.target.rel === 'stylesheet') {
+                    logCSSState('stylesheet-loaded: ' + e.target.href);
+                  }
+                }, true);
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className={inter.className}>
+        <ThemeProvider />
         <AuthProvider>
         <div className="relative min-h-screen overflow-hidden">
           <div className="pointer-events-none absolute -top-32 left-12 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.22),_transparent_65%)] blur-3xl" />
@@ -54,52 +137,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           <div className="relative z-10">
             <div className="container py-12">
-              <header className="mb-12 flex flex-col gap-6 rounded-3xl border border-white/40 bg-white/60 p-6 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/60 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0">
-                    <Image
-                      src="/logos/fulllogo_transparent_nobuffer.png"
-                      alt="tailora"
-                      width={240}
-                      height={58}
-                      className="object-contain w-auto h-auto"
-                      style={{ 
-                        height: 'clamp(40px, 5vw, 58px)',
-                        width: 'auto',
-                        maxWidth: '280px',
-                        filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05))'
-                      }}
-                      priority
-                    />
-                  </div>
-                  <div className="hidden lg:block">
-                    <div className="flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
-                      <span className="badge">Integrity-first • zero hallucinations</span>
-                      <span className="badge">Privacy-safe • in-memory processing</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 text-xs text-slate-600 dark:text-slate-300 sm:flex-row sm:items-center sm:gap-4">
-                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-2 font-medium text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 3L7 8H10V16H14V8H17L12 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M5 20H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    Export ready in seconds
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <ThemeToggle />
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                      Instant • Secure • ATS Safe
-                    </span>
-                  </div>
-                </div>
-              </header>
+              <div className="mb-12">
+                <Navigation />
+              </div>
 
               {children}
 
-              <footer className="mt-16 rounded-3xl border border-white/40 bg-white/60 px-6 py-8 text-xs text-slate-500 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <CookieConsent />
+
+              <footer className="mt-16 rounded-3xl border border-white/50 bg-white/80 px-6 py-8 text-xs text-slate-600 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300">
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex-shrink-0 relative" style={{ width: '18px', height: '18px', minWidth: '18px' }}>
                       <Image
@@ -113,9 +160,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     </div>
                     <span>© {new Date().getFullYear()} tailora. Built for honest professionals.</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="badge bg-transparent text-slate-500 dark:text-slate-300">Files wiped after processing</span>
-                    <span className="badge bg-transparent text-slate-500 dark:text-slate-300">Invite-only beta</span>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <a href="/about" className="hover:text-slate-700 dark:hover:text-slate-300">About</a>
+                    <a href="/pricing" className="hover:text-slate-700 dark:hover:text-slate-300">Pricing</a>
+                    <a href="/contact" className="hover:text-slate-700 dark:hover:text-slate-300">Contact</a>
+                    <a href="/privacy" className="hover:text-slate-700 dark:hover:text-slate-300">Privacy</a>
+                    <a href="/terms" className="hover:text-slate-700 dark:hover:text-slate-300">Terms</a>
+                    <CookiePreferencesLink />
                   </div>
                 </div>
               </footer>

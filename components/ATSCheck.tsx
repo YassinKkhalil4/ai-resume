@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { KeywordStatsComparison } from '../lib/types'
+import { getATSStatusInfo, getATSTooltipText, getStatusColors } from '../lib/ats-status'
 
 type ATSCheckProps = {
   stats: KeywordStatsComparison | null
@@ -12,6 +14,9 @@ const barColor = (value: number) =>
 const formatPercent = (value?: number) => Math.round((value || 0) * 100)
 
 export default function ATSCheck({ stats }: ATSCheckProps) {
+  // Hooks must be called before any early returns
+  const [showTooltip, setShowTooltip] = useState(false)
+
   if (!stats) {
     return (
       <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-4 text-xs text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
@@ -26,6 +31,10 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
   const originalCoverage = formatPercent(original.coverage)
   const tailoredCoverage = formatPercent(tailored.coverage)
   const coverageDelta = Math.round((deltas.coverage || 0) * 100)
+
+  // Get ATS status information for tailored resume
+  const atsStatusInfo = getATSStatusInfo(tailoredCoverage)
+  const statusColors = getStatusColors(atsStatusInfo.status)
 
   const mustOriginal = formatPercent(original.mustCoverage)
   const mustTailored = formatPercent(tailored.mustCoverage)
@@ -53,6 +62,61 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
 
   return (
     <div className="space-y-5 text-xs text-slate-600 dark:text-slate-300">
+      {/* ATS Compatibility Section - Status First Design */}
+      <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">ATS Compatibility</h3>
+          <div className="relative">
+            <button
+              type="button"
+              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={() => setShowTooltip(false)}
+              onClick={() => setShowTooltip(!showTooltip)}
+              aria-label="Why not optimize further?"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            {showTooltip && (
+              <div className="absolute right-0 top-6 z-20 w-72 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:w-80">
+                <p className="leading-relaxed text-slate-700 dark:text-slate-300">{getATSTooltipText()}</p>
+                <div className="absolute -top-1 right-4 h-2 w-2 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Status (Primary) */}
+        <div className="mb-3">
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusColors.border} ${statusColors.bg} ${statusColors.text}`}>
+              ATS Status: {atsStatusInfo.status}
+            </span>
+            <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              ATS Coverage: {tailoredCoverage}%
+            </span>
+          </div>
+        </div>
+
+        {/* Explanation (Context) */}
+        <div className={`rounded-lg border p-3 text-xs ${statusColors.border} ${statusColors.bg}`}>
+          <p className={`leading-relaxed ${statusColors.text}`}>
+            {atsStatusInfo.explanation}
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${tailoredCoverage}%`, background: barColor(tailoredCoverage) }}
+          />
+        </div>
+      </div>
+
+      {/* Original vs Tailored Comparison */}
       <div className="grid gap-4 rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 md:grid-cols-2">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">

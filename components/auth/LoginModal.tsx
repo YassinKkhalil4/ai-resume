@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
+import EmailVerificationModal from './EmailVerificationModal'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -14,6 +15,8 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const { data: session, update: updateSession } = useSession()
 
   if (!isOpen) return null
 
@@ -32,6 +35,18 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
       if (result?.error) {
         setError('Invalid email or password')
       } else {
+        // Update session to get latest user data
+        await updateSession()
+        
+        // TEMPORARILY DISABLED: Skip verification check until Resend is set up
+        // const updatedSession = await fetch('/api/auth/session').then(res => res.json())
+        // if (updatedSession?.user && !updatedSession.user.emailVerified) {
+        //   // Show verification modal
+        //   setShowVerificationModal(true)
+        // } else {
+        //   onClose()
+        //   window.location.reload()
+        // }
         onClose()
         window.location.reload()
       }
@@ -45,7 +60,11 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
   const handleGoogleSignIn = async () => {
     setLoading(true)
     try {
-      await signIn('google', { callbackUrl: window.location.href })
+      const result = await signIn('google', { callbackUrl: window.location.href })
+      if (result?.error) {
+        setError('Failed to sign in with Google')
+        setLoading(false)
+      }
     } catch (err) {
       setError('Failed to sign in with Google')
       setLoading(false)
@@ -131,6 +150,22 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
           </button>
         </p>
       </div>
+
+      {showVerificationModal && (
+        <EmailVerificationModal
+          isOpen={showVerificationModal}
+          onClose={() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/LoginModal.tsx:verification-modal-close',message:'Verification modal closed from login',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            // Allow closing - account will remain unverified
+            setShowVerificationModal(false)
+            onClose()
+            window.location.reload()
+          }}
+          email={email}
+        />
+      )}
     </div>
   )
 }

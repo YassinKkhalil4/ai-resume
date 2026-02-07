@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables - must be defined before use */
 :root {
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   --surface: rgba(255, 255, 255, 0.94);
@@ -17,21 +18,48 @@
   color-scheme: light;
 }
 
-html,
-body {
-  height: 100%;
+/* Critical base styles - placed AFTER @tailwind base to override Tailwind's reset */
+/* Using !important to ensure these always win over Tailwind's base reset */
+html {
+  height: 100% !important;
+  min-height: 100vh !important;
   background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 45%),
     radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 40%),
-    #f8fafc;
-  color: var(--text-primary);
+    #f8fafc !important;
+  background-attachment: fixed !important;
 }
 
 body {
-  font-family: var(--font-sans);
-  @apply antialiased;
+  height: 100% !important;
+  min-height: 100vh !important;
+  font-family: var(--font-sans) !important;
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 45%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 40%),
+    #f8fafc !important;
+  background-attachment: fixed !important;
+  color: var(--text-primary) !important;
 }
 
-.container { @apply mx-auto max-w-6xl px-5; }
+/* Dark mode - higher specificity with !important to ensure override */
+html.dark,
+.dark html {
+  color-scheme: dark !important;
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 45%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 40%),
+    #020617 !important;
+  background-attachment: fixed !important;
+}
+
+html.dark body,
+.dark body {
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 45%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 40%),
+    #020617 !important;
+  color: #e2e8f0 !important;
+  background-attachment: fixed !important;
+}
+
+.container { @apply mx-auto max-w-6xl px-4 sm:px-5 md:px-6; }
 
 .card {
   @apply rounded-3xl border bg-white backdrop-blur;
@@ -93,18 +121,6 @@ code {
   background: rgba(15, 23, 42, 0.08);
 }
 
-/* Dark mode */
-.dark {
-  color-scheme: dark;
-}
-
-.dark html,
-.dark body {
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 45%),
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 40%),
-    #020617;
-  color: #e2e8f0;
-}
 
 .dark .card {
   background: rgba(2, 6, 23, 0.75);

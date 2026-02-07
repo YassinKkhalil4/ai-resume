@@ -1,0 +1,190 @@
+'use client'
+
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+
+export default function PricingPage() {
+  const { data: session } = useSession()
+
+  const packages = [
+    {
+      name: 'Starter',
+      credits: 5,
+      price: 5.99,
+      priceId: 'price_5_credits',
+      description: 'Best for testing Tailora, single job applications, and first-time users',
+      features: ['5 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '$1.20 per tailored resume']
+    },
+    {
+      name: 'Job Seeker',
+      credits: 15,
+      price: 12.99,
+      priceId: 'price_15_credits',
+      popular: true,
+      description: 'Best for active job seekers and multiple applications per week',
+      features: ['15 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '~$0.87 per resume']
+    },
+    {
+      name: 'Power Apply',
+      credits: 40,
+      price: 24.99,
+      priceId: 'price_40_credits',
+      description: 'Best for aggressive applicants, graduates, and people applying at scale',
+      features: ['40 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '~$0.62 per resume']
+    },
+    {
+      name: 'Career Coach',
+      credits: 120,
+      price: 64.99,
+      priceId: 'price_career_coach_pack',
+      description: 'Designed for career coaches and power users working with many clients or applications',
+      features: ['120 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '~$0.54 per resume']
+    }
+  ]
+
+  return (
+    <main className="space-y-12 pb-16">
+      <section className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
+        <div className="relative z-10 mx-auto max-w-4xl text-center">
+          <h1 className="mb-4 text-4xl font-semibold text-slate-900 dark:text-slate-100 md:text-5xl">
+            Simple, transparent pricing
+          </h1>
+          <p className="mb-8 text-lg text-slate-600 dark:text-slate-300">
+            Pay once and use your credits within 12 months. Each credit lets you tailor one resume to one job description.
+          </p>
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-xs font-medium text-emerald-700 dark:border-emerald-400/40 dark:text-emerald-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Get 1 free credit when you sign up
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="grid gap-6 md:grid-cols-3">
+          {packages.map((pkg) => (
+            <div
+              key={pkg.name}
+              className={`relative rounded-2xl border-2 p-6 transition hover:-translate-y-1 hover:shadow-lg ${
+                pkg.popular
+                  ? 'border-blue-500 bg-blue-50/50 dark:border-blue-400 dark:bg-blue-900/20'
+                  : 'border-slate-200/60 bg-white/70 dark:border-slate-800 dark:bg-slate-900/70'
+              }`}
+            >
+              {pkg.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white dark:bg-blue-500">
+                  Most Popular
+                </div>
+              )}
+              <div className="text-center">
+                <h3 className="mb-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  {pkg.name}
+                </h3>
+                <div className="mb-2">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">
+                    ${pkg.price}
+                  </span>
+                </div>
+                <div className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+                  {pkg.credits} credits
+                </div>
+                <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">
+                  {pkg.description}
+                </p>
+                <ul className="mb-6 space-y-2 text-left text-sm text-slate-600 dark:text-slate-300">
+                  {pkg.features.map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <svg
+                        className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M5 12L10 17L20 7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                {session ? (
+                  <Link
+                    href="/dashboard"
+                    className="button w-full"
+                  >
+                    Buy Credits
+                  </Link>
+                ) : (
+                  <Link
+                    href="/tailor"
+                    className="button w-full"
+                  >
+                    Get Started
+                  </Link>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="mb-6 text-3xl font-semibold text-slate-900 dark:text-slate-100">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
+              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Do credits expire?
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                Yes. Credits are valid for 12 months from the date they&apos;re added to your account. We always use the credits that expire soonest first, and you can see your next expiry date in your dashboard.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
+              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                How many credits do I need?
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                Each credit allows you to tailor one resume to one job description. Most users find that 5-15 credits is enough for a typical job search.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
+              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                What payment methods do you accept?
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                We accept all major credit cards, debit cards, and other payment methods through Stripe. All payments are secure and encrypted.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
+              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Can I get a refund?
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                If you&apos;re not satisfied with tailora, please contact us within 30 days of purchase for a full refund.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden rounded-3xl border border-blue-400/30 bg-gradient-to-br from-blue-50/60 via-white/50 to-white/20 p-12 backdrop-blur-xl dark:border-blue-500/30 dark:from-blue-900/40 dark:via-slate-900/40 dark:to-slate-950/40 md:p-16">
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
+          <h2 className="mb-4 text-3xl font-semibold text-slate-900 dark:text-slate-100">
+            Ready to get started?
+          </h2>
+          <p className="mb-8 text-lg text-slate-600 dark:text-slate-300">
+            Start with 1 free credit when you sign up, no credit card required.
+          </p>
+          <Link
+            href="/tailor"
+            className="button inline-block"
+          >
+            Get Started Free
+          </Link>
+        </div>
+      </section>
+    </main>
+  )
+}

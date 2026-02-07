@@ -277,8 +277,8 @@ export default function Preview({ session }:{ session:any }) {
               }`}
             >
               {honesty.flags?.length
-                ? `${honesty.flags.length} bullet${honesty.flags.length > 1 ? 's' : ''} needs review`
-                : 'All tailored bullets backed by source'}
+                ? `${honesty.flags.length} bullet${honesty.flags.length > 1 ? 's' : ''} — review suggested`
+                : 'Reviewed for accuracy — no unsupported claims detected.'}
             </span>
           </div>
 
@@ -296,7 +296,7 @@ export default function Preview({ session }:{ session:any }) {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="font-semibold text-slate-800 dark:text-slate-100">
-                      {isFlagged ? '⚠️ Requires review' : '✅ Backed by original resume'}
+                      {isFlagged ? 'Manual review recommended' : 'Reviewed for accuracy — no unsupported claims detected.'}
                     </div>
                     <div className="text-[11px] text-slate-400 dark:text-slate-500">
                       Match score: {result.score?.toFixed(2)}

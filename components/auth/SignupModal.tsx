@@ -1,7 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
+import { useTracking } from '../../lib/analytics/useTracking'
+import { detectUniversity } from '../../lib/analytics/university-detector'
+import EmailVerificationModal from './EmailVerificationModal'
 
 interface SignupModalProps {
   isOpen: boolean
@@ -15,6 +18,15 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const { track } = useTracking()
+
+  // Track signup started when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      track('signup_started', { source: 'modal' })
+    }
+  }, [isOpen, track])
 
   if (!isOpen) return null
 
@@ -37,7 +49,21 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
         return
       }
 
-      // Auto sign in after signup
+      // Track invite code usage
+      if (inviteCode) {
+        track('invite_code_used', { inviteCode })
+      }
+
+      // Track university domain detection
+      const university = detectUniversity(email)
+      if (university) {
+        track('university_domain_detected', {
+          domain: university.domain,
+          universityName: university.name,
+        })
+      }
+
+      // Sign in after signup (user will need to verify email)
       const result = await signIn('credentials', {
         email,
         password,
@@ -47,6 +73,15 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
       if (result?.error) {
         setError('Account created but failed to sign in. Please try logging in.')
       } else {
+        // Track signup completed
+        track('signup_completed', {
+          method: 'email',
+          hasInviteCode: !!inviteCode,
+          isUniversity: !!university,
+        })
+        // Temporarily skip verification modal - auto-verified on signup
+        // setShowVerificationModal(true)
+        // Close modal and reload
         onClose()
         window.location.reload()
       }
@@ -59,8 +94,10 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
 
   const handleGoogleSignUp = async () => {
     setLoading(true)
+    track('signup_started', { method: 'google' })
     try {
       await signIn('google', { callbackUrl: window.location.href })
+      // Note: signup_completed will be tracked after redirect
     } catch (err) {
       setError('Failed to sign up with Google')
       setLoading(false)
@@ -163,6 +200,22 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
           </button>
         </p>
       </div>
+
+      {showVerificationModal && (
+        <EmailVerificationModal
+          isOpen={showVerificationModal}
+          onClose={() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/SignupModal.tsx:verification-modal-close',message:'Verification modal closed from signup',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            // Allow closing - account will remain unverified
+            setShowVerificationModal(false)
+            onClose()
+            window.location.reload()
+          }}
+          email={email}
+        />
+      )}
     </div>
   )
 }

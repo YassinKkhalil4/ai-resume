@@ -6,6 +6,7 @@ export function atsCheck(resume: ResumeJSON, jdText: string): KeywordStats {
   const { all, must, nice, industry } = extractKeywords2(jdText, 20)
   const resumeText = stringifyResume(resume)
   const resumeTerms = extractKeyTerms(resumeText)
+  
 
   // Use normalized matching for better accuracy
   const matched = all.filter(k => {
@@ -152,20 +153,28 @@ function hasExperienceSection(resume: ResumeJSON): boolean {
   )
 }
 
-function hasSkillsSection(resume: ResumeJSON): boolean {
-  if (!resume.skills || resume.skills.length === 0) return false
+function hasSkillsSection(resume: ResumeJSON | any): boolean {
+  // Check both skills (ResumeJSON) and skills_section (TailoredResult)
+  const skills = resume.skills || (resume as any).skills_section || []
+  if (!skills || skills.length === 0) return false
   
   // Check if skills have meaningful content
-  return resume.skills.some(skill => 
+  return skills.some((skill: string) => 
     skill && skill.trim().length > 2
   )
 }
 
-function stringifyResume(resume: ResumeJSON): string {
+function stringifyResume(resume: ResumeJSON | any): string {
   const parts: string[] = []
   
+  
   if (resume.summary) parts.push(resume.summary)
+  // CRITICAL FIX: Check both skills and skills_section (tailored resumes use skills_section)
   if (resume.skills?.length) parts.push(resume.skills.join(' '))
+  if ((resume as any).skills_section?.length) {
+    const skillsText = (resume as any).skills_section.join(' ')
+    parts.push(skillsText)
+  }
   if (resume.experience?.length) {
     resume.experience.forEach(exp => {
       if (exp.company) parts.push(exp.company)
@@ -188,5 +197,6 @@ function stringifyResume(resume: ResumeJSON): string {
     })
   }
   
-  return parts.join(' ')
+  const result = parts.join(' ')
+  return result
 }

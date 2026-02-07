@@ -1,20 +1,43 @@
 import { z } from 'zod'
 
+/** Single bullet with stable ID for rewrite-in-place (strict tailoring). */
+export const BulletWithIdSchema = z.object({
+  id: z.string().min(1),
+  text: z.string().min(1).max(500),
+})
+export type BulletWithIdType = z.infer<typeof BulletWithIdSchema>
+
+/** One item in the model's bullet-rewrite response. */
+export const BulletRewriteItemSchema = z.object({
+  id: z.string().min(1),
+  rewritten_text: z.string().min(1).max(500),
+})
+export type BulletRewriteItemType = z.infer<typeof BulletRewriteItemSchema>
+
+/** Full bullet-rewrite API response (array only). */
+export const BulletRewriteResponseSchema = z.array(BulletRewriteItemSchema)
+
 export const RoleSchema = z.object({
   company: z.string().min(1, 'Company name is required').max(100, 'Company name too long'),
   role: z.string().min(1, 'Role title is required').max(100, 'Role title too long'),
   dates: z.string().max(50, 'Date string too long').optional().default(''),
-  bullets: z.array(z.string().min(1, 'Bullet point cannot be empty').max(200, 'Bullet point too long')).min(1, 'At least one bullet required').max(8, 'Too many bullet points')
+  bullets: z.array(
+    z.string().min(1, 'Bullet point cannot be empty').max(200, 'Bullet point too long')
+  ).max(8, 'Too many bullet points')
 }).strict()
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(120, 'Project name too long'),
-  bullets: z.array(z.string().min(1, 'Bullet cannot be empty').max(200, 'Bullet too long')).min(1, 'At least one bullet required').max(6, 'Too many bullets')
+  bullets: z.array(
+    z.string().min(1, 'Bullet cannot be empty').max(200, 'Bullet too long')
+  ).max(6, 'Too many bullets')
 }).strict()
 
 const AdditionalSectionSchema = z.object({
   heading: z.string().min(1, 'Section heading is required').max(120, 'Section heading too long'),
-  lines: z.array(z.string().min(1, 'Line cannot be empty').max(200, 'Line too long')).min(1, 'At least one line required').max(12, 'Too many lines')
+  lines: z.array(
+    z.string().min(1, 'Line cannot be empty').max(200, 'Line too long')
+  ).max(12, 'Too many lines')
 }).strict()
 
 export const TailoredResultSchema = z.object({

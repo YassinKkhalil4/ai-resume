@@ -9,16 +9,16 @@ interface CreditPackagesProps {
 
 // Note: In production, you would fetch actual prices from Stripe
 // For now, this is a placeholder that shows the structure
-const PACKAGE_INFO: Array<{ priceId: string; credits: number; name: string; popular?: boolean }> = [
-  { priceId: 'price_10_credits', credits: 10, name: 'Starter' },
-  { priceId: 'price_25_credits', credits: 25, name: 'Professional', popular: true },
-  { priceId: 'price_50_credits', credits: 50, name: 'Business' },
-  { priceId: 'price_100_credits', credits: 100, name: 'Enterprise' },
+const PACKAGE_INFO: Array<{ priceId: string; credits: number; name: string; popular?: boolean; tagline?: string }> = [
+  { priceId: 'price_5_credits', credits: 5, name: 'Starter', tagline: 'Best for trying Tailora' },
+  { priceId: 'price_15_credits', credits: 15, name: 'Job Seeker', popular: true, tagline: 'Most popular for active searches' },
+  { priceId: 'price_40_credits', credits: 40, name: 'Power Apply', tagline: 'Great for high-volume applications' },
+  { priceId: 'price_career_coach_pack', credits: 120, name: 'Career Coach', tagline: 'Built for coaches and power users' },
 ]
 
 export default function CreditPackages({ onPurchase, loading }: CreditPackagesProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       {PACKAGE_INFO.map((pkg) => (
         <div
           key={pkg.priceId}
@@ -35,6 +35,9 @@ export default function CreditPackages({ onPurchase, loading }: CreditPackagesPr
           )}
           <div className="text-center">
             <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-slate-100">{pkg.name}</h3>
+            {pkg.tagline && (
+              <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">{pkg.tagline}</p>
+            )}
             <div className="mb-4">
               <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">{pkg.credits}</span>
               <span className="ml-1 text-sm text-slate-600 dark:text-slate-400">credits</span>

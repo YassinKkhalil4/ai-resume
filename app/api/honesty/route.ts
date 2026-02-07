@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = enforceGuards(req)
+    const guard = await enforceGuards(req)
     if (!guard.ok) return guard.res
 
     const body = await req.json()
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       console.log('Using direct payloads for honesty scan')
     } else {
       // Fallback to session lookup
-      const s = getSession(session_id)
+      const s = await getSession(session_id)
       if (s && s.original && s.tailored) {
         originalExp = s.original.experience || []
         tailoredExp = s.tailored.experience || []
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     
     // Check session version if provided
     if (session_version) {
-      const currentSession = getSession(session_id)
+      const currentSession = await getSession(session_id)
       if (currentSession && currentSession.version !== session_version) {
         return NextResponse.json({ 
           code: 'stale_session', 

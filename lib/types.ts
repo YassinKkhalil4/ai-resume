@@ -1,10 +1,21 @@
 export type Tone = 'professional' | 'concise' | 'impact-heavy'
 
+/** Canonical form for tailoring: each bullet has a stable ID for rewrite-in-place. */
+export type BulletWithId = { id: string; text: string }
+
+/** Section/reason this experience came from. Used to block auto-tailoring of heuristic content (AI hallucination prevention). */
+export type ExperienceSource = 'explicit' | 'heuristic' | 'user_provided'
+
 export type Role = {
   company?: string
   role?: string
   dates?: string
-  bullets?: string[]
+  /** Legacy/parsed: string[]. After ID assignment (tailor flow only): BulletWithId[]. */
+  bullets?: string[] | BulletWithId[]
+  /** If false, role must not be eligible for tailoring (AI hallucination prevention: no bullets = no rewrite). */
+  hasBullets?: boolean
+  /** Source of this role; heuristic/user_provided require confirmation and must not be auto-tailored. */
+  source?: ExperienceSource
 }
 
 export type ResumeJSON = {
@@ -12,6 +23,8 @@ export type ResumeJSON = {
   summary?: string
   skills?: string[]
   experience?: Role[]
+  /** How experience section was obtained; heuristic triggers needsConfirmation and must not be auto-tailored (AI hallucination prevention). */
+  experienceSource?: ExperienceSource
   education?: string[]
   certifications?: string[]
   projects?: Array<{ name: string; bullets: string[] }>

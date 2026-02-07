@@ -1,38 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Simple in-memory rate limiter for credit purchases
-// In production, use Redis or similar
-const purchaseAttempts = new Map<string, { count: number; resetAt: number }>()
+import { checkPurchaseRateLimit as checkPurchaseRateLimitRedis } from '../rate-limiter'
 
 const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
 const MAX_PURCHASE_ATTEMPTS = 5 // Max 5 purchase attempts per minute
 
-export function checkPurchaseRateLimit(userId: string): {
+/**
+ * Check rate limit for credit purchases
+ * Uses Redis if available, falls back to in-memory storage
+ */
+export async function checkPurchaseRateLimit(userId: string): Promise<{
   allowed: boolean
   error?: NextResponse
-} {
-  const now = Date.now()
-  const userAttempts = purchaseAttempts.get(userId)
-
-  if (!userAttempts || now > userAttempts.resetAt) {
-    purchaseAttempts.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
-    return { allowed: true }
+}> {
+  const result = await checkPurchaseRateLimitRedis(userId, MAX_PURCHASE_ATTEMPTS, RATE_LIMIT_WINDOW)
+  
+  return {
+    allowed: result.allowed,
+    error: result.error,
   }
-
-  if (userAttempts.count >= MAX_PURCHASE_ATTEMPTS) {
-    return {
-      allowed: false,
-      error: NextResponse.json(
-        {
-          code: 'rate_limit_exceeded',
-          message: 'Too many purchase attempts. Please try again later.',
-        },
-        { status: 429 }
-      ),
-    }
-  }
-
-  userAttempts.count++
-  return { allowed: true }
 }
 
