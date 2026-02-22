@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
-import { getTailoredResume, normalizeExperienceForTailor } from '../../../lib/ai-response-parser'
-import { createSession } from '../../../lib/sessions'
+import { getTailoredResume, normalizeExperienceForTailor, createFallbackResponse } from '../../../lib/ai-response-parser'
+import { createSession, getSession } from '../../../lib/sessions'
+import { atsCheck, compareKeywordStats } from '../../../lib/ats'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
 import { startTrace, logRequestTelemetry, logError } from '../../../lib/telemetry'
@@ -174,16 +175,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log('Processing request:', { 
-      hasResumeFile: !!resume_file, 
+    console.log('Processing request:', {
+      hasResumeFile: !!resume_file,
+      sessionId: session_id,
       jdTextLength: jd_text_raw.length,
-      tone 
+      tone,
     })
 
-    if (!resume_file) return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
     if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
 
-    const parsed = await extractTextFromFile(resume_file)
+    let original: ResumeJSON
+    let resumeText: string
+    let ext: string | undefined
+
+    // Session-based flow: resume already confirmed via Confirm Experience; no file needed
+    if (session_id && !resume_file) {
+      const existingSession = await getSession(session_id)
+      if (!existingSession?.original?.userConfirmedExperience) {
+        return NextResponse.json(
+          { code: 'missing_resume', message: 'Upload a resume or confirm experience first.' },
+          { status: 400 }
+        )
+      }
+      original = existingSession.original
+      resumeText = existingSession.originalRawText ?? ''
+      ext = undefined
+    } else {
+      if (!resume_file) {
+        return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
+      }
+      const parsed = await extractTextFromFile(resume_file)
     
     // Check for scanned PDF error
     if (parsed.error === 'scanned_pdf') {
@@ -193,11 +214,11 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
     
-    const resumeText = parsed.text
-    const ext = parsed.ext
+    resumeText = parsed.text
+    ext = parsed.ext
 
     console.log('Parsing resume...')
-    const original = heuristicParseResume(resumeText)
+    original = heuristicParseResume(resumeText)
     console.log('Resume parsed successfully:', {
       hasSummary: !!original.summary,
       skillsCount: original.skills?.length || 0,
@@ -205,6 +226,7 @@ export async function POST(req: NextRequest) {
       educationCount: original.education?.length || 0,
       certificationsCount: original.certifications?.length || 0
     })
+    }
 
     // Validate parsing results
     const validation = validateParsingResult(original)
@@ -228,51 +250,67 @@ export async function POST(req: NextRequest) {
       warnings: [...validation.errors, ...validation.warnings],
     }).catch(err => console.error('Failed to log resume parse event:', err))
 
+    // Helper: create draft session so user can recover via Confirm Experience flow
+    const buildExperienceRecovery422 = async (
+      code: string,
+      message: string,
+      payload: { validation?: any; original_sections_json?: any; suggestions?: string[]; role?: string } = {}
+    ) => {
+      const baselineATS = atsCheck(original, jd_text_raw)
+      const fallback = createFallbackResponse(original, jd_text_raw, baselineATS)
+      const ats = compareKeywordStats(baselineATS, atsCheck(fallback, jd_text_raw))
+      const draftSession = await createSession(original, fallback, jd_text_raw, ats, resumeText)
+      return NextResponse.json(
+        {
+          code,
+          message,
+          draft_session_id: draftSession.id,
+          original_raw_text: resumeText,
+          original_sections_json: original,
+          ...payload,
+        },
+        { status: 422 }
+      )
+    }
+
     // Check if we should block due to missing experience or validation errors (AI hallucination prevention)
     if (shouldShowExperienceBanner(validation)) {
-      return NextResponse.json({
-        code: 'missing_experience',
-        message: 'No work experience detected in your resume',
+      return buildExperienceRecovery422('missing_experience', 'No work experience detected in your resume', {
         validation,
-        original_sections_json: original,
         suggestions: [
           'Paste your work history manually',
           'Try uploading a different resume format',
-          'Check if your resume has experience section headings'
-        ]
-      }, { status: 422 }) // Unprocessable Entity
+          'Check if your resume has experience section headings',
+        ],
+      })
     }
 
     // Hard fail: zero-bullet roles or heuristic experience must not proceed without user confirmation
     if (!validation.isValid) {
-      return NextResponse.json({
-        code: 'validation_error',
-        message: validation.errors[0] ?? 'Please add or confirm experience before tailoring.',
-        validation,
-        original_sections_json: original,
-        suggestions: validation.suggestions ?? ['Add bullet points to each role or confirm section mapping']
-      }, { status: 422 })
+      return buildExperienceRecovery422(
+        'validation_error',
+        validation.errors[0] ?? 'Please add or confirm experience before tailoring.',
+        { validation, suggestions: validation.suggestions ?? ['Add bullet points to each role or confirm section mapping'] }
+      )
     }
     // Heuristic-derived experience must not be auto-tailored (AI hallucination prevention)
     if (original.experienceSource === 'heuristic') {
-      return NextResponse.json({
-        code: 'heuristic_experience',
-        message: 'Experience was detected by pattern matching. Please confirm or add your experience before tailoring.',
-        validation,
-        original_sections_json: original,
-        suggestions: ['Confirm section mapping', 'Paste your work history manually']
-      }, { status: 422 })
+      return buildExperienceRecovery422(
+        'heuristic_experience',
+        'Experience was detected by pattern matching. Please confirm or add your experience before tailoring.',
+        { validation, suggestions: ['Confirm section mapping', 'Paste your work history manually'] }
+      )
     }
 
     // Normalize experience (dedupe by company+role) and ensure every role has bullets
     const { normalizedExperience, rolesWithNoBullets } = normalizeExperienceForTailor(original)
     if (rolesWithNoBullets.length > 0) {
       const first = rolesWithNoBullets[0]
-      return NextResponse.json({
-        code: 'no_bullets',
-        message: 'This role has no experience bullets to tailor. Please add details.',
+      return buildExperienceRecovery422('no_bullets', 'This role has no experience bullets to tailor. Please add details.', {
         role: first ? `${first.role} @ ${first.company}` : undefined,
-      }, { status: 422 })
+        validation,
+        original_sections_json: original,
+      })
     }
     const resumeForTailor = { ...original, experience: normalizedExperience }
 

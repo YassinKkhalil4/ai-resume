@@ -1,25 +1,26 @@
 import { Role } from './types'
 import { normalizeKeyword, keywordsMatch, isSafeExpansion, extractKeyTerms, addsForbiddenContent } from './keyword-utils'
 
+function bulletText(b: string | { id: string; text: string }): string {
+  return typeof b === 'string' ? b : b.text
+}
+
 export function integrityCheck(original: Role[], tailored: Role[], jdKeywords: string[]): { ok: boolean, issues: string[] } {
   const issues:string[] = []
   const allowed = new Set<string>([...jdKeywords.map(x=>normalizeKeyword(x))])
 
-  // Build allowed terms from original resume with normalization
   for (const r of original) {
-    tokens(r.company).forEach(t=>allowed.add(normalizeKeyword(t)))
-    tokens(r.role).forEach(t=>allowed.add(normalizeKeyword(t)))
-    r.bullets.forEach(b=>tokens(b).forEach(t=>allowed.add(normalizeKeyword(t))))
+    tokens(r.company ?? '').forEach(t=>allowed.add(normalizeKeyword(t)))
+    tokens(r.role ?? '').forEach(t=>allowed.add(normalizeKeyword(t)))
+    ;(r.bullets ?? []).forEach(b=>tokens(bulletText(b)).forEach(t=>allowed.add(normalizeKeyword(t))))
   }
 
-  // Build original terms map for expansion checking
   const originalTermsMap = new Map<string, Set<string>>()
   for (const r of original) {
     const key = `${r.company}|${r.role}`
     const terms = new Set<string>()
-    r.bullets.forEach(b => {
-      const bulletTerms = extractKeyTerms(b)
-      bulletTerms.forEach(t => terms.add(t))
+    ;(r.bullets ?? []).forEach(b => {
+      extractKeyTerms(bulletText(b)).forEach(t => terms.add(t))
     })
     originalTermsMap.set(key, terms)
   }
@@ -27,23 +28,22 @@ export function integrityCheck(original: Role[], tailored: Role[], jdKeywords: s
   for (const r of tailored) {
     const key = `${r.company}|${r.role}`
     const originalTerms = originalTermsMap.get(key) || new Set<string>()
-    
-    for (const b of r.bullets) {
-      // Check for forbidden content
-      const originalBullet = originalTerms.size > 0 
-        ? Array.from(originalTerms).join(' ') 
+
+    for (const b of r.bullets ?? []) {
+      const bStr = bulletText(b)
+      const originalBullet = originalTerms.size > 0
+        ? Array.from(originalTerms).join(' ')
         : ''
-      
+
       if (originalBullet) {
-        const forbidden = addsForbiddenContent(originalBullet, b)
+        const forbidden = addsForbiddenContent(originalBullet, bStr)
         if (forbidden.forbidden) {
           issues.push(`Forbidden content in ${r.role}@${r.company}: ${forbidden.reason || 'Unknown violation'}`)
           continue
         }
       }
       
-      // Check for unexpected tools/terms
-      for (const t of tokens(b)) {
+      for (const t of tokens(bStr)) {
         if (isToolish(t)) {
           const normalized = normalizeKeyword(t)
           let isAllowed = false

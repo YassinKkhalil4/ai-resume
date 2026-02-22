@@ -154,7 +154,9 @@ function stringifyResume(resume: ResumeJSON): string {
       if (role.role) parts.push(role.role)
       if (role.company) parts.push(role.company)
       if (role.bullets) {
-        parts.push(...role.bullets)
+        parts.push(
+          ...role.bullets.map(b => (typeof b === 'string' ? b : b.text))
+        )
       }
     }
   }

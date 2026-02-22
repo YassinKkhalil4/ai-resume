@@ -1,6 +1,10 @@
 import { Role } from './types'
 import { extractKeyTerms, normalizeKeyword, keywordsMatch, addsForbiddenContent } from './keyword-utils'
 
+function bulletText(b: string | { id: string; text: string }): string {
+  return typeof b === 'string' ? b : b.text
+}
+
 // Honesty threshold: 0.20 is the sweet spot
 // Below 0.18 = too risky (hallucinations rise)
 // Above 0.28 = too restrictive (weak tailoring)
@@ -86,28 +90,27 @@ export function honestyScan(original: Role[], tailored: Role[]) {
     const o = map.get(key)
     if (!o) continue
     
-    for (const tb of t.bullets) {
-      // Step A: Compare original vs tailored with normalized tokens
-      const tTok = tokenizeNormalized(tb)
+    for (const tb of t.bullets ?? []) {
+      const tbStr = bulletText(tb)
+      const tTok = tokenizeNormalized(tbStr)
       let best = 0, bestBack: string | null = null
-      
-      for (const ob of o.bullets) {
-        const obTok = tokenizeNormalized(ob)
-        // Use normalized Jaccard for better matching
+
+      for (const ob of o.bullets ?? []) {
+        const obStr = bulletText(ob)
+        const obTok = tokenizeNormalized(obStr)
         const score = jaccardNormalized(tTok, obTok)
         if (score > best) {
           best = score
-          bestBack = ob
+          bestBack = obStr
         }
       }
 
-      // Step B: Validate against forbidden expansions
-      const forbiddenCheck = bestBack ? addsForbiddenContent(bestBack, tb) : { forbidden: true, reason: 'No matching original bullet' }
+      const forbiddenCheck = bestBack ? addsForbiddenContent(bestBack, tbStr) : { forbidden: true, reason: 'No matching original bullet' }
 
       const backingArray = bestBack ? [bestBack] : []
       const overlap = bestBack
         ? [...tTok].filter(token => {
-            const obTok = tokenizeNormalized(bestBack!)
+            const obTok = tokenizeNormalized(bestBack as string)
             for (const obToken of obTok) {
               if (keywordsMatch(token, obToken, 0.80)) {
                 return true
@@ -121,10 +124,10 @@ export function honestyScan(original: Role[], tailored: Role[]) {
       const isSupported = best >= threshold && !forbiddenCheck.forbidden
 
       if (!isSupported) {
-        flags.push({ 
-          role: `${t.role} @ ${t.company}`, 
-          bullet: tb, 
-          score: Number(best.toFixed(2)), 
+        flags.push({
+          role: `${t.role} @ ${t.company}`,
+          bullet: tbStr,
+          score: Number(best.toFixed(2)),
           backing: backingArray,
           reason: forbiddenCheck.reason || `Similarity score ${best.toFixed(2)} below threshold ${threshold}`
         })
@@ -132,7 +135,7 @@ export function honestyScan(original: Role[], tailored: Role[]) {
 
       results.push({
         role: `${t.role} @ ${t.company}`,
-        bullet: tb,
+        bullet: tbStr,
         score: Number(best.toFixed(2)),
         status: isSupported ? 'supported' : 'flagged',
         backing: backingArray,

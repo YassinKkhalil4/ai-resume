@@ -97,7 +97,8 @@ function parseBulletRewriteResponse(raw: string): Array<{ id: string; rewritten_
   cleaned = cleaned.replace(/\n/g, ' ').replace(/\s+/g, ' ').replace(/,(\s*[}\]])/g, '$1')
   const parsed = JSON.parse(cleaned) as unknown
   if (!Array.isArray(parsed)) throw new Error('Bullet rewrite response must be a JSON array')
-  return BulletRewriteResponseSchema.parse(parsed)
+  const result = BulletRewriteResponseSchema.parse(parsed) as Array<{ id: string; rewritten_text: string }>
+  return result
 }
 
 /** Merge rewritten bullets back into experience. Original experience has bullets as BulletWithId[]; result has bullets as string[]. */
@@ -1736,10 +1737,15 @@ export async function getTailoredResume(
         console.log(`Total soft fixes applied: ${softFixesApplied} (avoided model retry)`)
       }
       
-      // If experience is missing or empty, try to preserve original
+      // If experience is missing or empty, preserve original (normalize to bullets as string[] for TailoredResultType)
       if (!tailored.experience || tailored.experience.length === 0) {
         console.warn('AI response missing experience, preserving original experience')
-        tailored.experience = original.experience || []
+        tailored.experience = (original.experience || []).map(exp => ({
+          company: exp.company ?? '',
+          role: exp.role ?? '',
+          dates: exp.dates ?? '',
+          bullets: getBulletStrings(exp.bullets),
+        }))
       }
       if ((!tailored.education || tailored.education.length === 0) && original.education) {
         console.warn('AI response missing education, preserving original education')
@@ -1928,7 +1934,8 @@ async function handleMissingExperience(
   return { tailored: fallback, tokens: 0, ats: fallbackATS }
 }
 
-function createFallbackResponse(original: ResumeJSON, jdText: string, baselineATS?: KeywordStats): TailoredResultType {
+/** Build a minimal tailored result from original (e.g. for draft sessions before real tailoring). */
+export function createFallbackResponse(original: ResumeJSON, jdText: string, baselineATS?: KeywordStats): TailoredResultType {
   const summary =
     original.summary ||
     'Experienced professional with relevant skills and experience.'

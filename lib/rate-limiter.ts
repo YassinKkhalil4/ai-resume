@@ -76,9 +76,17 @@ async function checkRedisRateLimit(
       const listKey = `${key}:list`
       const timestamps = await redis.get(listKey)
       let validTimestamps: number[] = []
-      
+      // #region agent log
+      if (timestamps != null) {
+        try {
+          const parsed = JSON.parse(timestamps)
+          fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/rate-limiter.ts:checkRedisRateLimit',message:'Redis rate limit timestamps parsed',data:{key:listKey,rawType:typeof timestamps,parsedType:Array.isArray(parsed)?'array':typeof parsed,isArray:Array.isArray(parsed),parsedLength:Array.isArray(parsed)?parsed.length:undefined},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        } catch (_) {}
+      }
+      // #endregion
       if (timestamps) {
-        validTimestamps = JSON.parse(timestamps).filter((t: number) => t > windowStart)
+        const parsed = JSON.parse(timestamps)
+        validTimestamps = Array.isArray(parsed) ? parsed.filter((t: number) => typeof t === 'number' && t > windowStart) : []
       }
       
       // Add current request

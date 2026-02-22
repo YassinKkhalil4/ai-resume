@@ -3,8 +3,8 @@ export type Tone = 'professional' | 'concise' | 'impact-heavy'
 /** Canonical form for tailoring: each bullet has a stable ID for rewrite-in-place. */
 export type BulletWithId = { id: string; text: string }
 
-/** Section/reason this experience came from. Used to block auto-tailoring of heuristic content (AI hallucination prevention). */
-export type ExperienceSource = 'explicit' | 'heuristic' | 'user_provided'
+/** Section/reason this experience came from. Used to block auto-tailoring of heuristic content (AI hallucination prevention). user_confirmed = explicitly confirmed by user in Confirm Experience flow. */
+export type ExperienceSource = 'explicit' | 'heuristic' | 'user_provided' | 'user_confirmed'
 
 export type Role = {
   company?: string
@@ -25,6 +25,8 @@ export type ResumeJSON = {
   experience?: Role[]
   /** How experience section was obtained; heuristic triggers needsConfirmation and must not be auto-tailored (AI hallucination prevention). */
   experienceSource?: ExperienceSource
+  /** True after user explicitly confirms experience in the Confirm Experience flow; allows tailoring to proceed. */
+  userConfirmedExperience?: boolean
   education?: string[]
   certifications?: string[]
   projects?: Array<{ name: string; bullets: string[] }>

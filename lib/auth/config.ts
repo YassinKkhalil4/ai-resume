@@ -134,11 +134,22 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.id) {
         session.user.id = token.id as string
-        session.user.creditsRemaining = token.creditsRemaining as number
-        session.user.emailVerified = token.emailVerified as boolean
-        session.user.isAdmin = token.isAdmin as boolean
+        // Refresh isAdmin (and credits) from DB so admin grants take effect without re-login
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.id, token.id as string),
+          columns: { isAdmin: true, creditsRemaining: true, emailVerified: true },
+        })
+        if (dbUser) {
+          session.user.isAdmin = dbUser.isAdmin
+          session.user.creditsRemaining = dbUser.creditsRemaining
+          session.user.emailVerified = dbUser.emailVerified ?? false
+        } else {
+          session.user.creditsRemaining = (token.creditsRemaining as number) ?? 0
+          session.user.emailVerified = (token.emailVerified as boolean) ?? false
+          session.user.isAdmin = (token.isAdmin as boolean) ?? false
+        }
       }
       return session
     },

@@ -4,38 +4,41 @@ import { logEvent } from './trace/tracer'
 import { RESUME_DIFF } from './trace/stages'
 import { extractKeyTerms } from './keyword-utils'
 
+function bulletsToStrings(bullets: Role['bullets']): string[] {
+  if (!bullets || bullets.length === 0) return []
+  if (typeof bullets[0] === 'string') return bullets as string[]
+  return (bullets as { id: string; text: string }[]).map(b => b.text)
+}
+
 export async function buildDiffs(
-  original: Role[], 
+  original: Role[],
   tailored: Role[],
   runId?: string | null
-): Promise<Array<{role:string, original:string[], tailored:string[], reasons?: string[]}>> {
-  const diffs: Array<{role:string, original:string[], tailored:string[], reasons?: string[]}> = []
+): Promise<Array<{ role: string; original: string[]; tailored: string[]; reasons?: string[] }>> {
+  const diffs: Array<{ role: string; original: string[]; tailored: string[]; reasons?: string[] }> = []
   const map = new Map<string, Role>()
-  
-  // Create a more flexible mapping
+
   for (const r of original) {
     const key = `${r.company}|${r.role}`.toLowerCase().trim()
     map.set(key, r)
   }
-  
+
   for (const t of tailored) {
     const key = `${t.company}|${t.role}`.toLowerCase().trim()
     const o = map.get(key)
-    
+
     if (!o) {
-      // This is a new role, show it as added
-      diffs.push({ 
-        role: `${t.role} @ ${t.company}`, 
-        original: [], 
-        tailored: t.bullets || [], 
-        reasons: ['New role added'] 
+      diffs.push({
+        role: `${t.role} @ ${t.company}`,
+        original: [],
+        tailored: bulletsToStrings(t.bullets),
+        reasons: ['New role added'],
       })
       continue
     }
-    
-    // Compare bullets more intelligently - check for content changes
-    const originalBullets = o.bullets || []
-    const tailoredBullets = t.bullets || []
+
+    const originalBullets = bulletsToStrings(o.bullets)
+    const tailoredBullets = bulletsToStrings(t.bullets)
     
     // Check if there are any meaningful differences using token-based comparison
     const hasChanges = checkForContentChanges(originalBullets, tailoredBullets)

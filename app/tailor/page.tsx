@@ -8,6 +8,7 @@ import Preview from '../../components/Preview'
 import ParsingErrorBanner from '../../components/ParsingErrorBanner'
 import ExperienceInputModal from '../../components/ExperienceInputModal'
 import LineMarkingModal, { LineSelection } from '../../components/LineMarkingModal'
+import ConfirmExperienceModal from '../../components/ConfirmExperienceModal'
 import useInviteGate from '../../components/useInviteGate'
 import { ParsingValidationResult } from '../../lib/parsing-validation'
 import LoginModal from '../../components/auth/LoginModal'
@@ -28,6 +29,12 @@ export default function TailorPage() {
   const [validation, setValidation] = useState<ParsingValidationResult | null>(null)
   const [showExperienceModal, setShowExperienceModal] = useState(false)
   const [showLineMarkingModal, setShowLineMarkingModal] = useState(false)
+  const [showConfirmExperienceModal, setShowConfirmExperienceModal] = useState(false)
+  const [confirmExperienceData, setConfirmExperienceData] = useState<{
+    sessionId: string
+    rawText: string
+    experience: any[]
+  } | null>(null)
   const [showBanner, setShowBanner] = useState(true)
   const [resumeText, setResumeText] = useState<string>('')
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -271,10 +278,28 @@ export default function TailorPage() {
           setLoading(false)
           return
         }
-        if (data.code === 'no_bullets') {
-          alert(data.message || 'This role has no experience bullets to tailor. Please add details.')
-          setLoading(false)
-          return
+        // PART A: Trigger ConfirmExperienceModal for 422 errors that require experience confirmation
+        if (res.status === 422 && (
+          data.code === 'no_bullets' ||
+          data.code === 'validation_error' ||
+          data.code === 'heuristic_experience'
+        )) {
+          // Store data needed for ConfirmExperienceModal
+          if (data.draft_session_id && data.original_raw_text && data.original_sections_json?.experience) {
+            setConfirmExperienceData({
+              sessionId: data.draft_session_id,
+              rawText: data.original_raw_text,
+              experience: data.original_sections_json.experience || []
+            })
+            setShowConfirmExperienceModal(true)
+            setLoading(false)
+            return
+          } else {
+            // Fallback: if we don't have session data, show alert
+            alert(data.message || 'Some experience entries need confirmation before tailoring.')
+            setLoading(false)
+            return
+          }
         }
         throw new Error(data?.message || 'Tailoring failed.')
       }
@@ -388,6 +413,85 @@ export default function TailorPage() {
       alert(error?.message || 'Failed to process experience')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // PART D: Handle success from ConfirmExperienceModal - retry tailoring with confirmed experience
+  async function handleConfirmExperienceSuccess(resume: any, validation: any) {
+    setShowConfirmExperienceModal(false)
+    setConfirmExperienceData(null)
+    
+    // Update validation state
+    setValidation(validation)
+    
+    // Retry tailoring with the confirmed experience
+    // The session now has userConfirmedExperience = true, so we can use session_id
+    if (confirmExperienceData?.sessionId && jdText) {
+      setLoading(true)
+      try {
+        const fd = new FormData()
+        fd.append('session_id', confirmExperienceData.sessionId)
+        fd.append('jd_text', jdText)
+        fd.append('tone', tone)
+        fd.append('strict_honesty_mode', strictHonestyMode ? 'true' : 'false')
+        
+        const inviteCode = getInviteCode()
+        const res = await fetch('/api/tailor', {
+          method: 'POST',
+          body: fd,
+          headers: {
+            'x-invite-code': inviteCode
+          }
+        })
+        
+        const contentType = res.headers.get('content-type') || ''
+        let data
+        
+        if (contentType.includes('application/json')) {
+          data = await res.json()
+        } else {
+          const text = await res.text()
+          console.error('Non-JSON response received:', text)
+          throw new Error(`Server returned non-JSON response: ${text.slice(0, 200)}`)
+        }
+        
+        if (!res.ok) {
+          // If still failing, show error
+          alert(data?.message || 'Tailoring failed after confirming experience.')
+          setLoading(false)
+          return
+        }
+        
+        // Success! Update session and hide banner
+        track('tailor_completed', {
+          sessionId: data.session_id,
+          hasValidation: !!data.validation,
+          tokensUsed: data.tokens_used,
+        })
+        
+        setTailorSession(data)
+        setValidation(data.validation)
+        setShowBanner(false)
+        
+        // Update credits if returned
+        if (data.credits_remaining !== undefined) {
+          setCredits(data.credits_remaining)
+        } else {
+          await fetchCredits()
+        }
+        
+        // Scroll to tailored CV section
+        setTimeout(() => {
+          const tailoredSection = document.getElementById('tailored-cv-section')
+          if (tailoredSection) {
+            tailoredSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 100)
+      } catch (e: any) {
+        alert(e?.message || 'Failed to tailor after confirming experience.')
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -798,6 +902,21 @@ export default function TailorPage() {
           onSubmit={handleLineMarkingSubmit}
           resumeText={resumeText}
           originalResume={tailorSession?.original_sections_json}
+        />
+      )}
+
+      {showConfirmExperienceModal && confirmExperienceData && (
+        <ConfirmExperienceModal
+          isOpen={showConfirmExperienceModal}
+          onClose={() => {
+            setShowConfirmExperienceModal(false)
+            setConfirmExperienceData(null)
+          }}
+          rawText={confirmExperienceData.rawText}
+          experience={confirmExperienceData.experience}
+          sessionId={confirmExperienceData.sessionId}
+          onSuccess={handleConfirmExperienceSuccess}
+          getInviteCode={getInviteCode}
         />
       )}
     </main>

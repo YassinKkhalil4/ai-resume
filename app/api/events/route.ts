@@ -25,7 +25,19 @@ export async function GET(req: NextRequest) {
 // POST /api/events - Track an event
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/events/route.ts:POST:before-parse',message:'About to parse events body',data:{method:req.method,contentType:req.headers.get('content-type')},timestamp:Date.now(),runId:'initial',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+
+    let body: any
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/events/route.ts:POST:parse-error',message:'Failed to parse JSON body for /api/events',data:{error:String(parseError),method:req.method,contentType:req.headers.get('content-type')},timestamp:Date.now(),runId:'initial',hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
+      throw parseError
+    }
     const { eventName, properties = {}, context = {} } = body
 
     if (!eventName || typeof eventName !== 'string') {

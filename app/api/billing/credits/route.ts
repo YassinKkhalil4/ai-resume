@@ -11,9 +11,12 @@ export async function GET(req: NextRequest) {
       return verificationCheck.res
     }
     const user = verificationCheck.user
-    const credits = await getUserCredits(user.id)
+    // Admins get unlimited credits; return high value so UI never shows 0
+    const credits = user.isAdmin
+      ? 999999
+      : await getUserCredits(user.id)
 
-    // Compute next expiry date for any active credits
+    // Compute next expiry date for any active credits (only for non-admins)
     const now = new Date()
     const nextExpiryRow = await db
       .select({
