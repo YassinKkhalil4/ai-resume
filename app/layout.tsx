@@ -70,58 +70,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   document.documentElement.classList.add('light');
                 }
                 
-                function logCSSState(label) {
-                  const htmlBg = getComputedStyle(document.documentElement).backgroundColor;
-                  const bodyBg = getComputedStyle(document.body).backgroundColor;
-                  const htmlBgImage = getComputedStyle(document.documentElement).backgroundImage;
-                  const bodyBgImage = getComputedStyle(document.body).backgroundImage;
-                  const stylesheets = Array.from(document.styleSheets).map(s => s.href || 'inline').filter(Boolean);
-                  
-                  fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      location: 'layout.tsx:css-check',
-                      message: 'CSS state: ' + label,
-                      data: {
-                        htmlBg,
-                        bodyBg,
-                        htmlBgImage: htmlBgImage.substring(0, 100),
-                        bodyBgImage: bodyBgImage.substring(0, 100),
-                        htmlClasses: document.documentElement.className,
-                        bodyClasses: document.body.className,
-                        stylesheetCount: stylesheets.length,
-                        stylesheets: stylesheets.slice(0, 3),
-                        readyState: document.readyState,
-                        timestamp: Date.now()
-                      },
-                      timestamp: Date.now(),
-                      sessionId: 'debug-session',
-                      runId: 'run1',
-                      hypothesisId: 'A'
-                    })
-                  }).catch(() => {});
-                }
-                
-                // Check immediately
-                if (document.readyState === 'loading') {
-                  document.addEventListener('DOMContentLoaded', () => logCSSState('DOMContentLoaded'));
-                } else {
-                  logCSSState('immediate');
-                }
-                
-                // Check after delays to see if CSS loads
-                setTimeout(() => logCSSState('100ms'), 100);
-                setTimeout(() => logCSSState('500ms'), 500);
-                setTimeout(() => logCSSState('1000ms'), 1000);
-                setTimeout(() => logCSSState('2000ms'), 2000);
-                
-                // Monitor stylesheet loading
-                document.addEventListener('load', function(e) {
-                  if (e.target.tagName === 'LINK' && e.target.rel === 'stylesheet') {
-                    logCSSState('stylesheet-loaded: ' + e.target.href);
-                  }
-                }, true);
               })();
             `,
           }}

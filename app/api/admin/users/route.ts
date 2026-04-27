@@ -94,6 +94,8 @@ export async function GET(req: NextRequest) {
           isAdmin: user.isAdmin,
           createdAt: user.createdAt,
           stripeCustomerId: user.stripeCustomerId,
+          billingProvider: user.billingProvider,
+          providerCustomerId: user.providerCustomerId,
       usageCount: usageMap.get(user.id) || 0,
       totalCreditsPurchased: creditsMap.get(user.id) || 0,
       totalRevenue: revenueMap.get(user.id) || 0,

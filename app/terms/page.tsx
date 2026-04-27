@@ -70,7 +70,7 @@ export default function TermsPage() {
               Credits purchased through tailora:
             </p>
             <ul className="ml-6 list-disc space-y-1 text-slate-600 dark:text-slate-300">
-              <li>Do not expire</li>
+              <li>Expire 12 months after they are added to your account</li>
               <li>Are non-transferable</li>
               <li>Are non-refundable except as required by law or at our discretion</li>
               <li>Each credit allows you to tailor one resume to one job description</li>
@@ -82,7 +82,7 @@ export default function TermsPage() {
               6. Privacy and Data
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              Your privacy is important to us. Files are processed in-memory and never persisted to disk by default. Please review our <a href="/privacy" className="text-blue-600 hover:underline dark:text-blue-400">Privacy Policy</a> for more information about how we handle your data.
+              Your privacy is important to us. Uploaded files are parsed in memory and discarded after extraction; session data is stored in Redis for up to 60 minutes and tailoring uses OpenAI. Please review our <a href="/privacy" className="text-blue-600 hover:underline dark:text-blue-400">Privacy Policy</a> for more information about how we handle your data.
             </p>
           </div>
 

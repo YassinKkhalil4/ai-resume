@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '../../../../lib/auth/utils'
 import { requireEmailVerification } from '../../../../lib/guards'
-import { stripe, isValidPriceId, getCreditsForPriceId } from '../../../../lib/stripe/config'
-import { db, users } from '../../../../lib/db'
-import { eq } from 'drizzle-orm'
 import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
+import { assertValidPackageId, buildLemonCheckoutUrl } from '../../../../lib/billing/lemon-squeezy'
+import { getCreditPackage } from '../../../../lib/billing/checkout-links'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,88 +10,45 @@ export async function POST(req: NextRequest) {
     if (!verificationCheck.ok) {
       return verificationCheck.res
     }
-    const user = verificationCheck.user
+
     const body = await req.json()
-    const { priceId } = body
+    const packageId = String(body.packageId || body.priceId || '')
+    assertValidPackageId(packageId)
 
-    if (!priceId) {
+    const pkg = getCreditPackage(packageId)
+    const url = buildLemonCheckoutUrl(packageId, verificationCheck.user)
+
+    if (!pkg || !url) {
       return NextResponse.json(
-        { code: 'missing_price_id', message: 'Price ID is required' },
-        { status: 400 }
+        { code: 'checkout_not_configured', message: 'Checkout is not configured for this package yet' },
+        { status: 503 }
       )
     }
 
-    if (!isValidPriceId(priceId)) {
-      return NextResponse.json(
-        { code: 'invalid_price_id', message: 'Invalid price ID' },
-        { status: 400 }
-      )
-    }
-
-    const credits = getCreditsForPriceId(priceId)
-    if (!credits) {
-      return NextResponse.json(
-        { code: 'invalid_price_id', message: 'Could not determine credits for price ID' },
-        { status: 400 }
-      )
-    }
-
-    // Get or create Stripe customer
-    let customerId = user.stripeCustomerId
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          userId: user.id,
-        },
-      })
-      customerId = customer.id
-
-      // Update user with Stripe customer ID
-      await db
-        .update(users)
-        .set({ stripeCustomerId: customerId })
-        .where(eq(users.id, user.id))
-    }
-
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'payment',
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard?canceled=true`,
-      metadata: {
-        userId: user.id,
-        credits: credits.toString(),
-      },
-    })
-
-    // Track checkout started
     const context = getContext(req)
-    await trackEvent('checkout_started', {
-      priceId,
-      credits,
-      sessionId: session.id,
-    }, context, user.id)
+    await trackEvent(
+      'checkout_started',
+      {
+        provider: 'lemon_squeezy',
+        packageId,
+        credits: pkg.credits,
+      },
+      context,
+      verificationCheck.user.id
+    )
 
     return NextResponse.json({
       success: true,
-      url: session.url,
-      sessionId: session.id,
+      provider: 'lemon_squeezy',
+      url,
+      packageId,
     })
   } catch (error) {
-    console.error('Checkout session creation error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to create checkout URL'
+    const status = message === 'Invalid credit package' ? 400 : 500
     return NextResponse.json(
-      { code: 'checkout_failed', message: 'Failed to create checkout session' },
-      { status: 500 }
+      { code: status === 400 ? 'invalid_package' : 'checkout_failed', message },
+      { status }
     )
   }
 }
-

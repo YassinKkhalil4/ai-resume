@@ -9,6 +9,7 @@ export interface CreditPackage {
   name: string
   credits: number
   price: number
+  lemonVariantEnv: string
   popular?: boolean
   description: string
   tagline: string
@@ -21,6 +22,7 @@ export const CREDIT_PACKAGE_DEFINITIONS: CreditPackage[] = [
     name: 'Starter',
     credits: 5,
     price: 5.99,
+    lemonVariantEnv: 'LEMON_SQUEEZY_VARIANT_STARTER',
     description: 'Best for testing Tailora, single job applications, and first-time users',
     tagline: 'Best for trying Tailora',
     features: [
@@ -35,6 +37,7 @@ export const CREDIT_PACKAGE_DEFINITIONS: CreditPackage[] = [
     name: 'Job Seeker',
     credits: 15,
     price: 12.99,
+    lemonVariantEnv: 'LEMON_SQUEEZY_VARIANT_JOB_SEEKER',
     popular: true,
     description: 'Best for active job seekers and multiple applications per week',
     tagline: 'Most popular for active searches',
@@ -50,6 +53,7 @@ export const CREDIT_PACKAGE_DEFINITIONS: CreditPackage[] = [
     name: 'Power Apply',
     credits: 40,
     price: 24.99,
+    lemonVariantEnv: 'LEMON_SQUEEZY_VARIANT_POWER_APPLY',
     description: 'Best for aggressive applicants, graduates, and people applying at scale',
     tagline: 'Great for high-volume applications',
     features: [
@@ -64,6 +68,7 @@ export const CREDIT_PACKAGE_DEFINITIONS: CreditPackage[] = [
     name: 'Career Coach',
     credits: 120,
     price: 64.99,
+    lemonVariantEnv: 'LEMON_SQUEEZY_VARIANT_CAREER_COACH',
     description: 'Designed for career coaches and power users working with many clients or applications',
     tagline: 'Built for coaches and power users',
     features: [
@@ -85,4 +90,12 @@ export const EXTERNAL_CHECKOUT_LINKS_BY_PACKAGE: Record<CreditPackageId, string>
 export function getExternalCheckoutLink(packageId: CreditPackageId): string | null {
   const link = EXTERNAL_CHECKOUT_LINKS_BY_PACKAGE[packageId]
   return link ? link : null
+}
+
+export function getCreditPackage(packageId: string): CreditPackage | null {
+  return CREDIT_PACKAGE_DEFINITIONS.find((pkg) => pkg.id === packageId) || null
+}
+
+export function isCreditPackageId(packageId: string): packageId is CreditPackageId {
+  return CREDIT_PACKAGE_DEFINITIONS.some((pkg) => pkg.id === packageId)
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
+import { extractTextFromFile, heuristicParseResume, validateResumeUpload } from '../../../lib/parsers'
 import { createSectionMapper, createParsingResult } from '../../../lib/section-mapper'
 import { enforceGuards } from '../../../lib/guards'
 import { trackEvent, getContext } from '../../../lib/analytics/tracker'
@@ -21,6 +21,14 @@ export async function POST(req: NextRequest) {
         code: 'no_file', 
         message: 'No file provided' 
       }, { status: 400 })
+    }
+
+    const fileValidation = validateResumeUpload(file)
+    if (fileValidation.ok === false) {
+      return NextResponse.json(
+        { code: fileValidation.code, message: fileValidation.message },
+        { status: fileValidation.status }
+      )
     }
 
     // Extract text from file
@@ -82,6 +90,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       resume,
+      resumeText: text,
       confidence,
       needsConfirmation,
       suggestedMapping,

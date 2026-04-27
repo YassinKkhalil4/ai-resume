@@ -37,7 +37,7 @@ export default function AboutPage() {
                 Privacy by Default
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                Your files are processed in-memory and never persisted to disk. Exports are generated on-demand and wiped immediately after download. Your data stays yours.
+                Uploaded files are parsed in memory and discarded after extraction. Session data is kept in Redis for up to 60 minutes, and tailoring uses OpenAI.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">

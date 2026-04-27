@@ -21,9 +21,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
 
   useEffect(() => {
     if (isOpen) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/EmailVerificationModal.tsx:useEffect:modal-opened',message:'Verification modal opened',data:{email,hasSession:!!session,emailVerified:session?.user?.emailVerified},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setCode('')
       setError('')
       setResendSuccess(false)
@@ -53,9 +50,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
 
       // Update session to reflect verified status
       await updateSession()
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/EmailVerificationModal.tsx:handleVerify:success',message:'Verification successful, closing modal',data:{codeLength:code.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       
       // Close modal and reload to refresh UI
       onClose()
@@ -71,9 +65,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
     setResendLoading(true)
     setError('')
     setResendSuccess(false)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/EmailVerificationModal.tsx:handleResend:start',message:'Resend verification email requested',data:{email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     try {
       const response = await fetch('/api/auth/resend-verification', {
@@ -82,9 +73,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
       })
 
       const data = await response.json()
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/EmailVerificationModal.tsx:handleResend:response',message:'Resend verification response received',data:{ok:response.ok,status:response.status,hasError:!response.ok,errorMessage:data.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
 
       if (!response.ok) {
         setError(data.message || 'Failed to resend verification email')
@@ -94,9 +82,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
       setResendSuccess(true)
       setTimeout(() => setResendSuccess(false), 5000)
     } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/EmailVerificationModal.tsx:handleResend:error',message:'Resend verification error caught',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       setError('Failed to resend verification email')
     } finally {
       setResendLoading(false)
@@ -118,9 +103,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
       <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900">
         <button
           onClick={() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/EmailVerificationModal.tsx:X-button-clicked',message:'X button clicked - closing modal',data:{emailVerified:session?.user?.emailVerified,hasSession:!!session},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             onClose()
           }}
           className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"

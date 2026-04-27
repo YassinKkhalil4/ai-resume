@@ -10,8 +10,9 @@ flowchart LR
 
     subgraph Application
         APIRoutes["Next.js API Routes (Node runtime)"]
-        Sessions["In-memory Session Store (/lib/sessions.ts)"]
+        Sessions["Redis Session Store (/lib/sessions.ts)"]
         Telemetry["Telemetry & Logging (/lib/telemetry.ts)"]
+        Billing["Lemon Squeezy Webhooks"]
     end
 
     subgraph AI
@@ -30,6 +31,7 @@ flowchart LR
     APIRoutes --> Sessions
     APIRoutes --> Telemetry
     APIRoutes --> Parser
+    APIRoutes --> Billing
     Parser --> Prompts
     Parser --> OpenAI
     APIRoutes --> PDFService
@@ -42,7 +44,8 @@ flowchart LR
 - **Frontend:** Next.js 14 app directory with client components handling upload, JD input, preview, diffing, and export workflows (`app/page.tsx`, `components/*`).
 - **Backend:** Next.js Edge/Node API routes (`app/api/**`) providing resume parsing, tailoring, ATS scoring, honesty scan, diff generation, export, admin configuration, and health checks.
 - **AI Layer:** Centralised helper `lib/ai-response-parser.ts` orchestrates OpenAI chat completions, schema validation, coercion, retry logic, and honesty safeguards.
-- **Sessions & Privacy:** Session data is stored in-memory (Node Map) with 60-minute TTL; configuration overrides and telemetry persist only to `/tmp`.
+- **Sessions & Privacy:** Session data is stored in Redis with a 60-minute TTL. Uploaded files are parsed in memory and discarded after extraction, while resume/JD text is sent to OpenAI for tailoring.
+- **Billing:** Lemon Squeezy external checkout links attach user/package metadata; signed webhooks add 12-month credit lots.
 - **Exports:** HTML rendering via `lib/pdf-service-v2.ts` with multi-tier fallbacks (external renderer → Puppeteer → basic PDF). DOCX generated through `lib/html-to-docx.ts`.
 - **Telemetry & Guardrails:** Invite gating, rate limits, and guard enforcement handled by `lib/guards.ts`. Telemetry records metrics, AI attempts, and errors to JSONL streams.
 
@@ -50,7 +53,7 @@ flowchart LR
 
 1. **Build:** `npm run build` compiles Next.js, Tailwind CSS, and TypeScript.
 2. **Containerisation:** Dockerfile ships a Node 20-alpine image; CI can push to registry.
-3. **Runtime Config:** Environment variables set for OpenAI, renderer, invites, admin key, rate limits.
+3. **Runtime Config:** Environment variables set for database, NextAuth, Redis, OpenAI, Resend, Lemon Squeezy, renderer, invites, and rate limits.
 4. **Hosting Options:**
    - **Managed (Vercel):** Leverages `vercel.json` for function memory/timeouts.
    - **Self-hosted VM/K8s:** Run container, expose port 3000 behind TLS proxy.
@@ -58,7 +61,6 @@ flowchart LR
 
 ## Extensibility Considerations
 
-- **Persistence:** Swap `lib/sessions.ts` Map for Redis/PostgreSQL to support multi-instance deployments.
+- **Persistence:** Redis is required for session state; PostgreSQL stores users, credits, analytics, and webhook logs.
 - **AI Provider:** `lib/openai.ts` centralises client creation; alternate providers can be introduced behind the same interface.
 - **Multi-Tenant Controls:** Extend `lib/config.ts` to read from durable KV, integrate with SSO for `/admin`.
-

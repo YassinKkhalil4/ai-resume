@@ -1,11 +1,17 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
-import { db, users } from '../db'
+import { db, users, creditLots } from '../db'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import { detectUniversity } from '../analytics/university-detector'
 import { trackEvent } from '../analytics/tracker'
+
+function oneYearFromNow() {
+  const expiresAt = new Date()
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1)
+  return expiresAt
+}
 
 // Auto-fix NEXTAUTH_URL if it's set to production URL but we're running locally
 if (process.env.NEXTAUTH_URL && process.env.NODE_ENV === 'development') {
@@ -76,15 +82,27 @@ export const authOptions: NextAuthOptions = {
 
           if (!existingUser) {
             // Create new user with 1 free credit and auto-verify email (Google OAuth)
-            const [newUser] = await db
-              .insert(users)
-              .values({
-                email: user.email || '',
-                creditsRemaining: 1, // Free credit on signup
-                emailVerified: true, // Auto-verify Google OAuth users
-                emailVerifiedAt: new Date(),
+            const newUser = await db.transaction(async (tx) => {
+              const [created] = await tx
+                .insert(users)
+                .values({
+                  email: user.email || '',
+                  creditsRemaining: 1,
+                  emailVerified: true,
+                  emailVerifiedAt: new Date(),
+                })
+                .returning()
+
+              await tx.insert(creditLots).values({
+                userId: created.id,
+                source: 'signup',
+                creditsTotal: 1,
+                creditsRemaining: 1,
+                expiresAt: oneYearFromNow(),
               })
-              .returning()
+
+              return created
+            })
 
             user.id = newUser.id
           } else {
@@ -159,4 +177,3 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
-

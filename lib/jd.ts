@@ -1,11 +1,15 @@
 import { JSDOM } from 'jsdom'
 import { logUrlFetch } from './telemetry'
+import { lookup } from 'dns/promises'
+import net from 'net'
 
 // Configuration
 const MAX_TEXT_LENGTH = 15000 // Increased from 5000
+const MAX_FETCH_BYTES = 2 * 1024 * 1024
 const FETCH_TIMEOUT = 15000 // 15 seconds
 const MAX_RETRIES = 2
 const RETRY_DELAY_BASE = 1000 // 1 second base delay
+const MAX_REDIRECTS = 5
 
 // URL Validation - Security hardening
 export function validateUrl(url: string): void {
@@ -68,6 +72,149 @@ export function validateUrl(url: string): void {
       throw new Error('This URL cannot be accessed for security reasons. Cannot access internal domains.')
     }
   }
+}
+
+export function isPrivateNetworkAddress(address: string): boolean {
+  const normalized = address.toLowerCase()
+  const mappedIpv4 = normalized.startsWith('::ffff:') ? normalized.slice('::ffff:'.length) : normalized
+  const ipVersion = net.isIP(mappedIpv4)
+
+  if (ipVersion === 4) {
+    const parts = mappedIpv4.split('.').map((part) => Number(part))
+    if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true
+    const [a, b] = parts
+
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19))
+    )
+  }
+
+  if (ipVersion === 6) {
+    return (
+      normalized === '::1' ||
+      normalized === '::' ||
+      normalized.startsWith('fc') ||
+      normalized.startsWith('fd') ||
+      normalized.startsWith('fe80:')
+    )
+  }
+
+  return true
+}
+
+export async function validateUrlTarget(url: string): Promise<void> {
+  validateUrl(url)
+  const parsed = new URL(url)
+  const hostname = parsed.hostname
+
+  if (net.isIP(hostname) && isPrivateNetworkAddress(hostname)) {
+    throw new Error('This URL cannot be accessed for security reasons. Cannot access private networks.')
+  }
+
+  try {
+    const addresses = await lookup(hostname, { all: true, verbatim: false })
+    if (!addresses.length) {
+      throw new Error('Could not resolve URL host')
+    }
+
+    for (const address of addresses) {
+      if (isPrivateNetworkAddress(address.address)) {
+        throw new Error('This URL cannot be accessed for security reasons. Cannot access private networks.')
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('security reasons')) throw error
+    throw new Error('Could not resolve URL host')
+  }
+}
+
+function validateFetchContentType(contentType: string | null): void {
+  if (!contentType) return
+  const lower = contentType.toLowerCase()
+  if (
+    lower.includes('text/html') ||
+    lower.includes('text/plain') ||
+    lower.includes('application/xhtml+xml') ||
+    lower.includes('application/xml') ||
+    lower.includes('text/xml')
+  ) {
+    return
+  }
+
+  throw new Error('Unsupported content type. Please provide a URL to an HTML or text job description.')
+}
+
+async function readLimitedText(res: Response): Promise<string> {
+  const contentLength = Number(res.headers.get('content-length') || 0)
+  if (Number.isFinite(contentLength) && contentLength > MAX_FETCH_BYTES) {
+    throw new Error('Job description page is too large to fetch safely.')
+  }
+
+  if (!res.body) {
+    const text = await res.text()
+    if (Buffer.byteLength(text, 'utf8') > MAX_FETCH_BYTES) {
+      throw new Error('Job description page is too large to fetch safely.')
+    }
+    return text
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let total = 0
+  let text = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > MAX_FETCH_BYTES) {
+      await reader.cancel()
+      throw new Error('Job description page is too large to fetch safely.')
+    }
+    text += decoder.decode(value, { stream: true })
+  }
+
+  text += decoder.decode()
+  return text
+}
+
+async function fetchSafeUrl(url: string, signal: AbortSignal): Promise<{ res: Response; finalUrl: string }> {
+  let currentUrl = url
+
+  for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
+    await validateUrlTarget(currentUrl)
+
+    const res = await fetch(currentUrl, {
+      signal,
+      redirect: 'manual',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    })
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location')
+      if (!location) {
+        throw new Error('Redirect response did not include a location header.')
+      }
+      currentUrl = new URL(location, currentUrl).toString()
+      continue
+    }
+
+    validateFetchContentType(res.headers.get('content-type'))
+    return { res, finalUrl: currentUrl }
+  }
+
+  throw new Error('Too many redirects while fetching the job description.')
 }
 
 // Extract main content from HTML using intelligent heuristics
@@ -488,14 +635,7 @@ export async function extractJDFromUrl(url: string): Promise<ExtractionResult> {
       try {
         console.log(`[JD Fetch] Attempt ${attempt}/${MAX_RETRIES + 1}`)
         
-        const res = await fetch(url, {
-          signal: ctrl.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-          }
-        })
+        const { res, finalUrl } = await fetchSafeUrl(url, ctrl.signal)
 
         clearTimeout(timeoutId)
 
@@ -503,11 +643,11 @@ export async function extractJDFromUrl(url: string): Promise<ExtractionResult> {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`)
         }
 
-        const html = await res.text()
+        const html = await readLimitedText(res)
         console.log(`[JD Fetch] Fetched HTML, length: ${html.length} bytes`)
 
         // Parse with JSDOM
-        const dom = new JSDOM(html, url ? { url } : undefined)
+        const dom = new JSDOM(html, finalUrl ? { url: finalUrl } : undefined)
         console.log('[JD Fetch] Parsed HTML with JSDOM')
 
         // Extract structured text

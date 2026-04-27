@@ -2,10 +2,45 @@
 
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { CREDIT_PACKAGE_DEFINITIONS, getExternalCheckoutLink } from '../../lib/billing/checkout-links'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { CREDIT_PACKAGE_DEFINITIONS, CreditPackageId } from '../../lib/billing/checkout-links'
 
 export default function PricingPage() {
   const { data: session } = useSession()
+  const router = useRouter()
+  const [loadingPackage, setLoadingPackage] = useState<CreditPackageId | null>(null)
+  const [checkoutError, setCheckoutError] = useState('')
+
+  async function handlePurchase(packageId: CreditPackageId) {
+    if (!session) {
+      router.push('/tailor')
+      return
+    }
+
+    setLoadingPackage(packageId)
+    setCheckoutError('')
+
+    try {
+      const response = await fetch('/api/billing/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageId }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok || !data.url) {
+        setCheckoutError(data.message || 'Checkout is not available right now. Please try again later.')
+        setLoadingPackage(null)
+        return
+      }
+
+      window.location.href = data.url
+    } catch {
+      setCheckoutError('Checkout is not available right now. Please try again later.')
+      setLoadingPackage(null)
+    }
+  }
 
   return (
     <main className="space-y-12 pb-16">
@@ -27,8 +62,6 @@ export default function PricingPage() {
       <section>
         <div className="grid gap-6 md:grid-cols-3">
           {CREDIT_PACKAGE_DEFINITIONS.map((pkg) => {
-            const checkoutLink = getExternalCheckoutLink(pkg.id)
-
             return (
             <div
               key={pkg.name}
@@ -74,30 +107,23 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                {checkoutLink ? (
-                  <a
-                    href={checkoutLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="button block w-full text-center"
-                  >
-                    {session ? 'Buy Credits' : 'Buy Credits'}
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="button w-full cursor-not-allowed opacity-60"
-                  >
-                    Checkout Coming Soon
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handlePurchase(pkg.id)}
+                  disabled={loadingPackage !== null}
+                  className="button block w-full text-center disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingPackage === pkg.id ? 'Opening checkout...' : session ? 'Buy Credits' : 'Sign in to Buy'}
+                </button>
               </div>
             </div>
           )})}
         </div>
+        {checkoutError && (
+          <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{checkoutError}</p>
+        )}
         <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
-          You can complete checkout before invite approval. Workspace access unlocks after your invite is approved.
+          Sign in and verify your email before purchasing credits.
         </p>
       </section>
 
@@ -128,7 +154,7 @@ export default function PricingPage() {
                 What payment methods do you accept?
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                We support secure payments through our external checkout provider.
+                Payments are handled by Lemon Squeezy.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">

@@ -194,7 +194,6 @@ Both are documented and have functional alternatives. The application can be dep
 
 - The build error with `_document` is a known Next.js App Router limitation and doesn't affect runtime functionality
 - All API routes have proper error handling and validation
-- The application uses in-memory sessions (60-minute TTL) for privacy
+- The application uses Redis sessions with a 60-minute TTL
 - Rate limiting and invite codes are properly implemented
 - PDF generation has multiple fallback mechanisms (PDFShift → Puppeteer → Basic HTML)
-

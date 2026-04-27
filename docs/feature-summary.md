@@ -1,6 +1,6 @@
 # Feature Summary
 
-**tailora delivers ATS-proof, integrity-first resume tailoring with end-to-end guardrails, ready to run in production this week.**
+**tailora delivers integrity-first resume tailoring with ATS feedback, export tools, and launch guardrails.**
 
 ## Core User Flow
 - Upload PDF/DOCX/TXT, paste a job description (or URL), and receive rewrites in under 15 seconds.
@@ -18,12 +18,14 @@
 - Guardrails in `lib/ai-response-parser.ts` reject outputs that add unsupported claims or regress ATS coverage.
 
 ## Privacy, Security & Trust
-- No persistent storage: sessions live in-memory for 60 minutes; files are discarded immediately after parsing.
+- Uploaded files are parsed in memory and discarded after extraction; session data lives in Redis for 60 minutes.
+- Resume and job description text is sent to OpenAI for tailoring.
+- Lemon Squeezy handles checkout; credits expire 12 months after purchase or grant.
 - Rate limits (per-IP and per-session) plus invite codes keep abuse out during pilots.
-- Telemetry streams to `/tmp` JSONL files with correlation IDs for debugging without retaining applicant data long term.
+- Telemetry stores product metrics and errors in the configured database/drains without storing uploaded binaries.
 
 ## Admin & Operational Controls
-- `/admin` console lets operators rotate invites, adjust rate limits, and override OpenAI keys on the fly (stored ephemerally).
+- `/admin` console lets operators inspect users, runs, analytics, invites, rate limits, and runtime settings.
 - Health checks and PDF renderer monitoring expose export latency, failure alerts, and retry fallbacks (external renderer → Puppeteer → basic HTML→PDF).
 - Infrastructure ships with Dockerfile, Vercel config, and container-ready Next.js build pipeline for flexible deployment targets.
 

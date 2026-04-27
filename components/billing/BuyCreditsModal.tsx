@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import CreditPackages from './CreditPackages'
-import { CreditPackageId, getExternalCheckoutLink } from '../../lib/billing/checkout-links'
+import { CreditPackageId } from '../../lib/billing/checkout-links'
 
 interface BuyCreditsModalProps {
   isOpen: boolean
@@ -21,15 +21,21 @@ export default function BuyCreditsModal({ isOpen, onClose, onSuccess }: BuyCredi
     setError('')
 
     try {
-      const checkoutLink = getExternalCheckoutLink(priceId)
-      if (!checkoutLink) {
-        setError('Checkout link is not configured yet. Please contact support.')
+      const response = await fetch('/api/billing/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageId: priceId }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok || !data.url) {
+        setError(data.message || 'Checkout is not available right now. Please try again later.')
         setLoading(false)
         return
       }
 
       if (onSuccess) onSuccess()
-      window.location.href = checkoutLink
+      window.location.href = data.url
     } catch (err) {
       setError('An error occurred. Please try again.')
       setLoading(false)
@@ -62,10 +68,9 @@ export default function BuyCreditsModal({ isOpen, onClose, onSuccess }: BuyCredi
         <CreditPackages onPurchase={handlePurchase} loading={loading} />
 
         <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
-          Secure checkout is handled by our external provider. Purchase is allowed before invite approval.
+          Secure checkout is handled by Lemon Squeezy. Sign in and verify your email before purchasing credits.
         </p>
       </div>
     </div>
   )
 }
-

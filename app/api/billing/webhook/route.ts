@@ -1,141 +1,144 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, getCreditsForPriceId } from '../../../../lib/stripe/config'
+import { and, eq, sql } from 'drizzle-orm'
 import { db, users, creditTransactions, creditLots, webhookLogs } from '../../../../lib/db'
-import { and, eq, desc } from 'drizzle-orm'
-import Stripe from 'stripe'
 import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
+import {
+  getCreditsForVariantId,
+  getLemonAmount,
+  getLemonCustomerId,
+  getLemonEventKey,
+  getLemonEventName,
+  getLemonOrderId,
+  getLemonOrderStatus,
+  getLemonUserId,
+  getLemonVariantId,
+  LEMON_PROVIDER,
+  parseLemonPayload,
+  verifyLemonWebhookSignature,
+} from '../../../../lib/billing/lemon-squeezy'
 
 export const runtime = 'nodejs'
 
+async function markWebhookProcessed(logId: string, manualReviewReason?: string | null) {
+  await db
+    .update(webhookLogs)
+    .set({ processed: true, manualReviewReason: manualReviewReason || null })
+    .where(eq(webhookLogs.id, logId))
+}
+
 export async function POST(req: NextRequest) {
-  const body = await req.text()
-  const signature = req.headers.get('stripe-signature')
+  const rawBody = await req.text()
+  const signature = req.headers.get('x-signature')
 
-  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!verifyLemonWebhookSignature(rawBody, signature, process.env.LEMON_SQUEEZY_WEBHOOK_SECRET)) {
     return NextResponse.json(
-      { code: 'missing_signature', message: 'Missing signature or webhook secret' },
+      { code: 'invalid_signature', message: 'Invalid Lemon Squeezy webhook signature' },
       { status: 400 }
     )
   }
 
-  let event: Stripe.Event
-
+  let payload: any
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    )
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err)
+    payload = parseLemonPayload(rawBody)
+  } catch {
     return NextResponse.json(
-      { code: 'invalid_signature', message: 'Invalid signature' },
+      { code: 'invalid_payload', message: 'Invalid webhook payload' },
       { status: 400 }
     )
   }
 
-  // Log webhook event
-  await db.insert(webhookLogs).values({
-    eventType: event.type,
-    payload: event as any,
-    processed: false,
+  const eventName = getLemonEventName(payload)
+  const providerEventKey = getLemonEventKey(payload)
+  const eventId = String(payload?.meta?.event_id || payload?.data?.id || providerEventKey)
+
+  const existingLog = await db.query.webhookLogs.findFirst({
+    where: and(
+      eq(webhookLogs.provider, LEMON_PROVIDER),
+      eq(webhookLogs.providerEventKey, providerEventKey)
+    ),
   })
 
-  // Handle checkout.session.completed event
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
+  if (existingLog?.processed) {
+    return NextResponse.json({ received: true, duplicate: true }, { status: 200 })
+  }
 
-    try {
-      // Extract metadata
-      const userId = session.metadata?.userId
-      const creditsStr = session.metadata?.credits
-      const priceId = session.metadata?.priceId
-
-      if (!userId) {
-        console.error('Missing userId in checkout session metadata:', session.id)
-        return NextResponse.json({ received: true }, { status: 200 })
-      }
-
-      // Derive credits either from explicit metadata or from Stripe price mapping
-      let credits = creditsStr ? parseInt(creditsStr, 10) : 0
-      if (!credits && priceId) {
-        const mapped = getCreditsForPriceId(priceId)
-        if (mapped && mapped > 0) {
-          credits = mapped
-        }
-      }
-
-      if (!credits || Number.isNaN(credits) || credits <= 0) {
-        console.error('No valid credits resolved for checkout session:', {
-          sessionId: session.id,
-          userId,
-          creditsStr,
-          priceId,
+  const [webhookLog] = existingLog
+    ? [existingLog]
+    : await db
+        .insert(webhookLogs)
+        .values({
+          provider: LEMON_PROVIDER,
+          eventId,
+          providerEventKey,
+          eventType: eventName || 'unknown',
+          payload,
+          processed: false,
         })
-        return NextResponse.json({ received: true }, { status: 200 })
+        .returning()
+
+  try {
+    if (eventName === 'order_created') {
+      const status = getLemonOrderStatus(payload)
+      if (status && status !== 'paid') {
+        await markWebhookProcessed(webhookLog.id)
+        return NextResponse.json({ received: true, ignored: true, status }, { status: 200 })
       }
 
-      const paymentIntentId = session.payment_intent as string
+      const userId = getLemonUserId(payload)
+      const orderId = getLemonOrderId(payload)
+      const variantId = getLemonVariantId(payload)
+      const credits = getCreditsForVariantId(variantId)
+      const customerId = getLemonCustomerId(payload)
 
-      if (!paymentIntentId) {
-        console.error('Missing payment_intent in session:', session.id)
-        return NextResponse.json({ received: true }, { status: 200 })
+      if (!userId || !orderId || !variantId || !credits) {
+        await markWebhookProcessed(webhookLog.id, 'missing_user_order_or_variant_mapping')
+        return NextResponse.json({ received: true, manualReview: true }, { status: 200 })
       }
 
-      // Check for duplicate (idempotency)
-      const existingTransaction = await db.query.creditTransactions.findFirst({
-        where: eq(creditTransactions.stripePaymentId, paymentIntentId),
-      })
+      const amount = getLemonAmount(payload)
 
-      if (existingTransaction) {
-        console.log('Duplicate webhook event, already processed:', paymentIntentId)
-        // Update webhook log as processed for this specific event id if possible
-        const latestLog = await db.query.webhookLogs.findFirst({
+      const result = await db.transaction(async (tx) => {
+        const existingTransaction = await tx.query.creditTransactions.findFirst({
           where: and(
-            eq(webhookLogs.eventType, event.type),
-            eq(webhookLogs.processed, false)
+            eq(creditTransactions.paymentProvider, LEMON_PROVIDER),
+            eq(creditTransactions.providerOrderId, orderId)
           ),
-          orderBy: (webhookLogs, { desc: orderDesc }) => [orderDesc(webhookLogs.createdAt)],
         })
 
-        if (latestLog) {
-          await db
-            .update(webhookLogs)
-            .set({ processed: true })
-            .where(eq(webhookLogs.id, latestLog.id))
-        }
+        if (existingTransaction) return { duplicate: true }
 
-        return NextResponse.json({ received: true, duplicate: true }, { status: 200 })
-      }
-
-      // Begin transaction
-      await db.transaction(async (tx) => {
-        // Insert credit transaction
-        await tx.insert(creditTransactions).values({
-          userId,
-          stripePaymentId: paymentIntentId,
-          creditsAdded: credits,
-          amount: ((session.amount_total || 0) / 100).toString(), // Convert from cents to string
-        })
-
-        // Update user credits and create credit lot with 1-year expiry
         const user = await tx.query.users.findFirst({
           where: eq(users.id, userId),
         })
 
-        if (!user) {
-          throw new Error(`User not found: ${userId}`)
-        }
+        if (!user) return { manualReviewReason: 'user_not_found' }
 
         const now = new Date()
         const expiresAt = new Date(now)
         expiresAt.setFullYear(expiresAt.getFullYear() + 1)
 
+        await tx.insert(creditTransactions).values({
+          userId,
+          stripePaymentId: null,
+          paymentProvider: LEMON_PROVIDER,
+          providerOrderId: orderId,
+          providerCustomerId: customerId,
+          providerVariantId: variantId,
+          providerEventKey,
+          creditsAdded: credits,
+          amount,
+        })
+
         await tx.insert(creditLots).values({
           userId,
           source: 'checkout',
-          stripePaymentId: paymentIntentId,
+          stripePaymentId: null,
           stripeInvoiceId: null,
+          paymentProvider: LEMON_PROVIDER,
+          providerOrderId: orderId,
+          providerCustomerId: customerId,
+          providerVariantId: variantId,
+          providerEventKey,
           creditsTotal: credits,
           creditsRemaining: credits,
           expiresAt,
@@ -144,47 +147,103 @@ export async function POST(req: NextRequest) {
         await tx
           .update(users)
           .set({
-            creditsRemaining: user.creditsRemaining + credits,
+            billingProvider: LEMON_PROVIDER,
+            providerCustomerId: customerId,
+            creditsRemaining: sql`${users.creditsRemaining} + ${credits}`,
           })
           .where(eq(users.id, userId))
+
+        return { credited: true }
       })
 
-      // Mark webhook as processed
-      const webhookLog = await db.query.webhookLogs.findFirst({
-        where: and(
-          eq(webhookLogs.eventType, event.type),
-          eq(webhookLogs.processed, false)
-        ),
-        orderBy: (webhookLogs, { desc: orderDesc }) => [orderDesc(webhookLogs.createdAt)],
-      })
+      await markWebhookProcessed(webhookLog.id, result.manualReviewReason)
 
-      if (webhookLog) {
-        await db
-          .update(webhookLogs)
-          .set({ processed: true })
-          .where(eq(webhookLogs.id, webhookLog.id))
+      if (result.manualReviewReason) {
+        return NextResponse.json({ received: true, manualReview: true }, { status: 200 })
       }
 
-      console.log(`Credits added: ${credits} to user ${userId}`)
+      if (!result.duplicate) {
+        const context = getContext(req)
+        await trackEvent(
+          'checkout_completed',
+          {
+            provider: LEMON_PROVIDER,
+            variantId,
+            credits,
+            amount,
+            orderId,
+          },
+          context,
+          userId
+        )
+      }
 
-      // Track checkout completed
-      const context = getContext(req)
-      await trackEvent('checkout_completed', {
-        priceId: session.metadata?.priceId,
-        credits,
-        amount: (session.amount_total || 0) / 100,
-        sessionId: paymentIntentId,
-      }, context, userId)
-    } catch (error) {
-      console.error('Error processing webhook:', error)
-      // Return 200 to prevent Stripe from retrying (we'll handle manually)
+      return NextResponse.json({ received: true, duplicate: !!result.duplicate }, { status: 200 })
+    }
+
+    if (eventName === 'order_refunded') {
+      const orderId = getLemonOrderId(payload)
+      if (!orderId) {
+        await markWebhookProcessed(webhookLog.id, 'missing_order_id_for_refund')
+        return NextResponse.json({ received: true, manualReview: true }, { status: 200 })
+      }
+
+      const result = await db.transaction(async (tx) => {
+        const lots = await tx.query.creditLots.findMany({
+          where: and(
+            eq(creditLots.paymentProvider, LEMON_PROVIDER),
+            eq(creditLots.providerOrderId, orderId)
+          ),
+        })
+
+        if (!lots.length) return { manualReviewReason: 'refund_without_credit_lot', revoked: 0 }
+
+        const creditsGranted = lots.reduce((sum, lot) => sum + lot.creditsTotal, 0)
+        let creditsToRevoke = creditsGranted
+        let revoked = 0
+        const userId = lots[0].userId
+
+        for (const lot of lots) {
+          if (creditsToRevoke <= 0) break
+          const revokeFromLot = Math.min(lot.creditsRemaining, creditsToRevoke)
+          if (revokeFromLot <= 0) continue
+
+          await tx
+            .update(creditLots)
+            .set({ creditsRemaining: lot.creditsRemaining - revokeFromLot })
+            .where(eq(creditLots.id, lot.id))
+
+          revoked += revokeFromLot
+          creditsToRevoke -= revokeFromLot
+        }
+
+        if (revoked > 0) {
+          await tx
+            .update(users)
+            .set({ creditsRemaining: sql`greatest(0, ${users.creditsRemaining} - ${revoked})` })
+            .where(eq(users.id, userId))
+        }
+
+        return {
+          revoked,
+          manualReviewReason: creditsToRevoke > 0 ? 'refund_after_credits_spent' : null,
+        }
+      })
+
+      await markWebhookProcessed(webhookLog.id, result.manualReviewReason)
       return NextResponse.json(
-        { code: 'processing_error', message: 'Error processing webhook' },
+        { received: true, revokedCredits: result.revoked, manualReview: !!result.manualReviewReason },
         { status: 200 }
       )
     }
+
+    await markWebhookProcessed(webhookLog.id)
+    return NextResponse.json({ received: true, ignored: true }, { status: 200 })
+  } catch (error) {
+    console.error('Lemon Squeezy webhook processing error:', error)
+    return NextResponse.json(
+      { code: 'processing_error', message: 'Error processing webhook' },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ received: true }, { status: 200 })
 }
-

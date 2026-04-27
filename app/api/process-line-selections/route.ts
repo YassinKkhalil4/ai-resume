@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processLineSelections, validateProcessedExperience, createProcessingSummary, LineSelection } from '../../../lib/line-marking-parser'
 import { enforceGuards } from '../../../lib/guards'
+import { requireEmailVerification } from '../../../lib/guards'
 import { createSession, getSession, updateSession } from '../../../lib/sessions'
 import { ResumeJSON } from '../../../lib/types'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
+import { commitCreditReservation, CreditReservation, NoCreditsError, releaseCreditReservation, reserveCredit } from '../../../lib/billing/deduct-credit'
+import { createHash } from 'crypto'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
+  let creditReservation: CreditReservation | null = null
+
   console.log('Process Line Selections API called:', {
     method: req.method,
     url: req.url,
@@ -19,6 +24,10 @@ export async function POST(req: NextRequest) {
   try {
     const guard = await enforceGuards(req)
     if (!guard.ok) return guard.res
+
+    const verificationCheck = await requireEmailVerification(req)
+    if (!verificationCheck.ok) return verificationCheck.res
+    const user = verificationCheck.user
 
     const body = await req.json()
     const { 
@@ -63,6 +72,23 @@ export async function POST(req: NextRequest) {
 
     // Validate and clean the processed experiences
     const validatedExperiences = processedExperiences.map(validateProcessedExperience)
+
+    try {
+      const resumeHash = createHash('sha256').update(resumeText).digest('hex')
+      creditReservation = await reserveCredit(user.id, resumeHash)
+    } catch (error) {
+      if (error instanceof NoCreditsError) {
+        return NextResponse.json(
+          {
+            code: 'no_credits',
+            message: 'You have no credits remaining. Please purchase credits to continue.',
+            creditsRemaining: user.creditsRemaining,
+          },
+          { status: 402 }
+        )
+      }
+      throw error
+    }
 
     // Create or get the original resume structure
     let originalResume: ResumeJSON
@@ -127,6 +153,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (!session) {
+      await releaseCreditReservation(creditReservation)
+      creditReservation = null
       return NextResponse.json({
         code: 'session_error',
         message: 'Failed to create or update session'
@@ -135,6 +163,9 @@ export async function POST(req: NextRequest) {
 
     // Create processing summary
     const summary = createProcessingSummary(selectedLines as LineSelection[], validatedExperiences)
+
+    await commitCreditReservation(creditReservation!, tokens)
+    creditReservation = null
 
     console.log('Line selection processing completed successfully:', {
       sessionId: session.id,
@@ -155,6 +186,10 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
+    await releaseCreditReservation(creditReservation).catch((releaseError) => {
+      console.error('Failed to release reserved credit:', releaseError)
+    })
+
     console.error('Process line selections error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     const message = error instanceof Error ? error.message : String(error)

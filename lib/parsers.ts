@@ -9,6 +9,37 @@ type ParsedSections = {
   source?: ExperienceSource
 }
 
+export const MAX_RESUME_FILE_BYTES = 10 * 1024 * 1024
+const ALLOWED_RESUME_EXTENSIONS = new Set(['pdf', 'docx', 'txt'])
+const ALLOWED_RESUME_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'application/octet-stream',
+  '',
+])
+
+export function validateResumeUpload(file: File): { ok: true } | { ok: false; code: string; message: string; status: number } {
+  if (!file) {
+    return { ok: false, code: 'no_file', message: 'No file provided', status: 400 }
+  }
+
+  if (file.size > MAX_RESUME_FILE_BYTES) {
+    return { ok: false, code: 'file_too_large', message: 'Resume file must be 10 MB or smaller', status: 413 }
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  if (!ALLOWED_RESUME_EXTENSIONS.has(ext)) {
+    return { ok: false, code: 'unsupported_file_type', message: 'Upload a PDF, DOCX, or TXT resume', status: 415 }
+  }
+
+  if (file.type && !ALLOWED_RESUME_MIME_TYPES.has(file.type)) {
+    return { ok: false, code: 'unsupported_file_type', message: 'Upload a PDF, DOCX, or TXT resume', status: 415 }
+  }
+
+  return { ok: true }
+}
+
 export async function extractTextFromFile(file: File | Blob): Promise<{text:string, ext:string, error?: string, message?: string}> {
   const buffer = Buffer.from(await file.arrayBuffer())
   const ext = (file instanceof File ? file.name.split('.').pop()?.toLowerCase() : 'txt') || 'txt'

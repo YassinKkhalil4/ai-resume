@@ -151,13 +151,7 @@ export default function TailorPage() {
       .split('; ')
       .find(row => row.startsWith('invite='))
       ?.split('=')[1]
-    const decoded = inviteCode ? decodeURIComponent(inviteCode) : ''
-    console.log('Cookie debug:', {
-      allCookies: document.cookie,
-      inviteCode,
-      decoded
-    })
-    return decoded
+    return inviteCode ? decodeURIComponent(inviteCode) : ''
   }
 
   // Helper function to extract text from resume file
@@ -221,13 +215,6 @@ export default function TailorPage() {
       fd.append('strict_honesty_mode', strictHonestyMode ? 'true' : 'false')
       
       const inviteCode = getInviteCode()
-      console.log('API call debug:', {
-        inviteCode,
-        formDataEntries: [...fd.entries()],
-        headers: {
-          'x-invite-code': inviteCode
-        }
-      })
       
       const res = await fetch('/api/tailor', { 
         method: 'POST', 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
-import { extractTextFromFile, heuristicParseResume } from '../../../lib/parsers'
+import { extractTextFromFile, heuristicParseResume, validateResumeUpload } from '../../../lib/parsers'
 import { getTailoredResume, normalizeExperienceForTailor, createFallbackResponse } from '../../../lib/ai-response-parser'
 import { createSession, getSession, RedisUnavailableError } from '../../../lib/sessions'
 import { atsCheck, compareKeywordStats } from '../../../lib/ats'
@@ -13,7 +13,7 @@ import { honestyScan } from '../../../lib/honesty'
 import { extractJDFromUrl, validateUrl, inferIndustry } from '../../../lib/jd'
 import { enforceUrlFetchRateLimit } from '../../../lib/guards'
 import { requireEmailVerification } from '../../../lib/guards'
-import { deductCredit, NoCreditsError } from '../../../lib/billing/deduct-credit'
+import { commitCreditReservation, CreditReservation, NoCreditsError, releaseCreditReservation, reserveCredit } from '../../../lib/billing/deduct-credit'
 import { createHash } from 'crypto'
 import { db, tailoringRuns } from '../../../lib/db'
 import { trackEvent, getContext } from '../../../lib/analytics/tracker'
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
   let jd_text_raw: string = ''
   let tone: Tone = 'professional'
   let tailorRunId: string | null = null
+  let creditReservation: CreditReservation | null = null
 
   try {
     const guard = await enforceGuards(req)
@@ -202,6 +203,13 @@ export async function POST(req: NextRequest) {
       if (!resume_file) {
         return NextResponse.json({ code: 'missing_resume', message: 'Missing resume input' }, { status: 400 })
       }
+      const fileValidation = validateResumeUpload(resume_file)
+      if (fileValidation.ok === false) {
+        return NextResponse.json(
+          { code: fileValidation.code, message: fileValidation.message },
+          { status: fileValidation.status }
+        )
+      }
       const parsed = await extractTextFromFile(resume_file)
 
       // Check for scanned PDF error
@@ -329,12 +337,11 @@ export async function POST(req: NextRequest) {
       signals,
     }).catch(err => console.error('Failed to log JD analysis event:', err))
 
-    // Deduct credit before AI processing
     const resumeHash = createHash('sha256').update(resumeText).digest('hex')
     const tailorStartTime = Date.now()
     try {
-      await deductCredit(user.id, resumeHash)
-      console.log('Credit deducted successfully for user:', user.id)
+      creditReservation = await reserveCredit(user.id, resumeHash)
+      console.log('Credit reserved successfully for user:', user.id)
     } catch (error) {
       if (error instanceof NoCreditsError) {
         return NextResponse.json(
@@ -406,6 +413,9 @@ export async function POST(req: NextRequest) {
     console.log('Creating session...')
     const session = await createSession(original, tailored, jd_text_raw, ats, resumeText)
     console.log('Session created:', session.id)
+
+    await commitCreditReservation(creditReservation!, tokens)
+    creditReservation = null
 
     // Calculate metrics needed for response
     const timeToComplete = Math.floor((Date.now() - tailorStartTime) / 1000)
@@ -557,6 +567,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(responseData)
 
   } catch (error) {
+    await releaseCreditReservation(creditReservation).catch((releaseError) => {
+      console.error('Failed to release reserved credit:', releaseError)
+    })
+
     console.error('tailora API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 

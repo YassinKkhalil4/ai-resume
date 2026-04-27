@@ -1,15 +1,24 @@
 import OpenAI from 'openai'
 
-// Base client uses the static env key.
-// If an admin overrides the key at runtime via Redis-backed config,
-// call refreshOpenAIClient() (awaitable) before the first AI call in that request.
-let client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  project: process.env.OPENAI_PROJECT_ID,   // needed for sk-proj- keys
-  organization: process.env.OPENAI_ORG_ID   // optional
-})
+let client: OpenAI | null = null
+
+function createOpenAIClient(apiKey?: string) {
+  const key = apiKey || process.env.OPENAI_API_KEY
+  if (!key) {
+    throw new Error('OPENAI_API_KEY environment variable is not set')
+  }
+
+  return new OpenAI({
+    apiKey: key,
+    project: process.env.OPENAI_PROJECT_ID || undefined,
+    organization: process.env.OPENAI_ORG_ID || undefined,
+  })
+}
 
 export function getOpenAI() {
+  if (!client) {
+    client = createOpenAIClient()
+  }
   return client
 }
 
@@ -22,11 +31,7 @@ export async function refreshOpenAIClient(): Promise<void> {
     const { getConfig } = await import('./config')
     const cfg = await getConfig()
     if (cfg.openaiKey) {
-      client = new OpenAI({
-        apiKey: cfg.openaiKey,
-        project: process.env.OPENAI_PROJECT_ID,
-        organization: process.env.OPENAI_ORG_ID
-      })
+      client = createOpenAIClient(cfg.openaiKey)
     }
   } catch {
     // Non-fatal — fall back to the static env key

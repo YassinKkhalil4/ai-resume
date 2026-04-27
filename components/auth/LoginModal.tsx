@@ -155,9 +155,6 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
         <EmailVerificationModal
           isOpen={showVerificationModal}
           onClose={() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/auth/LoginModal.tsx:verification-modal-close',message:'Verification modal closed from login',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
             // Allow closing - account will remain unverified
             setShowVerificationModal(false)
             onClose()

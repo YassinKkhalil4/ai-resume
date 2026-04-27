@@ -6,9 +6,6 @@ function getResend() {
   if (!resendInstance) {
     const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/email/resend.ts:getResend:missing-key',message:'RESEND_API_KEY not set',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       throw new Error('RESEND_API_KEY environment variable is not set')
     }
     resendInstance = new Resend(apiKey)
@@ -119,15 +116,9 @@ export async function sendVerificationLink(email: string, token: string) {
 
 export async function sendVerificationResend(email: string, code: string, token: string) {
   const verificationUrl = `${VERIFICATION_BASE_URL}/verify?token=${token}`
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/email/resend.ts:sendVerificationResend:start',message:'Starting to send verification email',data:{email,hasCode:!!code,hasToken:!!token,hasResendKey:!!process.env.RESEND_API_KEY,fromEmail:FROM_EMAIL,baseUrl:VERIFICATION_BASE_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   try {
     const resend = getResend()
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/email/resend.ts:sendVerificationResend:before-send',message:'About to call resend.emails.send',data:{email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
@@ -169,21 +160,11 @@ export async function sendVerificationResend(email: string, code: string, token:
     })
 
     if (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/email/resend.ts:sendVerificationResend:resend-error',message:'Resend API returned error',data:{error:error.message,errorType:error.constructor.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       console.error('Resend error:', error)
       throw new Error(`Failed to send verification email: ${error.message}`)
     }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/email/resend.ts:sendVerificationResend:success',message:'Email sent successfully',data:{emailId:data?.id,email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     return { success: true, id: data?.id }
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/email/resend.ts:sendVerificationResend:catch-error',message:'Exception caught in sendVerificationResend',data:{error:error instanceof Error ? error.message : String(error),errorType:error instanceof Error ? error.constructor.name : typeof error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     console.error('Error sending verification email:', error)
     throw error
   }

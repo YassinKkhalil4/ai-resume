@@ -145,6 +145,8 @@ async function runStrictBulletOnlyFlow(
         messages,
         temperature: 0.3,
         max_tokens: 4000,
+      }, {
+        signal: controller.signal,
       })
       clearTimeout(timeoutId)
       const raw = chat.choices[0]?.message?.content ?? ''
@@ -1591,6 +1593,8 @@ export async function getTailoredResume(
           temperature: 0.3,
           response_format: { type: 'json_object' },
           max_tokens: 4000 // Reduced to prevent timeout
+        }, {
+          signal: controller.signal,
         })
         
         clearTimeout(timeoutId)

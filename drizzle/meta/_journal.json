@@ -8,6 +8,20 @@
       "when": 1765029175240,
       "tag": "0000_illegal_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1765029175241,
+      "tag": "0001_tailor_trace_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1765029175242,
+      "tag": "0002_launch_hardening",
+      "breakpoints": true
     }
   ]
 }

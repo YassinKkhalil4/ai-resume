@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, decimal, timestamp, boolean, jsonb, date, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, decimal, timestamp, boolean, jsonb, date, index, uniqueIndex } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 export const users = pgTable('users', {
@@ -6,6 +6,8 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash'),
   stripeCustomerId: text('stripe_customer_id'),
+  billingProvider: text('billing_provider'),
+  providerCustomerId: text('provider_customer_id'),
   creditsRemaining: integer('credits_remaining').notNull().default(0),
   isAdmin: boolean('is_admin').notNull().default(false),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -16,11 +18,18 @@ export const users = pgTable('users', {
 export const creditTransactions = pgTable('credit_transactions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  stripePaymentId: text('stripe_payment_id').notNull().unique(),
+  stripePaymentId: text('stripe_payment_id').unique(),
+  paymentProvider: text('payment_provider').notNull().default('stripe'),
+  providerOrderId: text('provider_order_id'),
+  providerCustomerId: text('provider_customer_id'),
+  providerVariantId: text('provider_variant_id'),
+  providerEventKey: text('provider_event_key'),
   creditsAdded: integer('credits_added').notNull(),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (table) => ({
+  providerOrderIdx: uniqueIndex('credit_transactions_provider_order_idx').on(table.paymentProvider, table.providerOrderId),
+}))
 
 export const creditLots = pgTable('credit_lots', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -28,6 +37,11 @@ export const creditLots = pgTable('credit_lots', {
   source: text('source').notNull(), // 'checkout' | 'subscription' | 'admin' | 'backfill'
   stripePaymentId: text('stripe_payment_id'),
   stripeInvoiceId: text('stripe_invoice_id'),
+  paymentProvider: text('payment_provider'),
+  providerOrderId: text('provider_order_id'),
+  providerCustomerId: text('provider_customer_id'),
+  providerVariantId: text('provider_variant_id'),
+  providerEventKey: text('provider_event_key'),
   creditsTotal: integer('credits_total').notNull(),
   creditsRemaining: integer('credits_remaining').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
@@ -48,11 +62,17 @@ export const usageLogs = pgTable('usage_logs', {
 
 export const webhookLogs = pgTable('webhook_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
+  provider: text('provider').notNull().default('stripe'),
+  eventId: text('event_id'),
+  providerEventKey: text('provider_event_key'),
   eventType: text('event_type').notNull(),
   payload: jsonb('payload').notNull(),
   processed: boolean('processed').notNull().default(false),
+  manualReviewReason: text('manual_review_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (table) => ({
+  providerEventIdx: uniqueIndex('webhook_logs_provider_event_idx').on(table.provider, table.providerEventKey),
+}))
 
 export const analyticsEvents = pgTable('analytics_events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -317,4 +337,3 @@ export type TailorRunEvent = typeof tailorRunEvents.$inferSelect
 export type NewTailorRunEvent = typeof tailorRunEvents.$inferInsert
 export type TailorDebugSnapshot = typeof tailorDebugSnapshots.$inferSelect
 export type NewTailorDebugSnapshot = typeof tailorDebugSnapshots.$inferInsert
-

@@ -13,8 +13,16 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    // This endpoint should be called internally or with proper auth
-    // For now, we'll allow it but in production add proper authentication
+    const expectedSecret = process.env.INTERNAL_AI_PROCESSOR_SECRET
+    const authHeader = req.headers.get('authorization') || ''
+    const receivedSecret = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : ''
+
+    if (!expectedSecret || receivedSecret !== expectedSecret) {
+      return NextResponse.json(
+        { code: 'unauthorized', message: 'Internal processor authentication required' },
+        { status: 401 }
+      )
+    }
 
     const body = await req.json()
     const { jobId, data } = body
@@ -87,4 +95,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-
