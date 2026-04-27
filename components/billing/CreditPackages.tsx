@@ -1,27 +1,18 @@
 'use client'
 
-import { CREDIT_PACKAGES } from '../../lib/stripe/config'
+import { CREDIT_PACKAGE_DEFINITIONS, CreditPackageId } from '../../lib/billing/checkout-links'
 
 interface CreditPackagesProps {
-  onPurchase: (priceId: string) => void
+  onPurchase: (priceId: CreditPackageId) => void
   loading: boolean
 }
-
-// Note: In production, you would fetch actual prices from Stripe
-// For now, this is a placeholder that shows the structure
-const PACKAGE_INFO: Array<{ priceId: string; credits: number; name: string; popular?: boolean; tagline?: string }> = [
-  { priceId: 'price_5_credits', credits: 5, name: 'Starter', tagline: 'Best for trying Tailora' },
-  { priceId: 'price_15_credits', credits: 15, name: 'Job Seeker', popular: true, tagline: 'Most popular for active searches' },
-  { priceId: 'price_40_credits', credits: 40, name: 'Power Apply', tagline: 'Great for high-volume applications' },
-  { priceId: 'price_career_coach_pack', credits: 120, name: 'Career Coach', tagline: 'Built for coaches and power users' },
-]
 
 export default function CreditPackages({ onPurchase, loading }: CreditPackagesProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {PACKAGE_INFO.map((pkg) => (
+      {CREDIT_PACKAGE_DEFINITIONS.map((pkg) => (
         <div
-          key={pkg.priceId}
+          key={pkg.id}
           className={`relative rounded-xl border-2 p-6 ${
             pkg.popular
               ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20'
@@ -43,7 +34,7 @@ export default function CreditPackages({ onPurchase, loading }: CreditPackagesPr
               <span className="ml-1 text-sm text-slate-600 dark:text-slate-400">credits</span>
             </div>
             <button
-              onClick={() => onPurchase(pkg.priceId)}
+              onClick={() => onPurchase(pkg.id)}
               disabled={loading}
               className={`w-full rounded-lg px-4 py-2 font-semibold ${
                 pkg.popular

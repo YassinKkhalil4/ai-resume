@@ -2,7 +2,6 @@
 
 import { useSession } from 'next-auth/react'
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
 import CreditDisplay from '../../components/billing/CreditDisplay'
 import BuyCreditsModal from '../../components/billing/BuyCreditsModal'
 import ThemeToggle from '../../components/ThemeToggle'
@@ -23,7 +22,6 @@ interface UsageLog {
 
 function DashboardContent() {
   const { data: session, status } = useSession()
-  const searchParams = useSearchParams()
   const [credits, setCredits] = useState<number | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [transactions, setTransactions] = useState<CreditTransaction[]>([])
@@ -37,21 +35,10 @@ function DashboardContent() {
       fetchDashboardData()
       // Track credit balance viewed
       track('credit_balance_viewed', {})
-      
-      // Check for Stripe redirect
-      const sessionId = searchParams.get('session_id')
-      const canceled = searchParams.get('canceled')
-      
-      if (sessionId) {
-        // Payment successful, refresh credits
-        setTimeout(() => {
-          fetchDashboardData()
-        }, 2000)
-      }
     } else {
       setLoading(false)
     }
-  }, [status, session, searchParams, track])
+  }, [status, session, track])
 
   const fetchDashboardData = async () => {
     try {

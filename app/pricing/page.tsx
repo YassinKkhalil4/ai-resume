@@ -2,45 +2,10 @@
 
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { CREDIT_PACKAGE_DEFINITIONS, getExternalCheckoutLink } from '../../lib/billing/checkout-links'
 
 export default function PricingPage() {
   const { data: session } = useSession()
-
-  const packages = [
-    {
-      name: 'Starter',
-      credits: 5,
-      price: 5.99,
-      priceId: 'price_5_credits',
-      description: 'Best for testing Tailora, single job applications, and first-time users',
-      features: ['5 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '$1.20 per tailored resume']
-    },
-    {
-      name: 'Job Seeker',
-      credits: 15,
-      price: 12.99,
-      priceId: 'price_15_credits',
-      popular: true,
-      description: 'Best for active job seekers and multiple applications per week',
-      features: ['15 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '~$0.87 per resume']
-    },
-    {
-      name: 'Power Apply',
-      credits: 40,
-      price: 24.99,
-      priceId: 'price_40_credits',
-      description: 'Best for aggressive applicants, graduates, and people applying at scale',
-      features: ['40 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '~$0.62 per resume']
-    },
-    {
-      name: 'Career Coach',
-      credits: 120,
-      price: 64.99,
-      priceId: 'price_career_coach_pack',
-      description: 'Designed for career coaches and power users working with many clients or applications',
-      features: ['120 resume tailorings', 'All features included', 'Credits valid for 12 months from purchase', '~$0.54 per resume']
-    }
-  ]
 
   return (
     <main className="space-y-12 pb-16">
@@ -61,7 +26,10 @@ export default function PricingPage() {
 
       <section>
         <div className="grid gap-6 md:grid-cols-3">
-          {packages.map((pkg) => (
+          {CREDIT_PACKAGE_DEFINITIONS.map((pkg) => {
+            const checkoutLink = getExternalCheckoutLink(pkg.id)
+
+            return (
             <div
               key={pkg.name}
               className={`relative rounded-2xl border-2 p-6 transition hover:-translate-y-1 hover:shadow-lg ${
@@ -106,25 +74,31 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                {session ? (
-                  <Link
-                    href="/dashboard"
-                    className="button w-full"
+                {checkoutLink ? (
+                  <a
+                    href={checkoutLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="button block w-full text-center"
                   >
-                    Buy Credits
-                  </Link>
+                    {session ? 'Buy Credits' : 'Buy Credits'}
+                  </a>
                 ) : (
-                  <Link
-                    href="/tailor"
-                    className="button w-full"
+                  <button
+                    type="button"
+                    disabled
+                    className="button w-full cursor-not-allowed opacity-60"
                   >
-                    Get Started
-                  </Link>
+                    Checkout Coming Soon
+                  </button>
                 )}
               </div>
             </div>
-          ))}
+          )})}
         </div>
+        <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+          You can complete checkout before invite approval. Workspace access unlocks after your invite is approved.
+        </p>
       </section>
 
       <section className="rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
@@ -154,7 +128,7 @@ export default function PricingPage() {
                 What payment methods do you accept?
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                We accept all major credit cards, debit cards, and other payment methods through Stripe. All payments are secure and encrypted.
+                We support secure payments through our external checkout provider.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">

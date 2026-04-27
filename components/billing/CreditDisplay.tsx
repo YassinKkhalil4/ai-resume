@@ -100,7 +100,20 @@ export default function CreditDisplay() {
             Buy Credits
           </button>
         )}
+        {!isAdmin && credits > 0 && (
+          <button
+            onClick={() => setShowBuyModal(true)}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Top Up
+          </button>
+        )}
       </div>
+      {!isAdmin && (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          You can purchase credits before invite approval. Tailoring access unlocks once your invite is approved.
+        </p>
+      )}
       {showBuyModal && <BuyCreditsModal isOpen={showBuyModal} onClose={() => setShowBuyModal(false)} onSuccess={fetchCredits} />}
     </>
   )

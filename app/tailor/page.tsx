@@ -8,12 +8,12 @@ import Preview from '../../components/Preview'
 import ParsingErrorBanner from '../../components/ParsingErrorBanner'
 import ExperienceInputModal from '../../components/ExperienceInputModal'
 import LineMarkingModal, { LineSelection } from '../../components/LineMarkingModal'
-import ConfirmExperienceModal from '../../components/ConfirmExperienceModal'
 import useInviteGate from '../../components/useInviteGate'
 import { ParsingValidationResult } from '../../lib/parsing-validation'
 import LoginModal from '../../components/auth/LoginModal'
 import SignupModal from '../../components/auth/SignupModal'
 import CreditDisplay from '../../components/billing/CreditDisplay'
+import BuyCreditsModal from '../../components/billing/BuyCreditsModal'
 import { useTracking } from '../../lib/analytics/useTracking'
 
 const FileDrop = dynamic(() => import('../../components/FileDrop'), { ssr: false })
@@ -29,16 +29,11 @@ export default function TailorPage() {
   const [validation, setValidation] = useState<ParsingValidationResult | null>(null)
   const [showExperienceModal, setShowExperienceModal] = useState(false)
   const [showLineMarkingModal, setShowLineMarkingModal] = useState(false)
-  const [showConfirmExperienceModal, setShowConfirmExperienceModal] = useState(false)
-  const [confirmExperienceData, setConfirmExperienceData] = useState<{
-    sessionId: string
-    rawText: string
-    experience: any[]
-  } | null>(null)
   const [showBanner, setShowBanner] = useState(true)
   const [resumeText, setResumeText] = useState<string>('')
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
+  const [showBuyModal, setShowBuyModal] = useState(false)
   const [credits, setCredits] = useState<number | null>(null)
   const gate = useInviteGate()
   const { track } = useTracking()
@@ -209,7 +204,7 @@ export default function TailorPage() {
     // Check credits
     if (!session?.user?.isAdmin && credits !== null && credits <= 0) {
       track('credits_exhausted', {})
-      alert('You have no credits remaining. Please purchase credits to continue.')
+      setShowBuyModal(true)
       return
     }
 
@@ -266,40 +261,22 @@ export default function TailorPage() {
         }
         if (data.code === 'no_credits') {
           track('credits_exhausted', {})
-          alert('You have no credits remaining. Please purchase credits to continue.')
           setCredits(0)
+          setShowBuyModal(true)
           setLoading(false)
           return
         }
-        if (data.code === 'missing_experience') {
-          // Handle missing experience case
+        if (
+          data.code === 'missing_experience' ||
+          data.code === 'no_bullets' ||
+          data.code === 'validation_error' ||
+          data.code === 'heuristic_experience'
+        ) {
+          // Treat all experience-related 422 responses the same: show the parsing banner
           setValidation(data.validation)
           setShowBanner(true)
           setLoading(false)
           return
-        }
-        // PART A: Trigger ConfirmExperienceModal for 422 errors that require experience confirmation
-        if (res.status === 422 && (
-          data.code === 'no_bullets' ||
-          data.code === 'validation_error' ||
-          data.code === 'heuristic_experience'
-        )) {
-          // Store data needed for ConfirmExperienceModal
-          if (data.draft_session_id && data.original_raw_text && data.original_sections_json?.experience) {
-            setConfirmExperienceData({
-              sessionId: data.draft_session_id,
-              rawText: data.original_raw_text,
-              experience: data.original_sections_json.experience || []
-            })
-            setShowConfirmExperienceModal(true)
-            setLoading(false)
-            return
-          } else {
-            // Fallback: if we don't have session data, show alert
-            alert(data.message || 'Some experience entries need confirmation before tailoring.')
-            setLoading(false)
-            return
-          }
         }
         throw new Error(data?.message || 'Tailoring failed.')
       }
@@ -413,85 +390,6 @@ export default function TailorPage() {
       alert(error?.message || 'Failed to process experience')
     } finally {
       setLoading(false)
-    }
-  }
-
-  // PART D: Handle success from ConfirmExperienceModal - retry tailoring with confirmed experience
-  async function handleConfirmExperienceSuccess(resume: any, validation: any) {
-    setShowConfirmExperienceModal(false)
-    setConfirmExperienceData(null)
-    
-    // Update validation state
-    setValidation(validation)
-    
-    // Retry tailoring with the confirmed experience
-    // The session now has userConfirmedExperience = true, so we can use session_id
-    if (confirmExperienceData?.sessionId && jdText) {
-      setLoading(true)
-      try {
-        const fd = new FormData()
-        fd.append('session_id', confirmExperienceData.sessionId)
-        fd.append('jd_text', jdText)
-        fd.append('tone', tone)
-        fd.append('strict_honesty_mode', strictHonestyMode ? 'true' : 'false')
-        
-        const inviteCode = getInviteCode()
-        const res = await fetch('/api/tailor', {
-          method: 'POST',
-          body: fd,
-          headers: {
-            'x-invite-code': inviteCode
-          }
-        })
-        
-        const contentType = res.headers.get('content-type') || ''
-        let data
-        
-        if (contentType.includes('application/json')) {
-          data = await res.json()
-        } else {
-          const text = await res.text()
-          console.error('Non-JSON response received:', text)
-          throw new Error(`Server returned non-JSON response: ${text.slice(0, 200)}`)
-        }
-        
-        if (!res.ok) {
-          // If still failing, show error
-          alert(data?.message || 'Tailoring failed after confirming experience.')
-          setLoading(false)
-          return
-        }
-        
-        // Success! Update session and hide banner
-        track('tailor_completed', {
-          sessionId: data.session_id,
-          hasValidation: !!data.validation,
-          tokensUsed: data.tokens_used,
-        })
-        
-        setTailorSession(data)
-        setValidation(data.validation)
-        setShowBanner(false)
-        
-        // Update credits if returned
-        if (data.credits_remaining !== undefined) {
-          setCredits(data.credits_remaining)
-        } else {
-          await fetchCredits()
-        }
-        
-        // Scroll to tailored CV section
-        setTimeout(() => {
-          const tailoredSection = document.getElementById('tailored-cv-section')
-          if (tailoredSection) {
-            tailoredSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        }, 100)
-      } catch (e: any) {
-        alert(e?.message || 'Failed to tailor after confirming experience.')
-      } finally {
-        setLoading(false)
-      }
     }
   }
 
@@ -820,21 +718,31 @@ export default function TailorPage() {
             </div>
             <button
               className="button w-full sm:w-auto"
-              onClick={handleTailor}
+              onClick={() => {
+                if (!session?.user?.isAdmin && credits !== null && credits <= 0) {
+                  setShowBuyModal(true)
+                  return
+                }
+                handleTailor()
+              }}
               disabled={
                 loading ||
                 !resumeFile ||
-                !jdText ||
-                (!session?.user?.isAdmin && credits !== null && credits <= 0)
+                !jdText
               }
             >
               {loading
                 ? 'Tailoring...'
                 : !session?.user?.isAdmin && credits !== null && credits <= 0
-                  ? 'No Credits'
+                  ? 'Buy Credits to Continue'
                   : 'Tailor my resume'}
             </button>
           </div>
+          {!session?.user?.isAdmin && credits !== null && credits <= 0 && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              You can purchase credits now, even if your invite is still pending approval.
+            </p>
+          )}
         </div>
 
         <aside className="glass-panel rounded-3xl p-8 text-sm shadow-xl">
@@ -905,18 +813,11 @@ export default function TailorPage() {
         />
       )}
 
-      {showConfirmExperienceModal && confirmExperienceData && (
-        <ConfirmExperienceModal
-          isOpen={showConfirmExperienceModal}
-          onClose={() => {
-            setShowConfirmExperienceModal(false)
-            setConfirmExperienceData(null)
-          }}
-          rawText={confirmExperienceData.rawText}
-          experience={confirmExperienceData.experience}
-          sessionId={confirmExperienceData.sessionId}
-          onSuccess={handleConfirmExperienceSuccess}
-          getInviteCode={getInviteCode}
+      {showBuyModal && (
+        <BuyCreditsModal
+          isOpen={showBuyModal}
+          onClose={() => setShowBuyModal(false)}
+          onSuccess={fetchCredits}
         />
       )}
     </main>

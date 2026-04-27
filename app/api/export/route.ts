@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const verificationCheck = await requireEmailVerification(req);
     if (!verificationCheck.ok) return verificationCheck.res;
 
-    const cfg = getConfig();
+    const cfg = await getConfig();
     if (cfg.pauseExport) {
       return NextResponse.json(
         { code: 'export_paused', message: 'Exporting is temporarily disabled by the administrator.' },

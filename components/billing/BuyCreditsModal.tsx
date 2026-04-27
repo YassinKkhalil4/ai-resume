@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import CreditPackages from './CreditPackages'
+import { CreditPackageId, getExternalCheckoutLink } from '../../lib/billing/checkout-links'
 
 interface BuyCreditsModalProps {
   isOpen: boolean
@@ -15,32 +16,20 @@ export default function BuyCreditsModal({ isOpen, onClose, onSuccess }: BuyCredi
 
   if (!isOpen) return null
 
-  const handlePurchase = async (priceId: string) => {
+  const handlePurchase = async (priceId: CreditPackageId) => {
     setLoading(true)
     setError('')
 
     try {
-      const response = await fetch('/api/billing/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.message || 'Failed to create checkout session')
+      const checkoutLink = getExternalCheckoutLink(priceId)
+      if (!checkoutLink) {
+        setError('Checkout link is not configured yet. Please contact support.')
         setLoading(false)
         return
       }
 
-      // Redirect to Stripe Checkout
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        setError('Invalid checkout URL')
-        setLoading(false)
-      }
+      if (onSuccess) onSuccess()
+      window.location.href = checkoutLink
     } catch (err) {
       setError('An error occurred. Please try again.')
       setLoading(false)
@@ -73,7 +62,7 @@ export default function BuyCreditsModal({ isOpen, onClose, onSuccess }: BuyCredi
         <CreditPackages onPurchase={handlePurchase} loading={loading} />
 
         <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
-          Secure payment powered by Stripe
+          Secure checkout is handled by our external provider. Purchase is allowed before invite approval.
         </p>
       </div>
     </div>

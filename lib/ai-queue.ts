@@ -58,12 +58,13 @@ export function getAIQueue(): Queue<AIJobData, AIJobResult> | null {
 
   const redisType = getRedisType()
 
-  // For Upstash REST API, BullMQ doesn't work directly
-  // We'll use a simple queue implementation instead
+  // Upstash uses a REST API — BullMQ and its worker model are incompatible.
+  // The "simple queue" approach (lpush + polling) had no worker to process jobs,
+  // so every enqueued job silently timed out. Disable queuing entirely for Upstash
+  // and always fall back to direct synchronous calls.
   if (redisType === 'upstash') {
-    _useSimpleQueue = true
-    console.log('Using simple queue for Upstash (BullMQ not supported)')
-    return null // Return null to indicate simple queue should be used
+    _useSimpleQueue = false
+    return null
   }
 
   try {
@@ -146,15 +147,7 @@ export async function addAIJob(
   data: AIJobData,
   options?: { priority?: number; delay?: number }
 ): Promise<{ jobId: string; job?: Job<AIJobData, AIJobResult> } | null> {
-  if (_useSimpleQueue) {
-    try {
-      const jobId = await addAIJobSimple(data)
-      return { jobId }
-    } catch (error) {
-      console.error('Failed to add AI job to simple queue:', error)
-      return null
-    }
-  }
+  // Simple queue is disabled — _useSimpleQueue is always false after the Upstash fix.
 
   const queue = getAIQueue()
   if (!queue) {
@@ -294,11 +287,11 @@ export async function waitForJob(
 }
 
 /**
- * Check if queue is available
+ * Check if queue is available.
+ * Returns false when using Upstash (queue requires a persistent worker process).
  */
 export function isQueueAvailable(): boolean {
-  if (_useSimpleQueue) {
-    return isRedisAvailable()
-  }
+  // _useSimpleQueue was the broken Upstash pseudo-queue — it's now always false.
+  // Only real BullMQ-backed queues count as "available".
   return getAIQueue() !== null
 }

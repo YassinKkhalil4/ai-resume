@@ -1,23 +1,22 @@
 import { getConfig } from '../config'
 
-export function isValidInviteCode(code: string): boolean {
-  const config = getConfig()
+export async function isValidInviteCode(code: string): Promise<boolean> {
+  const config = await getConfig()
   const validCodes = config.invites || []
   return validCodes.includes(code)
 }
 
-export function validateInviteCode(code: string | null | undefined): {
+export async function validateInviteCode(code: string | null | undefined): Promise<{
   valid: boolean
   message?: string
-} {
+}> {
   if (!code) {
     return { valid: true } // Invite code is optional
   }
 
-  if (isValidInviteCode(code)) {
+  if (await isValidInviteCode(code)) {
     return { valid: true }
   }
 
   return { valid: false, message: 'Invalid invite code' }
 }
-

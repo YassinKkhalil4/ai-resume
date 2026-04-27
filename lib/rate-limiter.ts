@@ -1,180 +1,90 @@
 /**
- * Redis-based rate limiting service
- * Implements sliding window rate limiting with Redis backend
+ * Redis-based rate limiting — sliding window via sorted sets (ZADD / ZREMRANGEBYSCORE / ZCARD).
+ * Works identically for both Upstash and standard ioredis clients.
+ * No in-memory fallback: if Redis is unavailable the caller receives a 503.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getRedisClient, isRedisAvailable, getRedisType } from './redis'
+import { getRedisClient } from './redis'
 
-interface RateLimitResult {
+export interface RateLimitResult {
   allowed: boolean
   remaining: number
   resetAt: number
   error?: NextResponse
 }
 
-// Feature flag to use Redis (defaults to true if Redis is available)
-const USE_REDIS = process.env.USE_REDIS_RATE_LIMIT !== 'false' && isRedisAvailable()
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-// In-memory fallback stores
-const ipHits = new Map<string, number[]>()
-const sidHits = new Map<string, number[]>()
-const urlFetchIpHits = new Map<string, number[]>()
-const urlFetchSidHits = new Map<string, number[]>()
-const purchaseAttempts = new Map<string, { count: number; resetAt: number }>()
-
-function now() {
-  return Date.now()
-}
-
-function slide(arr: number[], windowMs: number) {
-  const t = now()
-  while (arr.length && (t - arr[0]) > windowMs) arr.shift()
-}
-
-function pushHit(map: Map<string, number[]>, key: string) {
-  const arr = map.get(key) || []
-  arr.push(now())
-  map.set(key, arr)
-  return arr
-}
-
-/**
- * Get rate limit key for Redis
- */
-function getRateLimitKey(type: 'ip' | 'session' | 'purchase', identifier: string): string {
+function rateLimitKey(type: string, identifier: string): string {
   return `ratelimit:${type}:${identifier}`
 }
 
+function unavailableResponse(message = 'Rate-limit service temporarily unavailable'): NextResponse {
+  return NextResponse.json({ code: 'service_unavailable', message }, { status: 503 })
+}
+
+function tooManyResponse(limit: number, remaining: number, resetAt: number): NextResponse {
+  return NextResponse.json(
+    { code: 'rate_limit', message: 'Too many requests' },
+    {
+      status: 429,
+      headers: {
+        'X-RateLimit-Limit': String(limit),
+        'X-RateLimit-Remaining': String(remaining),
+        'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
+        'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
+      },
+    }
+  )
+}
+
 /**
- * Sliding window rate limit using Redis
- * Uses sorted set (ZSET) for efficient sliding window
+ * Atomic sliding-window check using a Redis sorted set.
+ * Uses ZADD + ZREMRANGEBYSCORE + ZCARD — supported by both Upstash REST and ioredis.
  */
-async function checkRedisRateLimit(
-  key: string,
-  limit: number,
-  windowMs: number
-): Promise<RateLimitResult> {
+async function checkRedisRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   const redis = getRedisClient()
   if (!redis) {
-    throw new Error('Redis not available')
+    return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, error: unavailableResponse() }
   }
 
   const now = Date.now()
   const windowStart = now - windowMs
-
-  // Use sorted set for sliding window
   const zsetKey = `${key}:zset`
-  
+
   try {
-    // For Upstash REST API, ZREMRANGEBYSCORE might not be available
-    // Use a simpler approach: store timestamps in a list and clean up
-    const redisType = getRedisType()
-    
-    if (redisType === 'upstash') {
-      // Upstash REST API - use list-based approach
-      const listKey = `${key}:list`
-      const timestamps = await redis.get(listKey)
-      let validTimestamps: number[] = []
-      // #region agent log
-      if (timestamps != null) {
-        try {
-          const parsed = JSON.parse(timestamps)
-          fetch('http://127.0.0.1:7242/ingest/2cdfd2b9-0a91-4d01-9144-7ca1ae00ff40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/rate-limiter.ts:checkRedisRateLimit',message:'Redis rate limit timestamps parsed',data:{key:listKey,rawType:typeof timestamps,parsedType:Array.isArray(parsed)?'array':typeof parsed,isArray:Array.isArray(parsed),parsedLength:Array.isArray(parsed)?parsed.length:undefined},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        } catch (_) {}
-      }
-      // #endregion
-      if (timestamps) {
-        const parsed = JSON.parse(timestamps)
-        validTimestamps = Array.isArray(parsed) ? parsed.filter((t: number) => typeof t === 'number' && t > windowStart) : []
-      }
-      
-      // Add current request
-      validTimestamps.push(now)
-      
-      // Store updated list
-      await redis.setex(listKey, Math.ceil(windowMs / 1000), JSON.stringify(validTimestamps))
-      
-      const count = validTimestamps.length
-      const remaining = Math.max(0, limit - count)
-      const resetAt = now + windowMs
+    // 1. Remove timestamps outside the sliding window
+    await redis.zremrangebyscore(zsetKey, 0, windowStart)
 
-      if (count >= limit) {
-        return {
-          allowed: false,
-          remaining: 0,
-          resetAt,
-          error: NextResponse.json(
-            { code: 'rate_limit', message: 'Too many requests' },
-            {
-              status: 429,
-              headers: {
-                'X-RateLimit-Limit': String(limit),
-                'X-RateLimit-Remaining': String(remaining),
-                'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
-                'Retry-After': String(Math.ceil((resetAt - now) / 1000)),
-              },
-            }
-          ),
-        }
-      }
+    // 2. Record this request with a unique member (timestamp + jitter avoids collisions)
+    await redis.zadd(zsetKey, now, `${now}-${Math.random().toString(36).slice(2)}`)
 
-      return {
-        allowed: true,
-        remaining,
-        resetAt,
-      }
-    } else {
-      // Standard Redis - use sorted set
-      // Remove old entries (outside the window)
-      await redis.zremrangebyscore(zsetKey, 0, windowStart)
-      
-      // Add current request with timestamp as score
-      await redis.zadd(zsetKey, now, `${now}-${Math.random().toString(36)}`)
-      
-      // Count requests in window
-      const count = await redis.zcard(zsetKey)
-      
-      // Set expiration on the sorted set
-      await redis.expire(zsetKey, Math.ceil(windowMs / 1000))
+    // 3. Count how many requests are in the window now
+    const count = await redis.zcard(zsetKey)
 
-      const remaining = Math.max(0, limit - count)
-      const resetAt = now + windowMs
+    // 4. Keep the key alive for the duration of the window
+    await redis.expire(zsetKey, Math.ceil(windowMs / 1000))
 
-      if (count >= limit) {
-        return {
-          allowed: false,
-          remaining: 0,
-          resetAt,
-          error: NextResponse.json(
-            { code: 'rate_limit', message: 'Too many requests' },
-            {
-              status: 429,
-              headers: {
-                'X-RateLimit-Limit': String(limit),
-                'X-RateLimit-Remaining': String(remaining),
-                'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
-                'Retry-After': String(Math.ceil((resetAt - now) / 1000)),
-              },
-            }
-          ),
-        }
-      }
+    const remaining = Math.max(0, limit - count)
+    const resetAt = now + windowMs
 
-      return {
-        allowed: true,
-        remaining,
-        resetAt,
-      }
+    if (count > limit) {
+      return { allowed: false, remaining: 0, resetAt, error: tooManyResponse(limit, 0, resetAt) }
     }
-  } catch (error) {
-    console.error('Redis rate limit check error:', error)
-    throw error
+
+    return { allowed: true, remaining, resetAt }
+  } catch (err) {
+    console.error('[rate-limiter] Redis error:', err)
+    // On Redis error return 503 rather than silently allow or silently block
+    return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, error: unavailableResponse() }
   }
 }
 
+// ─── public API ──────────────────────────────────────────────────────────────
+
 /**
- * Check rate limit for IP and session (main guard)
+ * Main per-IP + per-session guard (tailor / export routes).
  */
 export async function checkRateLimit(
   ip: string,
@@ -183,209 +93,65 @@ export async function checkRateLimit(
   sessionLimit: number,
   windowMs: number = 60_000
 ): Promise<RateLimitResult> {
-  if (USE_REDIS) {
-    const redis = getRedisClient()
-    if (redis) {
-      try {
-        // Check IP limit
-        const ipKey = getRateLimitKey('ip', ip)
-        const ipResult = await checkRedisRateLimit(ipKey, ipLimit, windowMs)
-        if (!ipResult.allowed) {
-          return ipResult
-        }
+  const ipResult = await checkRedisRateLimit(rateLimitKey('ip', ip), ipLimit, windowMs)
+  if (!ipResult.allowed) return ipResult
 
-        // Check session limit
-        const sessionKey = getRateLimitKey('session', sessionId)
-        const sessionResult = await checkRedisRateLimit(sessionKey, sessionLimit, windowMs)
-        if (!sessionResult.allowed) {
-          return sessionResult
-        }
-
-        // Both passed
-        return {
-          allowed: true,
-          remaining: Math.min(ipResult.remaining, sessionResult.remaining),
-          resetAt: Math.min(ipResult.resetAt, sessionResult.resetAt),
-        }
-      } catch (error) {
-        console.error('Redis rate limit check failed, falling back to memory:', error)
-        // Fall through to in-memory
-      }
-    }
-  }
-
-  // In-memory fallback
-  const ipArr = pushHit(ipHits, ip)
-  const sidArr = pushHit(sidHits, sessionId)
-  slide(ipArr, windowMs)
-  slide(sidArr, windowMs)
-
-  if (ipArr.length > ipLimit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: now() + windowMs,
-      error: NextResponse.json({ code: 'rate_limit', message: 'Too many requests' }, { status: 429 }),
-    }
-  }
-
-  if (sidArr.length > sessionLimit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: now() + windowMs,
-      error: NextResponse.json({ code: 'rate_limit', message: 'Too many requests' }, { status: 429 }),
-    }
-  }
+  const sessionResult = await checkRedisRateLimit(rateLimitKey('session', sessionId), sessionLimit, windowMs)
+  if (!sessionResult.allowed) return sessionResult
 
   return {
     allowed: true,
-    remaining: Math.max(0, ipLimit - ipArr.length),
-    resetAt: now() + windowMs,
+    remaining: Math.min(ipResult.remaining, sessionResult.remaining),
+    resetAt: Math.min(ipResult.resetAt, sessionResult.resetAt),
   }
 }
 
 /**
- * Check rate limit for URL fetching (more restrictive)
+ * Stricter guard for the JD URL-fetch endpoint (10 / IP / hour, 5 / session / hour).
  */
 export async function checkUrlFetchRateLimit(
   ip: string,
   sessionId: string,
   ipLimit: number = 10,
   sessionLimit: number = 5,
-  windowMs: number = 3600_000 // 1 hour
+  windowMs: number = 3_600_000
 ): Promise<RateLimitResult> {
-  if (USE_REDIS) {
-    const redis = getRedisClient()
-    if (redis) {
-      try {
-        const ipKey = getRateLimitKey('ip', `urlfetch:${ip}`)
-        const ipResult = await checkRedisRateLimit(ipKey, ipLimit, windowMs)
-        if (!ipResult.allowed) {
-          return {
-            ...ipResult,
-            error: NextResponse.json(
-              { code: 'rate_limit', message: 'Too many URL fetch requests. Please wait before trying again.' },
-              { status: 429 }
-            ),
-          }
-        }
+  const tooManyMsg = { code: 'rate_limit', message: 'Too many URL fetch requests. Please wait before trying again.' }
 
-        const sessionKey = getRateLimitKey('session', `urlfetch:${sessionId}`)
-        const sessionResult = await checkRedisRateLimit(sessionKey, sessionLimit, windowMs)
-        if (!sessionResult.allowed) {
-          return {
-            ...sessionResult,
-            error: NextResponse.json(
-              { code: 'rate_limit', message: 'Too many URL fetch requests. Please wait before trying again.' },
-              { status: 429 }
-            ),
-          }
-        }
-
-        return {
-          allowed: true,
-          remaining: Math.min(ipResult.remaining, sessionResult.remaining),
-          resetAt: Math.min(ipResult.resetAt, sessionResult.resetAt),
-        }
-      } catch (error) {
-        console.error('Redis URL fetch rate limit check failed, falling back to memory:', error)
-        // Fall through to in-memory
-      }
+  const ipResult = await checkRedisRateLimit(rateLimitKey('ip', `urlfetch:${ip}`), ipLimit, windowMs)
+  if (!ipResult.allowed) {
+    return {
+      ...ipResult,
+      error: ipResult.error?.status === 503
+        ? ipResult.error
+        : NextResponse.json(tooManyMsg, { status: 429 }),
     }
   }
 
-  // In-memory fallback
-  const ipArr = pushHit(urlFetchIpHits, ip)
-  const sidArr = pushHit(urlFetchSidHits, sessionId)
-  slide(ipArr, windowMs)
-  slide(sidArr, windowMs)
-
-  if (ipArr.length > ipLimit) {
+  const sessionResult = await checkRedisRateLimit(rateLimitKey('session', `urlfetch:${sessionId}`), sessionLimit, windowMs)
+  if (!sessionResult.allowed) {
     return {
-      allowed: false,
-      remaining: 0,
-      resetAt: now() + windowMs,
-      error: NextResponse.json(
-        { code: 'rate_limit', message: 'Too many URL fetch requests. Please wait before trying again.' },
-        { status: 429 }
-      ),
-    }
-  }
-
-  if (sidArr.length > sessionLimit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: now() + windowMs,
-      error: NextResponse.json(
-        { code: 'rate_limit', message: 'Too many URL fetch requests. Please wait before trying again.' },
-        { status: 429 }
-      ),
+      ...sessionResult,
+      error: sessionResult.error?.status === 503
+        ? sessionResult.error
+        : NextResponse.json(tooManyMsg, { status: 429 }),
     }
   }
 
   return {
     allowed: true,
-    remaining: Math.max(0, ipLimit - ipArr.length),
-    resetAt: now() + windowMs,
+    remaining: Math.min(ipResult.remaining, sessionResult.remaining),
+    resetAt: Math.min(ipResult.resetAt, sessionResult.resetAt),
   }
 }
 
 /**
- * Check purchase rate limit for a user
+ * Purchase-attempt guard (5 attempts / user / minute).
  */
 export async function checkPurchaseRateLimit(
   userId: string,
   limit: number = 5,
-  windowMs: number = 60_000 // 1 minute
+  windowMs: number = 60_000
 ): Promise<RateLimitResult> {
-  if (USE_REDIS) {
-    const redis = getRedisClient()
-    if (redis) {
-      try {
-        const key = getRateLimitKey('purchase', userId)
-        return await checkRedisRateLimit(key, limit, windowMs)
-      } catch (error) {
-        console.error('Redis purchase rate limit check failed, falling back to memory:', error)
-        // Fall through to in-memory
-      }
-    }
-  }
-
-  // In-memory fallback
-  const now = Date.now()
-  const userAttempts = purchaseAttempts.get(userId)
-
-  if (!userAttempts || now > userAttempts.resetAt) {
-    purchaseAttempts.set(userId, { count: 1, resetAt: now + windowMs })
-    return {
-      allowed: true,
-      remaining: limit - 1,
-      resetAt: now + windowMs,
-    }
-  }
-
-  if (userAttempts.count >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: userAttempts.resetAt,
-      error: NextResponse.json(
-        {
-          code: 'rate_limit_exceeded',
-          message: 'Too many purchase attempts. Please try again later.',
-        },
-        { status: 429 }
-      ),
-    }
-  }
-
-  userAttempts.count++
-  return {
-    allowed: true,
-    remaining: limit - userAttempts.count,
-    resetAt: userAttempts.resetAt,
-  }
+  return checkRedisRateLimit(rateLimitKey('purchase', userId), limit, windowMs)
 }
-

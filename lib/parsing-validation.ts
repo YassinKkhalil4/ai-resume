@@ -27,26 +27,15 @@ export function validateParsingResult(resume: ResumeJSON): ParsingValidationResu
     suggestions: []
   }
 
-  // Experience: zero-bullet roles are a hard error so we never tailor fabricated/empty roles (AI hallucination prevention)
   if (resume.experience && resume.experience.length > 0) {
     result.hasExperience = true
     result.experienceCount = resume.experience.length
 
-    const rolesWithNoBullets = resume.experience.filter(
-      exp => exp.hasBullets === false || !exp.bullets || exp.bullets.length === 0
-    )
-    if (rolesWithNoBullets.length > 0) {
-      result.isValid = false
-      result.errors.push(
-        'One or more experience roles have no bullets. Please add or confirm experience before tailoring.'
-      )
-      result.suggestions.push('Add bullet points to each role or remove roles without bullets')
-    }
-
     const hasMeaningfulExperience = resume.experience.some(
       exp => exp.bullets && exp.bullets.length > 0
     )
-    if (!hasMeaningfulExperience && rolesWithNoBullets.length === 0) {
+    if (!hasMeaningfulExperience) {
+      // Non-blocking: allow tailoring, but warn the user that bullets are missing
       result.warnings.push('Experience found but no bullet points detected')
       result.suggestions.push('Consider adding bullet points to your experience entries')
     }
@@ -112,20 +101,6 @@ export function createErrorState(validation: ParsingValidationResult): {
       actions: [
         { label: 'Paste Work History', action: 'paste_experience' },
         { label: 'Mark Lines as Experience', action: 'mark_experience' },
-        { label: 'Try Different Resume', action: 'upload_new' }
-      ]
-    }
-  }
-
-  // AI hallucination prevention: zero-bullet roles must not proceed; ask user to add or confirm experience
-  if (!validation.isValid && validation.errors.some(e => e.includes('no bullets'))) {
-    return {
-      type: 'error',
-      title: 'Add or Confirm Experience',
-      message: 'One or more roles have no bullet points. Please add bullets to each role or confirm your experience before tailoring.',
-      actions: [
-        { label: 'Add Bullets to Roles', action: 'add_experience' },
-        { label: 'Paste Work History', action: 'paste_experience' },
         { label: 'Try Different Resume', action: 'upload_new' }
       ]
     }
