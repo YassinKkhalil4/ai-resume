@@ -8,7 +8,7 @@
 const https = require('https');
 const http = require('http');
 
-const BASE_URL = 'https://tailora-l0btbzdo9-yassin-khalils-projects.vercel.app';
+const BASE_URL = 'https://tryrolefit.com';
 
 async function testExportAPI() {
   console.log('🧪 Testing Export API Fix...\n');
@@ -19,8 +19,7 @@ async function testExportAPI() {
     const response = await fetch(`${BASE_URL}/api/export`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-invite-code': 'test' // You might need to adjust this
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         session_id: 'test-session-id',

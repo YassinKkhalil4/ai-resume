@@ -26,8 +26,8 @@ export default function Logo({ variant = 'full', size = 'md', className = '', sh
     return (
       <div className={`flex items-center ${className}`}>
         <Image
-          src="/logos/icononly_transparent_nobuffer.png"
-          alt="tailora"
+          src="/favicon.png"
+          alt="Rolefit"
           width={dimensions.icon}
           height={dimensions.icon}
           className="object-contain w-auto h-auto"
@@ -47,7 +47,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', sh
       <div className={`flex items-center ${className}`}>
         <Image
           src="/logos/textonly_nobuffer.png"
-          alt="tailora"
+          alt="Rolefit"
           width={dimensions.text}
           height={dimensions.icon}
           className="object-contain w-auto h-auto"
@@ -67,7 +67,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', sh
     <div className={`flex items-center ${className}`}>
       <Image
         src="/logos/fulllogo_transparent_nobuffer.png"
-        alt="tailora"
+        alt="Rolefit"
         width={dimensions.full.width}
         height={dimensions.full.height}
         className="object-contain w-auto h-auto"
@@ -97,8 +97,8 @@ export function LogoCompact({ size = 'md', className = '' }: { size?: LogoSize; 
         }}
       >
         <Image
-          src="/logos/icononly_transparent_nobuffer.png"
-          alt="tailora icon"
+          src="/favicon.png"
+          alt="Rolefit icon"
           width={dimensions.icon}
           height={dimensions.icon}
           className="object-contain"
@@ -120,7 +120,7 @@ export function LogoCompact({ size = 'md', className = '' }: { size?: LogoSize; 
       >
         <Image
           src="/logos/textonly_nobuffer.png"
-          alt="tailora"
+          alt="Rolefit"
           width={dimensions.text}
           height={dimensions.icon * 0.5}
           className="object-contain"

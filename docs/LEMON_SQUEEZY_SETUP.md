@@ -1,6 +1,6 @@
 # Lemon Squeezy Setup
 
-Tailora uses Lemon Squeezy external checkout links and signed webhooks to add credits.
+Rolefit uses Lemon Squeezy external checkout links and signed webhooks to add credits.
 
 ## Products
 

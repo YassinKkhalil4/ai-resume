@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, users, creditLots } from '../../../../lib/db'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
-import { validateInviteCode } from '../../../../lib/auth/invite-codes'
 import { detectUniversity } from '../../../../lib/analytics/university-detector'
 import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
 import { generateVerificationToken } from '../../../../lib/auth/verification'
@@ -17,19 +16,11 @@ function oneYearFromNow() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { email, password, inviteCode } = body
+    const { email, password } = body
 
     if (!email || !password) {
       return NextResponse.json(
         { code: 'missing_fields', message: 'Email and password are required' },
-        { status: 400 }
-      )
-    }
-
-    const inviteValidation = await validateInviteCode(inviteCode)
-    if (!inviteValidation.valid) {
-      return NextResponse.json(
-        { code: 'invalid_invite', message: inviteValidation.message },
         { status: 400 }
       )
     }
@@ -94,10 +85,6 @@ export async function POST(req: NextRequest) {
         context,
         newUser.id
       )
-    }
-
-    if (inviteCode) {
-      await trackEvent('invite_code_used', { inviteCode }, context, newUser.id)
     }
 
     let emailSent = false

@@ -44,7 +44,6 @@ interface Stats {
 
 interface Config {
   rate: { ipPerMin: number; sessionPerMin: number }
-  invites: string[]
   openaiKey?: string
   pauseTailor?: boolean
   pauseExport?: boolean
@@ -822,24 +821,6 @@ export default function AdminDashboard() {
                       }
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Invite Codes (comma-separated)
-                  </label>
-                  <input
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                    value={(cfg.invites || []).join(', ')}
-                    onChange={(e) =>
-                      setCfg({
-                        ...cfg,
-                        invites: e.target.value
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      })
-                    }
-                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">

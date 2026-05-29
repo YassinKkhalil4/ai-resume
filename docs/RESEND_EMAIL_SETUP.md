@@ -22,7 +22,7 @@ You need to:
 2. **Create an API Key**:
    - Go to https://resend.com/api-keys
    - Click "Create API Key"
-   - Give it a name (e.g., "tailora-production")
+   - Give it a name (e.g., "Rolefit-production")
    - Copy the API key (you'll only see it once!)
 
 3. **Add the API Key to your environment**:
@@ -95,7 +95,7 @@ After setting up:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `RESEND_API_KEY` | Yes | - | Your Resend API key |
-| `RESEND_FROM_EMAIL` | No | `noreply@tailora.ai` | Email address to send from |
+| `RESEND_FROM_EMAIL` | No | `noreply@tryrolefit.com` | Email address to send from |
 | `VERIFICATION_BASE_URL` | No | `NEXTAUTH_URL` or `http://localhost:3000` | Base URL for verification links |
 
 ## Next Steps

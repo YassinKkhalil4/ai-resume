@@ -16,7 +16,7 @@
   1. Upload DOCX + JD paste → confirm tailored preview and diff load.
   2. Trigger missing-experience banner → use paste and line-marking recovery flows.
   3. Run honesty scan + export PDF/DOCX.
-  4. Validate invite gating and rate limit handling.
+  4. Validate rate limit handling.
 
 ## Known Gaps
 
@@ -28,11 +28,10 @@
 
 1. **Unit Tests:** Introduce Jest/Vitest to cover pure utility modules (`lib/ats.ts`, `lib/honesty.ts`, `lib/line-marking-parser.ts`). Configure `npm run test` and include in CI.
 2. **E2E Tests:** Use Playwright in headless mode; mock OpenAI endpoints by intercepting `/api/tailor` response with fixture JSON to keep deterministic.
-3. **Load Testing:** For rate-limit validation, apply k6 or autocannon against `/api/tailor` with invite headers.
+3. **Load Testing:** For rate-limit validation, apply k6 or autocannon against `/api/tailor`.
 
 ## CI Recommendations
 
 - Lint + typecheck on every PR.
 - Run QA harness nightly (token-free) to detect regressions in keyword extraction.
 - Optionally enforce PDF render smoke test by running export route via containerised Puppeteer.
-

@@ -162,7 +162,7 @@ export default function PricingPage() {
                 Can I get a refund?
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                If you&apos;re not satisfied with tailora, please contact us within 30 days of purchase for a full refund.
+                If you&apos;re not satisfied with Rolefit, please contact us within 30 days of purchase for a full refund.
               </p>
             </div>
           </div>

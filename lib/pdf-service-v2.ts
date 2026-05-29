@@ -605,7 +605,7 @@ export async function generatePDFWithAlternativeService(html: string, serviceNam
       },
       body: JSON.stringify({
         html,
-        base_url: process.env.BASE_URL || 'https://tailora.vercel.app'
+        base_url: process.env.BASE_URL || 'https://tryrolefit.com'
       })
     }
   }

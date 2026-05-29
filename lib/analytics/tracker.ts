@@ -25,7 +25,6 @@ const VALID_EVENT_NAMES = new Set([
   'visit_landing',
   'signup_started',
   'signup_completed',
-  'invite_code_used',
   'university_domain_detected',
   
   // Layer 2: Core Funnel

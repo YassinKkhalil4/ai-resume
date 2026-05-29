@@ -101,9 +101,9 @@ async function runTests() {
   
   // Test production server
   const productionResults = await Promise.all([
-    testConnection('https://tailora-riwor59pn-yassin-khalils-projects.vercel.app', 'Production Server'),
-    testConnection('https://tailora-riwor59pn-yassin-khalils-projects.vercel.app/api/health/pdf', 'Production Health API'),
-    testAPIEndpoint('https://tailora-riwor59pn-yassin-khalils-projects.vercel.app/api/test', 'Production Test API')
+    testConnection('https://tryrolefit.com', 'Production Server'),
+    testConnection('https://tryrolefit.com/api/health/pdf', 'Production Health API'),
+    testAPIEndpoint('https://tryrolefit.com/api/test', 'Production Test API')
   ]);
   
   console.log('\n' + '=' .repeat(50));

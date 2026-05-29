@@ -13,7 +13,7 @@ function getResend() {
   return resendInstance
 }
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@tailora.ai'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@tryrolefit.com'
 const VERIFICATION_BASE_URL = process.env.VERIFICATION_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
 export async function sendVerificationCode(email: string, code: string) {
@@ -22,7 +22,7 @@ export async function sendVerificationCode(email: string, code: string) {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Verify your tailora email address',
+      subject: 'Verify your Rolefit email address',
       html: `
         <!DOCTYPE html>
         <html>
@@ -36,15 +36,15 @@ export async function sendVerificationCode(email: string, code: string) {
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
               <p style="font-size: 16px; margin-bottom: 20px;">Hi there,</p>
-              <p style="font-size: 16px; margin-bottom: 20px;">Thanks for signing up for tailora! Please use the verification code below to verify your email address:</p>
+              <p style="font-size: 16px; margin-bottom: 20px;">Thanks for signing up for Rolefit! Please use the verification code below to verify your email address:</p>
               <div style="background: #f3f4f6; border: 2px dashed #3b82f6; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
                 <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #3b82f6; font-family: 'Courier New', monospace;">${code}</div>
               </div>
               <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">This code will expire in 24 hours.</p>
-              <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">If you didn't create an account with tailora, you can safely ignore this email.</p>
+              <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">If you didn't create an account with Rolefit, you can safely ignore this email.</p>
             </div>
             <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px;">
-              <p>© ${new Date().getFullYear()} tailora. Built for honest professionals.</p>
+              <p>© ${new Date().getFullYear()} Rolefit. Built for honest professionals.</p>
             </div>
           </body>
         </html>
@@ -71,7 +71,7 @@ export async function sendVerificationLink(email: string, token: string) {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Verify your tailora email address',
+      subject: 'Verify your Rolefit email address',
       html: `
         <!DOCTYPE html>
         <html>
@@ -85,17 +85,17 @@ export async function sendVerificationLink(email: string, token: string) {
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
               <p style="font-size: 16px; margin-bottom: 20px;">Hi there,</p>
-              <p style="font-size: 16px; margin-bottom: 20px;">Thanks for signing up for tailora! Click the button below to verify your email address:</p>
+              <p style="font-size: 16px; margin-bottom: 20px;">Thanks for signing up for Rolefit! Click the button below to verify your email address:</p>
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${verificationUrl}" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
               </div>
               <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">Or copy and paste this link into your browser:</p>
               <p style="font-size: 12px; color: #3b82f6; word-break: break-all; background: #f3f4f6; padding: 10px; border-radius: 4px;">${verificationUrl}</p>
               <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">This link will expire in 24 hours.</p>
-              <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">If you didn't create an account with tailora, you can safely ignore this email.</p>
+              <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">If you didn't create an account with Rolefit, you can safely ignore this email.</p>
             </div>
             <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px;">
-              <p>© ${new Date().getFullYear()} tailora. Built for honest professionals.</p>
+              <p>© ${new Date().getFullYear()} Rolefit. Built for honest professionals.</p>
             </div>
           </body>
         </html>
@@ -122,7 +122,7 @@ export async function sendVerificationResend(email: string, code: string, token:
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Verify your tailora email address',
+      subject: 'Verify your Rolefit email address',
       html: `
         <!DOCTYPE html>
         <html>
@@ -136,7 +136,7 @@ export async function sendVerificationResend(email: string, code: string, token:
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
               <p style="font-size: 16px; margin-bottom: 20px;">Hi there,</p>
-              <p style="font-size: 16px; margin-bottom: 20px;">Thanks for signing up for tailora! You can verify your email address using either method below:</p>
+              <p style="font-size: 16px; margin-bottom: 20px;">Thanks for signing up for Rolefit! You can verify your email address using either method below:</p>
               
               <div style="background: #f3f4f6; border: 2px dashed #3b82f6; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
                 <p style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Verification Code:</p>
@@ -149,10 +149,10 @@ export async function sendVerificationResend(email: string, code: string, token:
               </div>
               
               <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">This code and link will expire in 24 hours.</p>
-              <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">If you didn't create an account with tailora, you can safely ignore this email.</p>
+              <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">If you didn't create an account with Rolefit, you can safely ignore this email.</p>
             </div>
             <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px;">
-              <p>© ${new Date().getFullYear()} tailora. Built for honest professionals.</p>
+              <p>© ${new Date().getFullYear()} Rolefit. Built for honest professionals.</p>
             </div>
           </body>
         </html>

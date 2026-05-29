@@ -12,7 +12,6 @@
 1. Copy `.env.example` → `.env.local` (development) or provide env vars at deploy time.
 2. Required variables:
    - `OPENAI_API_KEY` – primary key for tailoring/extraction calls.
-   - `INVITE_CODES` – comma-separated list gating access.
    - `ADMIN_KEY` – secret used by `/api/admin/login`.
 3. Optional:
    - `PDF_RENDERER_URL`, `RENDERER_KEY` – external HTML→PDF service.
@@ -28,24 +27,23 @@ npm run dev
 ```
 
 - Sessions, config, and telemetry write to `/tmp` (auto-cleaned on restart).
-- Use `/admin` with `ADMIN_KEY` to tweak invites & rate limits locally.
+- Use `/admin` with `ADMIN_KEY` to tweak rate limits locally.
 
 ## 3. Containerised Deployment (Private Server)
 
 1. Build image:
    ```bash
-   docker build -t tailora .
+   docker build -t rolefit .
    ```
 2. Run container:
    ```bash
-   docker run -d --name tailora \
+   docker run -d --name rolefit \
      -p 3000:3000 \
      -e OPENAI_API_KEY=sk-... \
-     -e INVITE_CODES=alpha123,beta456 \
      -e ADMIN_KEY=supersecret \
      -e PDF_RENDERER_URL=https://pdf-service.internal \
      -e RENDERER_KEY=renderer-secret \
-     tailora
+     Rolefit
    ```
 3. Front with reverse proxy (Caddy, Nginx, Traefik) to terminate TLS and add basic auth if required.
 4. Persist logs by mounting `/tmp` to host tmpfs if you need to inspect telemetry.
@@ -75,12 +73,12 @@ npm run dev
 
 - **Telemetry Files:** `/tmp/telemetry.jsonl`, `/tmp/ai-responses.jsonl`, `/tmp/error-log.jsonl`.
 - **Health Checks:** `/api/health/pdf` exposes renderer metrics and alerting state.
-- **Admin Console:** `/admin` to pause tailoring/export or rotate invite codes in realtime.
+- **Admin Console:** `/admin` to pause tailoring/export and adjust runtime settings in realtime.
 - **Alerting:** Configure `MONITORING_WEBHOOK_URL` and `ALERT_EMAIL` for PDF failure notifications.
 
 ## 6. Security Hardening
 
 - Enforce HTTPS and HSTS at the proxy layer.
 - Restrict `/admin` behind VPN/SAML or additional auth.
-- Regularly rotate `ADMIN_KEY` and invite codes.
+- Regularly rotate `ADMIN_KEY`.
 - Set explicit CORS policy if integrating with external clients.

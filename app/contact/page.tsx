@@ -178,7 +178,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900 dark:text-slate-100">Email</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-300">support@tailora.ai</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-300">support@tryrolefit.com</div>
                 </div>
               </div>
               <div className="flex items-start gap-4">

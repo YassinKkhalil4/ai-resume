@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 async function testTailorAPI() {
-  console.log('🧪 Testing tailora API Endpoint...\n');
+  console.log('🧪 Testing Rolefit API Endpoint...\n');
   
   try {
     // Create a test resume file
@@ -62,10 +62,7 @@ Responsibilities:
     
     const response = await fetch('http://localhost:3000/api/tailor', {
       method: 'POST',
-      body: formData,
-      headers: {
-        'x-invite-code': 'X3P9F2' // Use one of the invite codes from .env.local
-      }
+      body: formData
     });
 
     console.log(`📊 Response Status: ${response.status}`);
@@ -146,8 +143,7 @@ Senior Developer at Startup Inc (2018-2020)
     const response = await fetch('http://localhost:3000/api/process-experience', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-invite-code': 'X3P9F2'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
     });
@@ -214,8 +210,7 @@ JavaScript, TypeScript, React, Node.js`;
     const response = await fetch('http://localhost:3000/api/process-line-selections', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-invite-code': 'X3P9F2'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
     });
@@ -257,7 +252,7 @@ async function runAPITests() {
   
   console.log('\n' + '=' .repeat(60));
   console.log('📊 API Test Results:');
-  console.log(`  tailora API: ${tailorTest ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`  Rolefit API: ${tailorTest ? '✅ PASS' : '❌ FAIL'}`);
   console.log(`  Process Experience API: ${experienceTest ? '✅ PASS' : '❌ FAIL'}`);
   console.log(`  Process Line Selections API: ${lineSelectionsTest ? '✅ PASS' : '❌ FAIL'}`);
   

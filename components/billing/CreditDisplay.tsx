@@ -111,11 +111,10 @@ export default function CreditDisplay() {
       </div>
       {!isAdmin && (
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          You can purchase credits before invite approval. Tailoring access unlocks once your invite is approved.
+          Credits are available immediately after purchase.
         </p>
       )}
       {showBuyModal && <BuyCreditsModal isOpen={showBuyModal} onClose={() => setShowBuyModal(false)} onSuccess={fetchCredits} />}
     </>
   )
 }
-

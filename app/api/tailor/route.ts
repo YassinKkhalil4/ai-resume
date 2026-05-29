@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  console.log('tailora API called:', {
+  console.log('Rolefit API called:', {
     method: req.method,
     url: req.url,
     timestamp: new Date().toISOString()
@@ -571,7 +571,7 @@ export async function POST(req: NextRequest) {
       console.error('Failed to release reserved credit:', releaseError)
     })
 
-    console.error('tailora API error:', error)
+    console.error('Rolefit API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 
     // Surface Redis / session storage outages as 503 immediately

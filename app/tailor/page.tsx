@@ -8,7 +8,6 @@ import Preview from '../../components/Preview'
 import ParsingErrorBanner from '../../components/ParsingErrorBanner'
 import ExperienceInputModal from '../../components/ExperienceInputModal'
 import LineMarkingModal, { LineSelection } from '../../components/LineMarkingModal'
-import useInviteGate from '../../components/useInviteGate'
 import { ParsingValidationResult } from '../../lib/parsing-validation'
 import LoginModal from '../../components/auth/LoginModal'
 import SignupModal from '../../components/auth/SignupModal'
@@ -35,7 +34,6 @@ export default function TailorPage() {
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showBuyModal, setShowBuyModal] = useState(false)
   const [credits, setCredits] = useState<number | null>(null)
-  const gate = useInviteGate()
   const { track } = useTracking()
   const toneOptions = useMemo(() => [
     {
@@ -145,15 +143,6 @@ export default function TailorPage() {
     }
   }, [tone, toneOptions])
 
-  // Helper function to get invite code from cookie
-  function getInviteCode(): string {
-    const inviteCode = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('invite='))
-      ?.split('=')[1]
-    return inviteCode ? decodeURIComponent(inviteCode) : ''
-  }
-
   // Helper function to extract text from resume file
   async function extractResumeText(file: File): Promise<string> {
     try {
@@ -214,14 +203,9 @@ export default function TailorPage() {
       fd.append('tone', tone)
       fd.append('strict_honesty_mode', strictHonestyMode ? 'true' : 'false')
       
-      const inviteCode = getInviteCode()
-      
       const res = await fetch('/api/tailor', { 
         method: 'POST', 
         body: fd,
-        headers: {
-          'x-invite-code': inviteCode
-        }
       })
       
       // Check content-type before parsing JSON
@@ -339,7 +323,6 @@ export default function TailorPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-invite-code': getInviteCode()
         },
         body: JSON.stringify({
           experienceText: experience,
@@ -392,7 +375,6 @@ export default function TailorPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-invite-code': getInviteCode()
         },
         body: JSON.stringify({
           resumeText,
@@ -430,34 +412,6 @@ export default function TailorPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (!gate.ok) {
-    return (
-      <main className="space-y-8 pb-12">
-        <section className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="pointer-events-none absolute -top-24 right-16 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.35),_transparent_70%)] blur-3xl" />
-          <div className="relative z-10 mx-auto max-w-2xl text-center">
-            <h1 className="mb-3 text-4xl font-semibold text-slate-900 dark:text-slate-100">Invite-only beta</h1>
-            <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">
-              Access is limited while we&apos;re scaling our reviewers. Enter your invite code to unlock the tailoring workspace.
-            </p>
-            <div className="mx-auto flex max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-              <input
-                className="input text-center sm:text-left"
-                placeholder="Enter invite code"
-                value={gate.code}
-                onChange={e => gate.setCode(e.target.value)}
-              />
-              <button className="button w-full sm:w-auto" onClick={gate.submit}>
-                Continue
-              </button>
-            </div>
-            <p className="mt-4 text-xs text-slate-500">No invite? Join the waitlist at tailora.ai</p>
-          </div>
-        </section>
-      </main>
-    )
   }
 
   const activeFeatureCard = featureCards[activeFeature] || featureCards[0]
@@ -727,7 +681,7 @@ export default function TailorPage() {
           </div>
           {!session?.user?.isAdmin && credits !== null && credits <= 0 && (
             <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              You can purchase credits now, even if your invite is still pending approval.
+              Buy credits to continue tailoring resumes.
             </p>
           )}
         </div>

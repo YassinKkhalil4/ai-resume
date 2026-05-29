@@ -97,7 +97,7 @@ export default function CookieConsent() {
                   Cookie Preferences
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  We use cookies to improve your experience and analyze product usage. Essential cookies are required for the site to function. Analytics cookies help us understand how you use Tailora.
+                  We use cookies to improve your experience and analyze product usage. Essential cookies are required for the site to function. Analytics cookies help us understand how you use Rolefit.
                 </p>
                 <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <a
@@ -182,7 +182,7 @@ export default function CookieConsent() {
                       Analytics Cookies
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                      Help us understand how you use Tailora to improve the product.
+                      Help us understand how you use Rolefit to improve the product.
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">

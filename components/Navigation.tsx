@@ -62,7 +62,7 @@ export default function Navigation() {
             <div className="flex-shrink-0">
               <Image
                 src="/logos/fulllogo_transparent_nobuffer.png"
-                alt="tailora"
+                alt="Rolefit"
                 width={200}
                 height={48}
                 className="object-contain w-auto h-auto"

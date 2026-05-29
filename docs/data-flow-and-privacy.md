@@ -52,7 +52,7 @@ sequenceDiagram
 - **Session Expiry:** `lib/sessions.ts` stores entries with a 60-minute Redis TTL.
 - **Export Cleanup:** `/api/export/[file]` removes temp files immediately after download attempt.
 - **Telemetry Scrubbing:** Only product metadata should be logged. Full resume/JD payloads must stay out of telemetry.
-- **Invite & Rate Guarding:** `lib/guards.ts` ensures only authorised users can access APIs, reducing exposure risk.
+- **Rate Guarding:** `lib/guards.ts` rate-limits API access, reducing abuse risk.
 
 ## Optional Hard-Delete Hooks
 

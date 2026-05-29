@@ -8,15 +8,6 @@ import DiffView from './DiffView'
 import ATSCheck from './ATSCheck'
 import ExportModal from './ExportModal'
 
-function readInviteCodeFromCookie(): string {
-  if (typeof document === 'undefined') return ''
-  const inviteCookie = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('invite='))
-    ?.split('=')[1]
-  return inviteCookie ? decodeURIComponent(inviteCookie) : ''
-}
-
 export default function Preview({ session }:{ session:any }) {
   const [showExport, setShowExport] = useState(false)
   const [tab, setTab] = useState<'tailored'|'original'>('tailored')
@@ -66,12 +57,10 @@ export default function Preview({ session }:{ session:any }) {
 
   const loadDiffs = useCallback(async () => {
     try {
-      const inviteCode = readInviteCodeFromCookie()
       const res = await fetch('/api/diff', { 
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
-          'x-invite-code': inviteCode
         }, 
         body: JSON.stringify({ 
           session_id: session.session_id,
@@ -103,12 +92,10 @@ export default function Preview({ session }:{ session:any }) {
   async function runHonestyScan() {
     setLoadingHonesty(true)
     try {
-      const inviteCode = readInviteCodeFromCookie()
       const res = await fetch('/api/honesty', { 
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
-          'x-invite-code': inviteCode
         }, 
         body: JSON.stringify({ 
           session_id: session.session_id,

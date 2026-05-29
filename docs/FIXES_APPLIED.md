@@ -1,6 +1,6 @@
 # Applied Fixes for Critical Issues
 
-This document outlines the fixes applied to address the critical issues identified in the tailora application.
+This document outlines the fixes applied to address the critical issues identified in the Rolefit application.
 
 ## 1. Puppeteer/Chromium Issues - FIXED ✅
 
@@ -88,7 +88,6 @@ Add these to your `.env.local` file:
 ```bash
 # Existing variables
 OPENAI_API_KEY=sk-your-key-here
-INVITE_CODES=alpha123,beta456
 ADMIN_KEY=your-admin-key
 
 # New optional variables for PDF service

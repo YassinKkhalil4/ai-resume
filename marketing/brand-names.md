@@ -2,7 +2,7 @@
 - HonestCV
 - FitMyResume
 - JD Matchmaker
-- RoleFit Resume
+- Rolefit Resume
 - BulletSmith
 - CredibleCV
 - AlignApply

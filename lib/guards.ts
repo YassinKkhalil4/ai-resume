@@ -36,21 +36,8 @@ export function sessionID(req: NextRequest) {
   return cookieValue(req, 'sid') || 'anon'
 }
 
-export async function hasInvite(req: NextRequest): Promise<boolean> {
-  const cfg = await getConfig()
-  if (!cfg.invites.length) return true
-  const header = req.headers.get('x-invite-code') || ''
-  const cookie = cookieValue(req, 'invite') || ''
-  const code = header || cookie
-  if (!code) return false
-  return cfg.invites.includes(code)
-}
-
 export async function enforceGuards(req: NextRequest) {
   const cfg = await getConfig()
-  if (!(await hasInvite(req))) {
-    return { ok: false, res: NextResponse.json({ code: 'invite_required', message: 'Invite code required' }, { status: 403 }) }
-  }
   const ip = clientIP(req)
   const sid = sessionID(req)
 

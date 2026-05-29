@@ -170,7 +170,6 @@ Both are documented and have functional alternatives. The application can be dep
    - `OPENAI_PROJECT_ID` (optional but recommended)
    - `OPENAI_ORG_ID` (optional)
    - `PDF_SERVICE_API_KEY` (optional - for PDF generation)
-   - `INVITE_CODES` (required for access control)
    - `ADMIN_KEY` (required for admin console)
 
 2. **Testing**: Run integration tests with environment variables set:
@@ -195,5 +194,5 @@ Both are documented and have functional alternatives. The application can be dep
 - The build error with `_document` is a known Next.js App Router limitation and doesn't affect runtime functionality
 - All API routes have proper error handling and validation
 - The application uses Redis sessions with a 60-minute TTL
-- Rate limiting and invite codes are properly implemented
+- Rate limiting is properly implemented
 - PDF generation has multiple fallback mechanisms (PDFShift → Puppeteer → Basic HTML)

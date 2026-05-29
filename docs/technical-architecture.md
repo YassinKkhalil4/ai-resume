@@ -47,13 +47,13 @@ flowchart LR
 - **Sessions & Privacy:** Session data is stored in Redis with a 60-minute TTL. Uploaded files are parsed in memory and discarded after extraction, while resume/JD text is sent to OpenAI for tailoring.
 - **Billing:** Lemon Squeezy external checkout links attach user/package metadata; signed webhooks add 12-month credit lots.
 - **Exports:** HTML rendering via `lib/pdf-service-v2.ts` with multi-tier fallbacks (external renderer → Puppeteer → basic PDF). DOCX generated through `lib/html-to-docx.ts`.
-- **Telemetry & Guardrails:** Invite gating, rate limits, and guard enforcement handled by `lib/guards.ts`. Telemetry records metrics, AI attempts, and errors to JSONL streams.
+- **Telemetry & Guardrails:** Rate limits and guard enforcement handled by `lib/guards.ts`. Telemetry records metrics, AI attempts, and errors to JSONL streams.
 
 ## Deployment Pipeline
 
 1. **Build:** `npm run build` compiles Next.js, Tailwind CSS, and TypeScript.
 2. **Containerisation:** Dockerfile ships a Node 20-alpine image; CI can push to registry.
-3. **Runtime Config:** Environment variables set for database, NextAuth, Redis, OpenAI, Resend, Lemon Squeezy, renderer, invites, and rate limits.
+3. **Runtime Config:** Environment variables set for database, NextAuth, Redis, OpenAI, Resend, Lemon Squeezy, renderer, and rate limits.
 4. **Hosting Options:**
    - **Managed (Vercel):** Leverages `vercel.json` for function memory/timeouts.
    - **Self-hosted VM/K8s:** Run container, expose port 3000 behind TLS proxy.

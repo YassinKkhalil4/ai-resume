@@ -1,10 +1,9 @@
 import { getRedisClient } from './redis'
 
-const CONFIG_KEY = 'tailora:app_config'
+const CONFIG_KEY = 'rolefit:app_config'
 
 export type AppConfig = {
   rate: { ipPerMin: number; sessionPerMin: number }
-  invites: string[]
   openaiKey?: string
   pauseTailor?: boolean
   pauseExport?: boolean
@@ -23,10 +22,6 @@ const defaults: AppConfig = {
     ipPerMin: Number(process.env.RATE_IP_PER_MIN || 30),
     sessionPerMin: Number(process.env.RATE_SESSION_PER_MIN || 5),
   },
-  invites: (process.env.INVITE_CODES || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
   openaiKey: undefined,
   pauseTailor: false,
   pauseExport: false,

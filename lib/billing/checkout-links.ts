@@ -23,8 +23,8 @@ export const CREDIT_PACKAGE_DEFINITIONS: CreditPackage[] = [
     credits: 5,
     price: 5.99,
     lemonVariantEnv: 'LEMON_SQUEEZY_VARIANT_STARTER',
-    description: 'Best for testing Tailora, single job applications, and first-time users',
-    tagline: 'Best for trying Tailora',
+    description: 'Best for testing Rolefit, single job applications, and first-time users',
+    tagline: 'Best for trying Rolefit',
     features: [
       '5 resume tailorings',
       'All features included',

@@ -19,7 +19,7 @@ export default function TermsPage() {
               1. Acceptance of Terms
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              By accessing and using tailora, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+              By accessing and using Rolefit, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </div>
 
@@ -28,12 +28,12 @@ export default function TermsPage() {
               2. Use License
             </h2>
             <p className="mb-2 leading-relaxed text-slate-600 dark:text-slate-300">
-              Permission is granted to temporarily use tailora for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+              Permission is granted to temporarily use Rolefit for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
             </p>
             <ul className="ml-6 list-disc space-y-1 text-slate-600 dark:text-slate-300">
               <li>Modify or copy the materials</li>
               <li>Use the materials for any commercial purpose or for any public display</li>
-              <li>Attempt to reverse engineer any software contained in tailora</li>
+              <li>Attempt to reverse engineer any software contained in Rolefit</li>
               <li>Remove any copyright or other proprietary notations from the materials</li>
             </ul>
           </div>
@@ -43,7 +43,7 @@ export default function TermsPage() {
               3. Service Description
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              tailora provides AI-powered resume tailoring services. We use advanced AI technology to help you align your resume with job descriptions while maintaining integrity and honesty. All rewritten content is based on your original resume and is designed to be ATS-friendly and recruiter-approved.
+              Rolefit provides AI-powered resume tailoring services. We use advanced AI technology to help you align your resume with job descriptions while maintaining integrity and honesty. All rewritten content is based on your original resume and is designed to be ATS-friendly and recruiter-approved.
             </p>
           </div>
 
@@ -67,7 +67,7 @@ export default function TermsPage() {
               5. Credits and Billing
             </h2>
             <p className="mb-2 leading-relaxed text-slate-600 dark:text-slate-300">
-              Credits purchased through tailora:
+              Credits purchased through Rolefit:
             </p>
             <ul className="ml-6 list-disc space-y-1 text-slate-600 dark:text-slate-300">
               <li>Expire 12 months after they are added to your account</li>
@@ -91,7 +91,7 @@ export default function TermsPage() {
               7. Disclaimer
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              The materials on tailora are provided on an &apos;as is&apos; basis. tailora makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+              The materials on Rolefit are provided on an &apos;as is&apos; basis. Rolefit makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
             </p>
           </div>
 
@@ -100,7 +100,7 @@ export default function TermsPage() {
               8. Limitations
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              In no event shall tailora or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on tailora, even if tailora or a tailora authorized representative has been notified orally or in writing of the possibility of such damage.
+              In no event shall Rolefit or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Rolefit, even if Rolefit or a Rolefit authorized representative has been notified orally or in writing of the possibility of such damage.
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export default function TermsPage() {
               9. Revisions
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              tailora may revise these terms of service at any time without notice. By using this service you are agreeing to be bound by the then current version of these terms of service.
+              Rolefit may revise these terms of service at any time without notice. By using this service you are agreeing to be bound by the then current version of these terms of service.
             </p>
           </div>
 
@@ -118,7 +118,7 @@ export default function TermsPage() {
               10. Contact Information
             </h2>
             <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-              If you have any questions about these Terms of Service, please contact us at <a href="/contact" className="text-blue-600 hover:underline dark:text-blue-400">support@tailora.ai</a> or through our <a href="/contact" className="text-blue-600 hover:underline dark:text-blue-400">contact page</a>.
+              If you have any questions about these Terms of Service, please contact us at <a href="/contact" className="text-blue-600 hover:underline dark:text-blue-400">support@tryrolefit.com</a> or through our <a href="/contact" className="text-blue-600 hover:underline dark:text-blue-400">contact page</a>.
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
-# tailora — v2 (Complete)
+# Rolefit — v2 (Complete)
 
 Upload resume (PDF/DOCX/TXT) → paste JD text/URL → tailor bullets with guardrails → preview diffs + ATS → honesty scan → export ATS-safe PDF/DOCX.
-Privacy-conscious, invite/rate guarded, Redis-backed sessions, Lemon Squeezy credits, admin console, telemetry, QA harness, and marketing kit.
+Privacy-conscious, rate guarded, Redis-backed sessions, Lemon Squeezy credits, admin console, telemetry, QA harness, and marketing kit.
 
 ## Quickstart
 
@@ -19,14 +19,14 @@ npm run dev
 - **Render/VM/Docker**: `puppeteer` works without the serverless build.
 - **Docker**:
   ```bash
-  docker build -t tailora .
+  docker build -t rolefit .
   docker run -p 3000:3000 \
     -e DATABASE_URL=postgresql://... \
     -e NEXTAUTH_SECRET=... \
     -e OPENAI_API_KEY=sk-... \
     -e INTERNAL_AI_PROCESSOR_SECRET=... \
     -e LEMON_SQUEEZY_WEBHOOK_SECRET=... \
-    tailora
+    rolefit
   ```
 
 ## Privacy & Integrity
@@ -38,7 +38,6 @@ npm run dev
 - See `/privacy` page for user-facing copy.
 
 ## Access Control & Abuse
-- **Invite-only**: `INVITE_CODES` env; API checks `x-invite-code` header or `invite` cookie.
 - **Rate limits**: per-IP and per-session sliding window (defaults: 30/min IP, 5/min session).
 - **Admin console** (`/admin`): inspect users, runs, analytics, and configuration.
 

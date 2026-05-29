@@ -1,4 +1,4 @@
-# tailora — Integrity-first resume customization
+# Rolefit — Integrity-first resume customization
 
 **Outcome:** Upload resume + paste JD → rewrite bullets to match → export ATS-safe PDF/DOCX. No fabricated credentials. Ever.
 
@@ -6,7 +6,7 @@
 - **ATS-safe templates:** Classic, Modern, Minimal. Single column, 10–12pt, standard fonts.
 - **Honesty scan:** Flags risky claims and shows the original lines backing each bullet.
 - **Privacy:** Files processed in-memory and discarded immediately. Sessions expire in 60 minutes.
-- **Access control:** Invite-only beta. Per-IP and per-session rate limits.
+- **Access control:** Account verification plus per-IP and per-session rate limits.
 
 **Why buy this asset:** It’s finished, privacy-forward, and evaluation-ready (QA harness + telemetry). Ship next week, not six.
 
