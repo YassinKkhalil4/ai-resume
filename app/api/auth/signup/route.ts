@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, users, creditLots } from '../../../../lib/db'
-import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import { detectUniversity } from '../../../../lib/analytics/university-detector'
 import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
 import { generateVerificationToken } from '../../../../lib/auth/verification'
 import { sendVerificationResend } from '../../../../lib/email/resend'
+import { normalizeEmail } from '../../../../lib/auth/email'
+import { validatePassword } from '../../../../lib/auth/password'
+import { findUserByEmail } from '../../../../lib/auth/users'
+import { checkNamedRateLimit } from '../../../../lib/rate-limiter'
+import { clientIP } from '../../../../lib/guards'
 
 function oneYearFromNow() {
   const expiresAt = new Date()
@@ -15,8 +19,14 @@ function oneYearFromNow() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { email, password } = body
+    const limit = await checkNamedRateLimit('signup', clientIP(req), 5, 60 * 60 * 1000)
+    if (!limit.allowed) {
+      return limit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many sign-ups. Please try again later.' }, { status: 429 })
+    }
+
+    const body = await req.json().catch(() => ({}))
+    const email = normalizeEmail(body?.email)
+    const password = body?.password
 
     if (!email || !password) {
       return NextResponse.json(
@@ -25,11 +35,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      return NextResponse.json(
+        { code: 'invalid_email', message: 'Please enter a valid email address' },
+        { status: 400 }
+      )
+    }
+
+    const passwordCheck = validatePassword(password)
+    if (passwordCheck.ok === false) {
+      return NextResponse.json(
+        { code: 'invalid_password', message: passwordCheck.message },
+        { status: 400 }
+      )
+    }
+
     let existingUser
     try {
-      existingUser = await db.query.users.findFirst({
-        where: eq(users.email, email),
-      })
+      existingUser = await findUserByEmail(email)
     } catch (dbError) {
       console.error('Database query failed during signup:', dbError)
       return NextResponse.json(
@@ -117,6 +140,14 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error('Signup error:', error)
+
+    // Two concurrent sign-ups for the same email: the unique index decides the winner
+    if ((error as any)?.code === '23505' || (error as any)?.cause?.code === '23505') {
+      return NextResponse.json(
+        { code: 'user_exists', message: 'User with this email already exists' },
+        { status: 409 }
+      )
+    }
 
     const errorMessage = error instanceof Error ? error.message : String(error)
     if (errorMessage.includes('Failed query') || errorMessage.includes('relation') || errorMessage.includes('does not exist')) {

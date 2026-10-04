@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, users } from '../../../../lib/db'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
-import { requireAuth } from '../../../../lib/auth/utils'
+import { getCurrentUser } from '../../../../lib/auth/utils'
+import { validatePassword } from '../../../../lib/auth/password'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth()
+    const user = await getCurrentUser().catch(() => null)
     if (!user) {
       return NextResponse.json(
         { code: 'unauthorized', message: 'Authentication required' },
@@ -17,16 +18,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { currentPassword, newPassword } = body
 
-    if (!currentPassword || !newPassword) {
+    if (typeof currentPassword !== 'string' || !currentPassword || !newPassword) {
       return NextResponse.json(
         { code: 'missing_fields', message: 'Current password and new password are required' },
         { status: 400 }
       )
     }
 
-    if (newPassword.length < 8) {
+    const passwordCheck = validatePassword(newPassword)
+    if (passwordCheck.ok === false) {
       return NextResponse.json(
-        { code: 'invalid_password', message: 'New password must be at least 8 characters long' },
+        { code: 'invalid_password', message: passwordCheck.message },
         { status: 400 }
       )
     }

@@ -155,3 +155,17 @@ export async function checkPurchaseRateLimit(
 ): Promise<RateLimitResult> {
   return checkRedisRateLimit(rateLimitKey('purchase', userId), limit, windowMs)
 }
+
+/**
+ * Generic named sliding-window limiter for ad-hoc abuse controls
+ * (login, signup, verification attempts, contact form, events...).
+ * `allowed` is false once more than `limit` hits land inside `windowMs`.
+ */
+export async function checkNamedRateLimit(
+  type: string,
+  identifier: string,
+  limit: number,
+  windowMs: number
+): Promise<RateLimitResult> {
+  return checkRedisRateLimit(rateLimitKey(type, identifier), limit, windowMs)
+}

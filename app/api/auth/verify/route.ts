@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (token) {
       // Verify using magic link token
       const result = await validateVerificationToken(token)
-      if (!result.valid) {
+      if (result.valid === false) {
         return NextResponse.json(
           { code: 'invalid_token', message: result.error },
           { status: 400 }
@@ -52,8 +52,11 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      const result = await validateVerificationCode(user.id, code)
-      if (!result.valid) {
+      const result = await validateVerificationCode(user.id, String(code))
+      if (result.valid === false) {
+        if (result.rateLimited) {
+          return NextResponse.json({ code: 'rate_limit', message: result.error }, { status: 429 })
+        }
         return NextResponse.json(
           { code: 'invalid_code', message: result.error },
           { status: 400 }
