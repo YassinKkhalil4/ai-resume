@@ -1,9 +1,9 @@
 export default function TermsPage() {
   return (
-    <main className="space-y-12 pb-16">
-      <section className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
-        <div className="relative z-10 mx-auto max-w-3xl">
-          <h1 className="mb-6 text-4xl font-semibold text-slate-900 dark:text-slate-100 md:text-5xl">
+    <main className="space-y-10">
+      <section>
+        <div className="max-w-3xl">
+          <h1 className="mb-4 text-4xl font-semibold tracking-tighter sm:text-5xl">
             Terms of Service
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -12,8 +12,8 @@ export default function TermsPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
-        <div className="mx-auto max-w-3xl space-y-8">
+      <section>
+        <div className="max-w-3xl space-y-10 border-t border-slate-200 pt-10 dark:border-slate-800">
           <div>
             <h2 className="mb-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">
               1. Acceptance of Terms

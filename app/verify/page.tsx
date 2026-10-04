@@ -89,7 +89,7 @@ function VerifyContent() {
             <p className="mb-4 text-slate-600 dark:text-slate-400">{message}</p>
             <button
               onClick={() => router.push('/')}
-              className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+              className="button"
             >
               Go to Home
             </button>

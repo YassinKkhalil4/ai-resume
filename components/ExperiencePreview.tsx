@@ -110,7 +110,6 @@ export default function ExperiencePreview({ selections, lines }: ExperiencePrevi
   if (selections.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
-        <div className="mb-2">📝</div>
         <p>No lines selected</p>
         <p className="text-sm">Click on lines in the left panel to mark them as experience</p>
       </div>

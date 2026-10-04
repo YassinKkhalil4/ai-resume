@@ -29,12 +29,12 @@ export default function FileDrop({ onFile }:{ onFile:(f:File|null)=>void }) {
           maxFileSize="10MB"
           credits={false}
           stylePanelLayout="integrated"
-          labelIdle='<span class="filepond-shell__icon">⬆️</span><span class="filepond-shell__headline">Drop your resume here or <span class="filepond--label-action">browse</span></span><span class="filepond-shell__subhead">DOCX or text-based PDF · under 10 MB</span>'
+          labelIdle='<span class="filepond-shell__headline">Drop your resume here or <span class="filepond--label-action">browse</span></span><span class="filepond-shell__subhead">DOCX or text-based PDF, under 10 MB</span>'
         />
       </div>
-      <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3 text-xs leading-relaxed text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
-        <div><strong className="font-semibold text-slate-700 dark:text-slate-100">Reminder:</strong> Avoid scanned images—export from Word, Google Docs, or your ATS as a clean PDF or DOCX so we can parse every line.</div>
-      </div>
+      <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+        <strong className="font-medium text-slate-700 dark:text-slate-200">Avoid scanned images.</strong> Export from Word, Google Docs, or your ATS as a clean PDF or DOCX so every line parses.
+      </p>
     </div>
   )
 }

@@ -6,10 +6,14 @@ import Navigation from '../components/Navigation'
 import CookieConsent from '../components/CookieConsent'
 import CookiePreferencesLink from '../components/CookiePreferencesLink'
 import ThemeProvider from '../components/ThemeProvider'
+import { Geist, Geist_Mono } from 'next/font/google'
+
+const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans', display: 'swap' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'Rolefit',
-  description: 'Rolefit rewrites your resume to any job in seconds—ATS-safe and integrity-first.',
+  description: 'Rolefit rewrites your resume to any job in seconds. ATS-safe and integrity-first.',
   icons: {
     icon: [
       { url: '/favicon.png', sizes: 'any' },
@@ -23,7 +27,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Rolefit - AI Resume Tailor',
-    description: 'Tailor your resume to any job in seconds—ATS-safe and integrity-first.',
+    description: 'Tailor your resume to any job in seconds. ATS-safe and integrity-first.',
     images: [
       {
         url: '/logos/rolefit-logo.png',
@@ -36,14 +40,14 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Rolefit - AI Resume Tailor',
-    description: 'Tailor your resume to any job in seconds—ATS-safe and integrity-first.',
+    description: 'Tailor your resume to any job in seconds. ATS-safe and integrity-first.',
     images: ['/logos/rolefit-logo.png'],
   },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -75,49 +79,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <ThemeProvider />
         <AuthProvider>
-        <div className="relative min-h-screen overflow-hidden">
-          <div className="pointer-events-none absolute -top-32 left-12 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.22),_transparent_65%)] blur-3xl" />
-          <div className="pointer-events-none absolute top-1/3 right-[-140px] h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,_rgba(14,165,233,0.18),_transparent_70%)] blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.1),_transparent_55%)]" />
+          <Navigation />
 
-          <div className="relative z-10">
-            <div className="container py-12">
-              <div className="mb-12">
-                <Navigation />
-              </div>
+          <div className="container pb-16 pt-10 md:pt-14">
+            {children}
 
-              {children}
-
-              <CookieConsent />
-
-              <footer className="mt-16 rounded-3xl border border-white/50 bg-white/80 px-6 py-8 text-xs text-slate-600 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300">
-                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex-shrink-0 relative" style={{ width: '18px', height: '18px', minWidth: '18px' }}>
-                      <Image
-                        src="/favicon.png"
-                        alt="Rolefit"
-                        width={18}
-                        height={18}
-                        className="object-contain opacity-70 dark:opacity-60"
-                        style={{ width: '100%', height: '100%' }}
-                      />
-                    </div>
-                    <span>© {new Date().getFullYear()} Rolefit. Built for honest professionals.</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <a href="/about" className="hover:text-slate-700 dark:hover:text-slate-300">About</a>
-                    <a href="/pricing" className="hover:text-slate-700 dark:hover:text-slate-300">Pricing</a>
-                    <a href="/contact" className="hover:text-slate-700 dark:hover:text-slate-300">Contact</a>
-                    <a href="/privacy" className="hover:text-slate-700 dark:hover:text-slate-300">Privacy</a>
-                    <a href="/terms" className="hover:text-slate-700 dark:hover:text-slate-300">Terms</a>
-                    <CookiePreferencesLink />
-                  </div>
-                </div>
-              </footer>
-            </div>
+            <CookieConsent />
           </div>
-        </div>
+
+          <footer className="border-t border-slate-200 dark:border-slate-800">
+            <div className="container flex flex-col gap-6 py-8 text-sm text-slate-600 dark:text-slate-400 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2.5">
+                <Image src="/favicon.png" alt="" width={18} height={18} className="h-[18px] w-[18px] object-contain opacity-80" />
+                <span>© {new Date().getFullYear()} Rolefit. Built for honest professionals.</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <a href="/about" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">About</a>
+                <a href="/pricing" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Pricing</a>
+                <a href="/contact" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Contact</a>
+                <a href="/privacy" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Privacy</a>
+                <a href="/terms" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Terms</a>
+                <CookiePreferencesLink />
+              </div>
+            </div>
+          </footer>
         </AuthProvider>
       </body>
     </html>

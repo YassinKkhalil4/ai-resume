@@ -1,5 +1,6 @@
 'use client'
 
+import Modal, { ModalClose } from './Modal'
 import { useState } from 'react'
 
 export default function ExportModal({ onClose }:{ onClose:()=>void }) {
@@ -60,12 +61,9 @@ export default function ExportModal({ onClose }:{ onClose:()=>void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="card p-6 w-[560px] max-w-full">
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-semibold">Export</div>
-          <button className="button-outline" onClick={onClose}>Close</button>
-        </div>
+    <Modal onClose={onClose} labelledBy="export-title" size="lg">
+        <ModalClose onClick={onClose} />
+        <h2 id="export-title" className="mb-4 pr-8 text-xl font-semibold tracking-tight">Export</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <div className="label mb-1">Template</div>
@@ -88,10 +86,9 @@ export default function ExportModal({ onClose }:{ onClose:()=>void }) {
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={includeSkills} onChange={e=>setIncludeSkills(e.target.checked)} />Include Skills</label>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button className="button" onClick={exportFile} disabled={loading}>{loading?'Exporting…':'Export'}</button>
+          <button className="button" onClick={exportFile} disabled={loading}>{loading?'Exporting...':'Export'}</button>
         </div>
         <div className="text-xs text-gray-500 mt-3">DOCX exports instantly. PDF may take a few seconds. All exports are text-selectable and ATS-safe.</div>
-      </div>
-    </div>
+    </Modal>
   )
 }

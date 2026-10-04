@@ -6,6 +6,25 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CREDIT_PACKAGE_DEFINITIONS, CreditPackageId } from '../../lib/billing/checkout-links'
 
+const faqs = [
+  {
+    q: 'Do credits expire?',
+    a: "Yes. Credits are valid for 12 months from the date they're added to your account. We always use the credits that expire soonest first, and you can see your next expiry date in your dashboard.",
+  },
+  {
+    q: 'How many credits do I need?',
+    a: 'Each credit allows you to tailor one resume to one job description. Most users find that 5-15 credits is enough for a typical job search.',
+  },
+  {
+    q: 'What payment methods do you accept?',
+    a: 'Payments are handled by Lemon Squeezy.',
+  },
+  {
+    q: 'Can I get a refund?',
+    a: "If you're not satisfied with Rolefit, please contact us within 30 days of purchase for a full refund.",
+  },
+]
+
 export default function PricingPage() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -43,147 +62,102 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="space-y-12 pb-16">
-      <section className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
-        <div className="relative z-10 mx-auto max-w-4xl text-center">
-          <h1 className="mb-4 text-4xl font-semibold text-slate-900 dark:text-slate-100 md:text-5xl">
-            Simple, transparent pricing
-          </h1>
-          <p className="mb-8 text-lg text-slate-600 dark:text-slate-300">
-            Pay once and use your credits within 12 months. Each credit lets you tailor one resume to one job description.
-          </p>
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-xs font-medium text-emerald-700 dark:border-emerald-400/40 dark:text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Get 1 free credit when you sign up
-          </div>
-        </div>
+    <main className="space-y-14 md:space-y-20">
+      <section aria-labelledby="pricing-heading" className="max-w-3xl">
+        <h1 id="pricing-heading" className="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">
+          Simple, transparent pricing
+        </h1>
+        <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 dark:text-slate-400 md:text-lg">
+          Pay once and use your credits within 12 months. Each credit tailors one resume to one job description.
+        </p>
+        <p className="mt-4 text-sm font-medium text-blue-700 dark:text-blue-300">
+          Get 1 free credit when you sign up.
+        </p>
       </section>
 
-      <section>
-        <div className="grid gap-6 md:grid-cols-3">
-          {CREDIT_PACKAGE_DEFINITIONS.map((pkg) => {
-            return (
-            <div
-              key={pkg.name}
-              className={`relative rounded-2xl border-2 p-6 transition hover:-translate-y-1 hover:shadow-lg ${
-                pkg.popular
-                  ? 'border-blue-500 bg-blue-50/50 dark:border-blue-400 dark:bg-blue-900/20'
-                  : 'border-slate-200/60 bg-white/70 dark:border-slate-800 dark:bg-slate-900/70'
+      <section aria-label="Credit packages">
+        <ul className="divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          {CREDIT_PACKAGE_DEFINITIONS.map((pkg) => (
+            <li
+              key={pkg.id}
+              className={`grid gap-6 py-8 md:-mx-6 md:grid-cols-12 md:items-center md:gap-8 md:px-6 ${
+                pkg.popular ? 'bg-blue-50 dark:bg-blue-950' : ''
               }`}
             >
-              {pkg.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white dark:bg-blue-500">
-                  Most Popular
+              <div className="md:col-span-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-semibold tracking-tight">{pkg.name}</h2>
+                  {pkg.popular && (
+                    <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-semibold text-white dark:bg-blue-400 dark:text-slate-950">
+                      Most popular
+                    </span>
+                  )}
                 </div>
-              )}
-              <div className="text-center">
-                <h3 className="mb-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                  {pkg.name}
-                </h3>
-                <div className="mb-2">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">
-                    ${pkg.price}
-                  </span>
-                </div>
-                <div className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-                  {pkg.credits} credits
-                </div>
-                <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">
-                  {pkg.description}
-                </p>
-                <ul className="mb-6 space-y-2 text-left text-sm text-slate-600 dark:text-slate-300">
-                  {pkg.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <svg
-                        className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M5 12L10 17L20 7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{pkg.description}</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="text-3xl font-semibold tracking-tighter">${pkg.price}</div>
+                <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">{pkg.credits} credits</div>
+              </div>
+
+              <ul className="space-y-1.5 text-sm text-slate-600 dark:text-slate-400 md:col-span-4">
+                {pkg.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <span aria-hidden="true" className="mt-0.5 text-blue-600 dark:text-blue-400">✓</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="md:col-span-2 md:text-right">
                 <button
                   type="button"
                   onClick={() => handlePurchase(pkg.id)}
                   disabled={loadingPackage !== null}
-                  className="button block w-full text-center disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`${pkg.popular ? 'button' : 'button-outline'} w-full md:w-auto`}
                 >
                   {loadingPackage === pkg.id ? 'Opening checkout...' : session ? 'Buy Credits' : 'Sign in to Buy'}
                 </button>
               </div>
-            </div>
-          )})}
-        </div>
+            </li>
+          ))}
+        </ul>
         {checkoutError && (
-          <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{checkoutError}</p>
+          <p role="alert" className="mt-4 text-sm text-red-700 dark:text-red-400">{checkoutError}</p>
         )}
-        <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
           Sign in and verify your email before purchasing credits.
         </p>
       </section>
 
-      <section className="rounded-3xl border border-white/50 bg-white/70 p-10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 md:p-16">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="mb-6 text-3xl font-semibold text-slate-900 dark:text-slate-100">
-            Frequently Asked Questions
-          </h2>
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
-              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Do credits expire?
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300">
-                Yes. Credits are valid for 12 months from the date they&apos;re added to your account. We always use the credits that expire soonest first, and you can see your next expiry date in your dashboard.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
-              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                How many credits do I need?
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300">
-                Each credit allows you to tailor one resume to one job description. Most users find that 5-15 credits is enough for a typical job search.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
-              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                What payment methods do you accept?
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300">
-                Payments are handled by Lemon Squeezy.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60">
-              <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Can I get a refund?
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300">
-                If you&apos;re not satisfied with Rolefit, please contact us within 30 days of purchase for a full refund.
-              </p>
-            </div>
-          </div>
+      <section aria-labelledby="faq-heading" className="grid gap-10 lg:grid-cols-12 lg:gap-14">
+        <h2 id="faq-heading" className="text-3xl font-semibold tracking-tighter sm:text-4xl lg:col-span-4">
+          Questions, answered.
+        </h2>
+        <div className="divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800 lg:col-span-8">
+          {faqs.map((faq) => (
+            <details key={faq.q} className="faq group py-5">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-base font-semibold [&::-webkit-details-marker]:hidden">
+                {faq.q}
+                <span aria-hidden="true" className="faq-icon text-xl font-normal text-slate-500">+</span>
+              </summary>
+              <p className="mt-3 max-w-2xl leading-relaxed text-slate-600 dark:text-slate-400">{faq.a}</p>
+            </details>
+          ))}
         </div>
       </section>
 
-      <section className="relative overflow-hidden rounded-3xl border border-blue-400/30 bg-gradient-to-br from-blue-50/60 via-white/50 to-white/20 p-12 backdrop-blur-xl dark:border-blue-500/30 dark:from-blue-900/40 dark:via-slate-900/40 dark:to-slate-950/40 md:p-16">
-        <div className="relative z-10 mx-auto max-w-3xl text-center">
-          <h2 className="mb-4 text-3xl font-semibold text-slate-900 dark:text-slate-100">
-            Ready to get started?
-          </h2>
-          <p className="mb-8 text-lg text-slate-600 dark:text-slate-300">
-            Start with 1 free credit when you sign up, no credit card required.
+      <section aria-labelledby="start-heading" className="flex flex-col items-start gap-6 border-t border-slate-200 pt-14 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 id="start-heading" className="text-3xl font-semibold tracking-tighter sm:text-4xl">Ready to get started?</h2>
+          <p className="mt-3 text-slate-600 dark:text-slate-400">
+            Start with 1 free credit when you sign up. No credit card required.
           </p>
-          <Link
-            href="/tailor"
-            className="button inline-block"
-          >
-            Get Started Free
-          </Link>
         </div>
+        <Link href="/tailor" className="button">
+          Get Started Free
+        </Link>
       </section>
     </main>
   )

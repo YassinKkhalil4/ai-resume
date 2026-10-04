@@ -143,15 +143,15 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-slate-200/70 bg-white/80 shadow-inner focus-within:border-blue-400/60 focus-within:ring-2 focus-within:ring-blue-200 dark:border-slate-800 dark:bg-slate-900/70 dark:focus-within:border-blue-500/50 dark:focus-within:ring-blue-900/50">
+      <div className="rounded-xl border border-[var(--control)] bg-white transition-[border-color,box-shadow] duration-150 focus-within:border-blue-600 focus-within:ring-[3px] focus-within:ring-blue-600/30 dark:bg-slate-900 dark:focus-within:border-blue-400 dark:focus-within:ring-blue-400/30">
         <textarea
-          className="h-48 w-full resize-none rounded-3xl bg-transparent px-5 py-5 text-sm leading-relaxed text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="h-48 w-full resize-none rounded-xl bg-transparent px-3.5 py-3 text-sm leading-relaxed text-slate-700 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500"
           placeholder="Paste the job description here. Include responsibilities, requirements, and key qualifications so we can match keywords precisely."
           value={value}
           onChange={e => onChange(e.target.value)}
         />
       </div>
-      <div className="flex justify-between text-[11px] text-slate-400 dark:text-slate-500">
+      <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
         <span>Tip: include responsibilities, requirements, and any listed tools.</span>
         <span>{charCount.toLocaleString()} characters</span>
       </div>
@@ -229,15 +229,12 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
         </div>
       )}
 
-      <div className="glass-panel flex flex-col gap-3 rounded-3xl p-4 shadow-sm sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Job URL</div>
+          <label htmlFor="jd-url" className="label mb-1.5 block">Or fetch from a job URL</label>
           <input
-            className={`input mt-2 rounded-2xl border ${
-              error && status === 'error'
-                ? 'border-red-300 dark:border-red-600'
-                : 'border-slate-200/70 dark:border-slate-800'
-            } bg-white/70 dark:bg-slate-900/70`}
+            id="jd-url"
+            className={`input ${error && status === 'error' ? 'border-red-600 dark:border-red-500' : ''}`}
             placeholder="https://company.com/careers/role"
             value={url}
             onChange={e => {
@@ -254,7 +251,7 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
             }}
           />
         </div>
-        <div className="flex items-end sm:self-stretch">
+        <div className="flex items-end">
           <button
             className="button-outline w-full whitespace-nowrap sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={fetchUrl}

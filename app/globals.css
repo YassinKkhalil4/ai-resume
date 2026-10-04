@@ -2,231 +2,275 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS Variables - must be defined before use */
+/*
+ * Design tokens. One theme per page (light or dark, never mixed), one accent.
+ * Components below read these variables; Tailwind's slate/blue palettes are
+ * remapped to the same ramps in tailwind.config.ts so utility classes agree.
+ */
 :root {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-  --surface: rgba(255, 255, 255, 0.94);
-  --surface-muted: rgba(15, 23, 42, 0.06);
-  --surface-border: rgba(15, 23, 42, 0.1);
-  --surface-strong: rgba(255, 255, 255, 0.75);
-  --text-primary: #0f172a;
-  --text-secondary: rgba(15, 23, 42, 0.7);
-  --accent: #2563eb;
-  --accent-strong: #1e3a8a;
-  --glow-start: rgba(59, 130, 246, 0.25);
-  --glow-end: rgba(14, 165, 233, 0.16);
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --line: #e1e5ea;
+  --line-strong: #cbd1d9;
+  --control: #8e98a5; /* form control borders: 3:1 against the surface */
+  --ink: #0e1116;
+  --ink-2: #4b535e;
+  --ink-3: #68717d;
+  --accent: #2c4fd6;
+  --accent-hover: #2441b0;
+  --accent-soft: #eef3ff;
+  --accent-ink: #ffffff;
+  --ring: rgb(44 79 214 / 0.35);
+  --shadow-card: 0 1px 2px rgb(11 13 16 / 0.04), 0 8px 24px -16px rgb(11 13 16 / 0.12);
   color-scheme: light;
 }
 
-/* Critical base styles - placed AFTER @tailwind base to override Tailwind's reset */
-/* Using !important to ensure these always win over Tailwind's base reset */
-html {
-  height: 100% !important;
-  min-height: 100vh !important;
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 45%),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 40%),
-    #f8fafc !important;
-  background-attachment: fixed !important;
+.dark {
+  --bg: #0b0d10;
+  --surface: #12151a;
+  --surface-2: #181c22;
+  --line: #232830;
+  --line-strong: #323943;
+  --control: #667180;
+  --ink: #e8ebef;
+  --ink-2: #aab2bd;
+  --ink-3: #8a94a1;
+  --accent: #7b9cff;
+  --accent-hover: #94b0ff;
+  --accent-soft: #141f47;
+  --accent-ink: #0b0d10;
+  --ring: rgb(123 156 255 / 0.4);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -16px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
 }
 
-body {
-  height: 100% !important;
-  min-height: 100vh !important;
-  font-family: var(--font-sans) !important;
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 45%),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 40%),
-    #f8fafc !important;
-  background-attachment: fixed !important;
-  color: var(--text-primary) !important;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  h1 { @apply text-4xl font-semibold tracking-tighter; }
+  h2 { @apply text-2xl font-semibold tracking-tight; }
+  h3 { @apply font-semibold tracking-tight; }
+
+  p { text-wrap: pretty; }
+
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
-/* Dark mode - higher specificity with !important to ensure override */
-html.dark,
-.dark html {
-  color-scheme: dark !important;
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 45%),
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 40%),
-    #020617 !important;
-  background-attachment: fixed !important;
+@layer components {
+  .container { @apply mx-auto max-w-6xl px-4 sm:px-6; }
+
+  /* Cards exist only where elevation carries hierarchy; no blur, no glass. */
+  .card {
+    @apply rounded-3xl border;
+    background: var(--surface);
+    border-color: var(--line);
+    box-shadow: var(--shadow-card);
+    color: var(--ink);
+  }
+
+  /* Flat inset panel: grouping without elevation. */
+  .glass-panel {
+    @apply rounded-3xl border;
+    background: var(--surface-2);
+    border-color: var(--line);
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+    background: var(--accent-soft);
+    border-color: transparent;
+    color: var(--accent);
+  }
+
+  .button {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
+    background: var(--accent);
+    color: var(--accent-ink);
+    transition: background-color 150ms ease-out, transform 120ms ease-out, opacity 150ms ease-out;
+  }
+
+  .button:hover:not(:disabled) { background: var(--accent-hover); }
+  .button:active:not(:disabled) { transform: scale(0.98); }
+
+  .button-outline {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
+    background: transparent;
+    border-color: var(--control);
+    color: var(--ink);
+    transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 120ms ease-out;
+  }
+
+  .button-outline:hover:not(:disabled) { background: var(--surface-2); }
+  .button-outline:active:not(:disabled) { transform: scale(0.98); }
+
+  /* ---- Modal ---- */
+  .modal-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgb(11 13 16 / 0.55);
+    animation: scrim-in 160ms ease-out both;
+  }
+
+  .modal-panel {
+    position: relative;
+    width: 100%;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 1.5rem;
+    box-shadow: 0 28px 60px -20px rgb(11 13 16 / 0.35);
+    outline: none;
+    animation: modal-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .button-sm { @apply px-3.5 py-2 text-[13px]; }
+
+  .input {
+    @apply w-full rounded-xl border px-3.5 py-2.5 text-sm;
+    background: var(--surface);
+    border-color: var(--control);
+    color: var(--ink);
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  }
+
+  .input::placeholder { color: var(--ink-3); }
+
+  .input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  /* Form label: sentence case, above the field, never placeholder-as-label. */
+  .label {
+    @apply text-[13px] font-medium;
+    color: var(--ink-2);
+  }
+
+  code {
+    @apply rounded-md px-1.5 py-0.5 text-[0.85em] font-mono;
+    background: var(--surface-2);
+  }
 }
 
-html.dark body,
-.dark body {
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 45%),
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 40%),
-    #020617 !important;
-  color: #e2e8f0 !important;
-  background-attachment: fixed !important;
+@layer utilities {
+  /* FAQ disclosure: the plus turns into a cross when open */
+  .faq-icon { display: inline-block; transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .faq[open] .faq-icon { transform: rotate(45deg); }
+
+  .animate-fade-slide {
+    animation: fade-slide 0.4s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
 }
 
-.container { @apply mx-auto max-w-6xl px-4 sm:px-5 md:px-6; }
-
-.card {
-  @apply rounded-3xl border bg-white backdrop-blur;
-  background: var(--surface);
-  border-color: var(--surface-border);
-  box-shadow: 0 18px 45px -25px rgba(15, 23, 42, 0.6);
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.badge {
-  @apply inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border border-transparent;
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--accent);
-}
-
-.button {
-  @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 12px 25px -12px rgba(37, 99, 235, 0.8);
-}
-
-.button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1d4ed8, #1e40af);
-}
-
-.button-outline {
-  @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60;
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--text-primary);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-}
-
-.button-outline:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 0.1);
-  border-color: rgba(37, 99, 235, 0.4);
-  color: var(--accent);
-}
-
-.input {
-  @apply w-full rounded-2xl px-4 py-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  color: var(--text-primary);
-}
-
-.input:focus-visible {
-  border-color: rgba(37, 99, 235, 0.6);
-}
-
-.label {
-  @apply text-xs font-semibold uppercase tracking-wider;
-  color: rgba(15, 23, 42, 0.55);
-}
-
-h1 { @apply text-4xl font-semibold tracking-tight; }
-h2 { @apply text-2xl font-semibold; }
-
-code {
-  @apply rounded px-2 py-1 text-xs font-mono;
-  background: rgba(15, 23, 42, 0.08);
-}
-
-
-.dark .card {
-  background: rgba(2, 6, 23, 0.75);
-  border-color: rgba(148, 163, 184, 0.16);
-  box-shadow: 0 22px 50px -28px rgba(15, 23, 42, 0.9);
-  color: #e2e8f0;
-}
-
-.dark .badge {
-  background: rgba(96, 165, 250, 0.14);
-  color: #93c5fd;
-}
-
-.dark .button {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-}
-
-.dark .button-outline {
-  background: rgba(15, 23, 42, 0.6);
-  border-color: rgba(96, 165, 250, 0.18);
-  color: #e2e8f0;
-}
-
-.dark .button-outline:hover:not(:disabled) {
-  background: rgba(96, 165, 250, 0.16);
-  color: #bfdbfe;
-}
-
-.dark .input {
-  background: rgba(15, 23, 42, 0.75);
-  border-color: rgba(148, 163, 184, 0.2);
-  color: #e2e8f0;
-}
-
-.dark .label {
-  color: rgba(226, 232, 240, 0.6);
-}
-
-.animate-fade-slide {
-  animation: fade-slide 0.5s ease forwards;
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fade-slide {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.glass-panel {
-  background: var(--surface-strong);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 18px 40px -28px rgba(15, 23, 42, 0.4);
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-slide { animation: none; }
+  .faq-icon { transition: none; }
+  .modal-panel { animation: scrim-in 160ms ease-out both; }
+  .button, .button-outline, .input, .filepond-shell { transition: none; }
 }
 
-.dark .glass-panel {
-  background: rgba(15, 23, 42, 0.65);
-  border-color: rgba(148, 163, 184, 0.18);
-}
-
+/* ---- File drop (FilePond) ----
+   Kept outside @layer: FilePond ships unlayered CSS, which beats layered rules regardless of specificity. */
 .filepond-shell {
-  @apply relative overflow-hidden rounded-3xl border border-dashed border-blue-300/60 bg-white/70 p-2 shadow-inner transition dark:border-blue-500/30 dark:bg-slate-900/60;
+  @apply relative overflow-hidden rounded-3xl border border-dashed p-1.5;
+  background: var(--surface);
+  border-color: var(--control);
+  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+}
+
+.filepond-shell:hover,
+.filepond-shell:focus-within {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .filepond-shell .filepond--root {
-  font-family: var(--font-sans);
-  color: var(--text-primary);
+  font-family: inherit;
+  color: var(--ink);
+  margin-bottom: 0;
+  min-height: 168px;
 }
 
 .filepond-shell .filepond--panel-root {
   background-color: transparent;
   border: none;
-  @apply rounded-2xl bg-white/70 p-6 dark:bg-slate-900/70;
 }
 
 .filepond-shell .filepond--drop-label {
-  @apply flex flex-col items-center justify-center gap-2 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-200;
-  min-height: 180px;
+  @apply flex flex-col items-center justify-center gap-1.5 text-center text-sm;
+  color: var(--ink-2);
+  min-height: 168px;
 }
 
-.filepond-shell__icon {
-  font-size: 1.75rem;
-  line-height: 1;
+.filepond-shell .filepond--drop-label label {
+  @apply flex flex-col items-center gap-1.5;
+  cursor: pointer;
 }
 
 .filepond-shell__headline {
-  @apply text-base font-semibold text-slate-800 dark:text-slate-50;
+  @apply block text-[15px] font-semibold;
+  color: var(--ink);
 }
 
 .filepond-shell__subhead {
-  @apply text-xs text-slate-500 dark:text-slate-400;
+  @apply mt-1.5 block text-xs;
+  color: var(--ink-3);
 }
 
 .filepond-shell .filepond--label-action {
-  @apply text-blue-600 underline decoration-blue-400 underline-offset-4 dark:text-blue-300;
+  @apply underline underline-offset-4;
+  color: var(--accent);
+  text-decoration-color: currentColor;
 }
 
-.filepond-shell .filepond--item-panel,
-.filepond-shell .filepond--file-action-button {
-  @apply bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200;
-}
+.filepond-shell .filepond--item-panel { background-color: var(--accent); }
+.filepond-shell .filepond--file-action-button { background-color: rgb(11 13 16 / 0.55); color: #fff; }
+.filepond-shell .filepond--file { color: var(--accent-ink); }
 
-.filepond-shell:hover {
-  @apply border-blue-500/70 bg-blue-500/5 shadow-lg;
-}

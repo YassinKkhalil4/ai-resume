@@ -95,7 +95,7 @@ export default function CreditDisplay() {
         {!isAdmin && credits === 0 && (
           <button
             onClick={() => setShowBuyModal(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            className="button"
           >
             Buy Credits
           </button>
@@ -103,7 +103,7 @@ export default function CreditDisplay() {
         {!isAdmin && credits > 0 && (
           <button
             onClick={() => setShowBuyModal(true)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="button-outline"
           >
             Top Up
           </button>

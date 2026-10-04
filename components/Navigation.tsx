@@ -52,194 +52,134 @@ export default function Navigation() {
     { href: '/about', label: 'About' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/contact', label: 'Contact' },
+    { href: '/tailor', label: 'App' },
   ]
+
+  const accountLinks = [
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/profile', label: 'Profile' },
+  ]
+
+  const linkClass = (href: string) =>
+    `text-sm font-medium transition-colors ${
+      isActive(href)
+        ? 'text-slate-900 dark:text-slate-50'
+        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50'
+    }`
 
   return (
     <>
-      <nav className="rounded-3xl border border-white/50 bg-white/85 px-6 py-4 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-4">
-            <div className="flex-shrink-0">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
+        <nav aria-label="Primary" className="container">
+          <div className="flex h-16 items-center justify-between gap-6">
+            <Link href="/" className="flex shrink-0 items-center" aria-label="Rolefit home">
               <Image
                 src="/logos/fulllogo_transparent_nobuffer.png"
                 alt="Rolefit"
                 width={200}
                 height={48}
-                className="object-contain w-auto h-auto"
-                style={{ 
-                  height: 'clamp(36px, 4vw, 48px)',
-                  width: 'auto',
-                  maxWidth: '240px',
-                  filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05))'
-                }}
+                className="h-11 w-auto object-contain"
                 priority
               />
-            </div>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm font-medium transition-colors ${
-                  isActive(link.href)
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              href="/tailor"
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-            >
-              App
             </Link>
-            {status === 'authenticated' ? (
-              <div className="flex items-center gap-3">
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold"
-                  >
-                    Admin
-                  </Link>
-                )}
-                <Link
-                  href="/dashboard"
-                  className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  Profile
-                </Link>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={handleSignupClick}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
-          </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-3">
+            {/* Desktop navigation: one line from lg up */}
+            <div className="hidden flex-1 items-center justify-between lg:flex">
+              <div className="flex items-center gap-6">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href + link.label}
+                    href={link.href}
+                    aria-current={isActive(link.href) ? 'page' : undefined}
+                    className={linkClass(link.href)}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+
+              {status === 'authenticated' ? (
+                <div className="flex items-center gap-6">
+                  {accountLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      aria-current={isActive(link.href) ? 'page' : undefined}
+                      className={linkClass(link.href)}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setShowLoginModal(true)} className="button-outline button-sm">
+                    Sign In
+                  </button>
+                  <button onClick={handleSignupClick} className="button button-sm">
+                    Sign Up
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-600 dark:text-slate-400"
+              className="-mr-2 rounded-xl p-2 text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50 lg:hidden"
               aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                {mobileMenuOpen ? (
-                  <path d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-                )}
+              <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                {mobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
               </svg>
             </button>
           </div>
-        </div>
+        </nav>
 
-        {/* Mobile Menu */}
+        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="mt-4 md:hidden space-y-3 pb-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block text-sm font-medium transition-colors ${
-                  isActive(link.href)
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              href="/tailor"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-            >
-              App
-            </Link>
-            {status === 'authenticated' ? (
-              <div className="pt-3 space-y-2 border-t border-slate-200 dark:border-slate-700">
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold"
+          <div id="mobile-menu" className="border-t border-slate-200 dark:border-slate-800 lg:hidden">
+            <div className="container flex flex-col gap-1 py-4">
+              {[...navLinks, ...(status === 'authenticated' ? accountLinks : [])].map((link) => (
+                <Link
+                  key={link.href + link.label}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className={`rounded-xl px-3 py-2.5 ${linkClass(link.href)} ${isActive(link.href) ? 'bg-slate-100 dark:bg-slate-900' : ''}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {status !== 'authenticated' && (
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+                  <button
+                    onClick={() => {
+                      setShowLoginModal(true)
+                      setMobileMenuOpen(false)
+                    }}
+                    className="button-outline"
                   >
-                    Admin
-                  </Link>
-                )}
-                <Link
-                  href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  Profile
-                </Link>
-              </div>
-            ) : (
-              <div className="pt-3 space-y-2 border-t border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => {
-                    setShowLoginModal(true)
-                    setMobileMenuOpen(false)
-                  }}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => {
-                    handleSignupClick()
-                    setMobileMenuOpen(false)
-                  }}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSignupClick()
+                      setMobileMenuOpen(false)
+                    }}
+                    className="button"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
-      </nav>
+      </header>
 
       {showLoginModal && (
         <LoginModal

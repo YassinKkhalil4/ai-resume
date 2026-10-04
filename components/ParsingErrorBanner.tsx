@@ -21,16 +21,15 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss }: 
   const isBlocking = errorState.type === 'error'
   
   return (
-    <div className="fixed inset-x-0 top-4 z-50 px-5 sm:px-8">
+    <div role={isBlocking ? 'alert' : 'status'}>
       <div
-        className={`relative mx-auto max-w-3xl overflow-hidden rounded-3xl border backdrop-blur-xl ${
+        className={`rounded-3xl border ${
           isBlocking
-            ? 'border-rose-400/40 bg-rose-100/80 text-rose-800 shadow-2xl shadow-rose-300/40 dark:border-rose-500/30 dark:bg-rose-900/40 dark:text-rose-100'
-            : 'border-amber-300/50 bg-amber-50/90 text-amber-800 shadow-2xl shadow-amber-200/40 dark:border-amber-400/30 dark:bg-amber-900/40 dark:text-amber-100'
+            ? 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-100'
+            : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100'
         }`}
       >
-        <div className="pointer-events-none absolute -top-20 right-0 h-48 w-48 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-2xl" />
-        <div className="relative z-10 flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
           <div className="flex gap-3">
             <div
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
@@ -81,9 +80,9 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss }: 
               <h3 className="text-sm font-semibold">{errorState.title}</h3>
               <p className="mt-1 text-sm leading-snug">{errorState.message}</p>
               {isExpanded && validation.suggestions.length > 0 && (
-                <ul className="mt-3 space-y-2 text-xs leading-relaxed">
+                <ul className="mt-3 list-disc space-y-1.5 pl-4 text-xs leading-relaxed">
                   {validation.suggestions.map((suggestion, index) => (
-                    <li key={index}>• {suggestion}</li>
+                    <li key={index}>{suggestion}</li>
                   ))}
                 </ul>
               )}
@@ -94,8 +93,8 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss }: 
             {validation.suggestions.length > 0 && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className={`text-xs font-semibold uppercase tracking-[0.2em] ${
-                  isBlocking ? 'text-rose-600 hover:text-rose-500 dark:text-rose-200 dark:hover:text-rose-100' : 'text-amber-600 hover:text-amber-500 dark:text-amber-100 dark:hover:text-amber-50'
+                className={`text-xs font-semibold ${
+                  isBlocking ? 'text-rose-800 hover:text-rose-950 dark:text-rose-200 dark:hover:text-rose-50' : 'text-amber-800 hover:text-amber-950 dark:text-amber-200 dark:hover:text-amber-50'
                 }`}
               >
                 {isExpanded ? 'Hide suggestions' : 'Show suggestions'}
@@ -107,10 +106,10 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss }: 
                 <button
                   key={index}
                   onClick={() => onAction(action.action)}
-                  className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                  className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
                     isBlocking
-                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 hover:bg-rose-600'
-                      : 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/30 hover:bg-amber-300'
+                      ? 'bg-rose-700 text-white hover:bg-rose-800'
+                      : 'bg-amber-700 text-white hover:bg-amber-800'
                   }`}
                 >
                   {action.label}
@@ -121,7 +120,7 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss }: 
             {onDismiss && !isBlocking && (
               <button
                 onClick={onDismiss}
-                className="text-xs font-semibold text-amber-500 underline underline-offset-4 hover:text-amber-400 dark:text-amber-200 dark:hover:text-amber-100"
+                className="text-xs font-semibold text-amber-800 underline underline-offset-4 hover:text-amber-950 dark:text-amber-200 dark:hover:text-amber-50"
               >
                 Dismiss for now
               </button>
