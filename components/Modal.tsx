@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react'
 
 type ModalProps = {
   onClose?: () => void
@@ -23,6 +23,12 @@ const SIZES = {
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+// Exit is faster than entry: slow where the user is deciding, fast where the system responds.
+const EXIT_MS = 140
+
+// User-initiated closes (Esc, scrim, close button) play the exit animation before notifying the parent.
+const ModalCloseContext = createContext<(() => void) | null>(null)
+
 // Open modals, topmost last: Esc and focus trapping only act on the top one.
 const stack: string[] = []
 
@@ -31,6 +37,23 @@ export default function Modal({ onClose, labelledBy, size = 'md', closeOnScrim =
   const panelRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  const [closing, setClosing] = useState(false)
+  const closingRef = useRef(false)
+  const exitTimer = useRef<number | undefined>(undefined)
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return
+    closingRef.current = true
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduceMotion) {
+      onCloseRef.current?.()
+      return
+    }
+    setClosing(true)
+    exitTimer.current = window.setTimeout(() => onCloseRef.current?.(), EXIT_MS)
+  }, [])
+  const requestCloseRef = useRef(requestClose)
+  requestCloseRef.current = requestClose
 
   useEffect(() => {
     stack.push(id)
@@ -45,7 +68,7 @@ export default function Modal({ onClose, labelledBy, size = 'md', closeOnScrim =
     const onKeyDown = (event: KeyboardEvent) => {
       if (stack[stack.length - 1] !== id) return
       if (event.key === 'Escape') {
-        onCloseRef.current?.()
+        requestCloseRef.current()
         return
       }
       if (event.key !== 'Tab' || !panel) return
@@ -67,6 +90,7 @@ export default function Modal({ onClose, labelledBy, size = 'md', closeOnScrim =
 
     document.addEventListener('keydown', onKeyDown)
     return () => {
+      window.clearTimeout(exitTimer.current)
       document.removeEventListener('keydown', onKeyDown)
       const index = stack.lastIndexOf(id)
       if (index !== -1) stack.splice(index, 1)
@@ -78,8 +102,9 @@ export default function Modal({ onClose, labelledBy, size = 'md', closeOnScrim =
   return (
     <div
       className="modal-scrim"
+      data-closing={closing ? '' : undefined}
       onMouseDown={(event) => {
-        if (closeOnScrim && event.target === event.currentTarget) onClose?.()
+        if (closeOnScrim && event.target === event.currentTarget) requestClose()
       }}
     >
       <div
@@ -90,17 +115,18 @@ export default function Modal({ onClose, labelledBy, size = 'md', closeOnScrim =
         tabIndex={-1}
         className={`modal-panel ${SIZES[size]} ${className}`}
       >
-        {children}
+        <ModalCloseContext.Provider value={requestClose}>{children}</ModalCloseContext.Provider>
       </div>
     </div>
   )
 }
 
 export function ModalClose({ onClick }: { onClick?: () => void }) {
+  const requestClose = useContext(ModalCloseContext)
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={requestClose ?? onClick}
       aria-label="Close"
       className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
     >

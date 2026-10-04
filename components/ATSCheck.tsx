@@ -110,7 +110,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
         {/* Progress bar */}
         <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full rounded-full transition-[width] duration-500 ease-out"
             style={{ width: `${tailoredCoverage}%`, background: barColor(tailoredCoverage) }}
           />
         </div>
@@ -132,7 +132,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
               style={{ width: `${originalCoverage}%`, background: barColor(originalCoverage) }}
             />
           </div>
@@ -151,7 +151,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
               style={{ width: `${tailoredCoverage}%`, background: barColor(tailoredCoverage) }}
             />
           </div>

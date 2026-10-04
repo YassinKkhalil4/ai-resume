@@ -23,10 +23,10 @@ export default function AboutPage() {
   return (
     <main className="space-y-20 md:space-y-28">
       <section aria-labelledby="about-heading" className="grid gap-10 lg:grid-cols-12 lg:gap-14">
-        <h1 id="about-heading" className="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:col-span-5 lg:text-6xl">
+        <h1 id="about-heading" className="enter enter-1 text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:col-span-5 lg:text-6xl">
           About Rolefit
         </h1>
-        <div className="space-y-6 lg:col-span-7">
+        <div className="enter enter-2 space-y-6 lg:col-span-7">
           <p className="text-xl leading-relaxed text-slate-900 dark:text-slate-100 md:text-2xl">
             Rolefit was born from a simple frustration: tailoring resumes to job descriptions shouldn&apos;t take hours, and it definitely shouldn&apos;t require fabricating experience.
           </p>

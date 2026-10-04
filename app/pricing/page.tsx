@@ -64,10 +64,10 @@ export default function PricingPage() {
   return (
     <main className="space-y-14 md:space-y-20">
       <section aria-labelledby="pricing-heading" className="max-w-3xl">
-        <h1 id="pricing-heading" className="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">
+        <h1 id="pricing-heading" className="enter enter-1 text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">
           Simple, transparent pricing
         </h1>
-        <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 dark:text-slate-400 md:text-lg">
+        <p className="enter enter-2 mt-5 max-w-xl text-base leading-relaxed text-slate-600 dark:text-slate-400 md:text-lg">
           Pay once and use your credits within 12 months. Each credit tailors one resume to one job description.
         </p>
         <p className="mt-4 text-sm font-medium text-blue-700 dark:text-blue-300">
@@ -75,7 +75,7 @@ export default function PricingPage() {
         </p>
       </section>
 
-      <section aria-label="Credit packages">
+      <section aria-label="Credit packages" className="enter enter-3">
         <ul className="divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">
           {CREDIT_PACKAGE_DEFINITIONS.map((pkg) => (
             <li

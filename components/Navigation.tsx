@@ -141,7 +141,7 @@ export default function Navigation() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div id="mobile-menu" className="border-t border-slate-200 dark:border-slate-800 lg:hidden">
+          <div id="mobile-menu" className="menu-panel border-t border-slate-200 dark:border-slate-800 lg:hidden">
             <div className="container flex flex-col gap-1 py-4">
               {[...navLinks, ...(status === 'authenticated' ? accountLinks : [])].map((link) => (
                 <Link

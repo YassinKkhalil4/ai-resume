@@ -68,7 +68,7 @@ export default function ContactPage() {
     <main className="space-y-20 md:space-y-28">
       <section aria-labelledby="contact-heading" className="grid gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:col-span-5">
-          <h1 id="contact-heading" className="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">
+          <h1 id="contact-heading" className="enter enter-1 text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">
             Get in touch
           </h1>
           <p className="mt-5 max-w-md text-base leading-relaxed text-slate-600 dark:text-slate-400 md:text-lg">
@@ -93,7 +93,7 @@ export default function ContactPage() {
           </dl>
         </div>
 
-        <div className="card p-6 sm:p-8 lg:col-span-7">
+        <div className="enter enter-2 card p-6 sm:p-8 lg:col-span-7">
           <h2 className="mb-6 text-xl font-semibold tracking-tight">Send us a message</h2>
           {error && (
             <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">

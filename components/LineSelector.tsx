@@ -105,7 +105,7 @@ export default function LineSelector({
           <div
             key={index}
             className={`
-              flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-all
+              flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors
               ${isSelected 
                 ? 'bg-blue-100 border-blue-300 shadow-sm' 
                 : 'hover:bg-gray-50 border-gray-200'

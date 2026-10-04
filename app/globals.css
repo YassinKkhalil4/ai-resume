@@ -23,6 +23,8 @@
   --accent-ink: #ffffff;
   --ring: rgb(44 79 214 / 0.35);
   --shadow-card: 0 1px 2px rgb(11 13 16 / 0.04), 0 8px 24px -16px rgb(11 13 16 / 0.12);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   color-scheme: light;
 }
 
@@ -109,22 +111,36 @@
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
     background: var(--accent);
     color: var(--accent-ink);
-    transition: background-color 150ms ease-out, transform 120ms ease-out, opacity 150ms ease-out;
+    transition: background-color 150ms ease, transform 140ms var(--ease-out), opacity 150ms ease;
   }
 
-  .button:hover:not(:disabled) { background: var(--accent-hover); }
-  .button:active:not(:disabled) { transform: scale(0.98); }
+  @media (hover: hover) and (pointer: fine) {
+    .button:hover:not(:disabled) { background: var(--accent-hover); }
+    .button-outline:hover:not(:disabled) { background: var(--surface-2); }
+  }
+
+  .button:active:not(:disabled),
+  .button-outline:active:not(:disabled) { transform: scale(0.97); }
+
+  /* In-flight state: a fast, constant-speed spinner reads as faster loading than static text. */
+  .button[aria-busy='true']::before {
+    content: '';
+    width: 14px;
+    height: 14px;
+    flex: none;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: spin 700ms linear infinite;
+  }
 
   .button-outline {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
     background: transparent;
     border-color: var(--control);
     color: var(--ink);
-    transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 120ms ease-out;
+    transition: background-color 150ms ease, border-color 150ms ease, transform 140ms var(--ease-out);
   }
-
-  .button-outline:hover:not(:disabled) { background: var(--surface-2); }
-  .button-outline:active:not(:disabled) { transform: scale(0.98); }
 
   /* ---- Modal ---- */
   .modal-scrim {
@@ -153,6 +169,21 @@
     outline: none;
     animation: modal-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
   }
+
+  .modal-scrim[data-closing] { animation: scrim-out 140ms ease-out both; pointer-events: none; }
+  .modal-scrim[data-closing] .modal-panel { animation: modal-out 140ms var(--ease-out) both; }
+
+  /* Mobile menu: occasional, so a short fade/drop is enough. */
+  .menu-panel { animation: menu-in 180ms var(--ease-out) both; }
+
+  /* Cookie banner rises from the edge it is anchored to. */
+  .sheet-bottom { animation: sheet-in 260ms var(--ease-out) both; }
+
+  /* Page entrance: staggered by 60ms, each under 400ms, never blocking interaction. */
+  .enter { animation: enter 360ms var(--ease-out) both; animation-delay: var(--enter-delay, 0ms); }
+  .enter-1 { --enter-delay: 0ms; }
+  .enter-2 { --enter-delay: 60ms; }
+  .enter-3 { --enter-delay: 120ms; }
 
   .button-sm { @apply px-3.5 py-2 text-[13px]; }
 
@@ -189,6 +220,9 @@
   .faq-icon { display: inline-block; transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1); }
   .faq[open] .faq-icon { transform: rotate(45deg); }
 
+  /* Spinners: faster rotation reads as faster loading. Constant motion stays linear. */
+  .animate-spin { animation-duration: 700ms; }
+
   .animate-fade-slide {
     animation: fade-slide 0.4s cubic-bezier(0.23, 1, 0.32, 1) both;
   }
@@ -204,12 +238,66 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes scrim-out {
+  to { opacity: 0; }
+}
+
+@keyframes modal-out {
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-only {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes fade-slide {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* FAQ body opens with a height transition where the browser supports it; elsewhere it simply snaps. */
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+  .faq::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size 220ms var(--ease-out), content-visibility 220ms allow-discrete;
+  }
+  .faq[open]::details-content { block-size: auto; }
+}
+
+/* Dropzone while a file is dragged over it: same state as hover, so the target is obvious. */
+.filepond-shell:has([data-hopper-state='drag-over']) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Reduced motion keeps comprehension aids (fades, color) and removes movement. */
 @media (prefers-reduced-motion: reduce) {
+  .enter, .menu-panel, .sheet-bottom { animation-name: fade-only; animation-duration: 160ms; }
+  .modal-scrim[data-closing] .modal-panel { animation-name: scrim-out; }
+  .faq::details-content { transition: none; }
+  .button:active:not(:disabled), .button-outline:active:not(:disabled) { transform: none; }
   .animate-fade-slide { animation: none; }
   .faq-icon { transition: none; }
   .modal-panel { animation: scrim-in 160ms ease-out both; }

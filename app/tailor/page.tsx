@@ -406,17 +406,17 @@ export default function TailorPage() {
         <div className="max-w-4xl">
           <h1
             id="tailor-heading"
-            className="text-4xl font-semibold leading-[1.05] tracking-tighter text-slate-900 dark:text-slate-50 sm:text-5xl lg:text-6xl"
+            className="enter enter-1 text-4xl font-semibold leading-[1.05] tracking-tighter text-slate-900 dark:text-slate-50 sm:text-5xl lg:text-6xl"
           >
             Tailor your resume to any role in under 60 seconds.
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 dark:text-slate-400 md:text-lg">
+          <p className="enter enter-2 mt-5 max-w-xl text-base leading-relaxed text-slate-600 dark:text-slate-400 md:text-lg">
             Upload your resume, paste the job description, and get a version aligned to the role. Nothing invented.
           </p>
         </div>
 
         <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14">
-          <div className="card p-6 sm:p-8">
+          <div className="enter enter-3 card p-6 sm:p-8">
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <ol className="flex flex-wrap items-center gap-x-6 gap-y-2" aria-label="Progress">
                 {workflow.map((step, index) => {
@@ -492,7 +492,7 @@ export default function TailorPage() {
                         role="radio"
                         aria-checked={isActive}
                         onClick={() => setTone(option.id)}
-                        className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+                        className={`rounded-xl border p-3.5 text-left transition-[background-color,border-color,transform] duration-150 active:scale-[0.98] ${
                           isActive
                             ? 'border-blue-600 bg-blue-50 dark:border-blue-400 dark:bg-blue-950'
                             : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
@@ -534,6 +534,7 @@ export default function TailorPage() {
               </p>
               <button
                 className="button w-full sm:w-auto"
+                aria-busy={loading}
                 onClick={() => {
                   if (!session?.user?.isAdmin && credits !== null && credits <= 0) {
                     setShowBuyModal(true)
@@ -576,7 +577,7 @@ export default function TailorPage() {
       </section>
 
       {tailorSession && (
-        <div id="tailored-cv-section">
+        <div id="tailored-cv-section" className="enter">
           <Preview session={tailorSession} />
         </div>
       )}
