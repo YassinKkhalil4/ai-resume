@@ -35,3 +35,21 @@
 - Lint + typecheck on every PR.
 - Run QA harness nightly (token-free) to detect regressions in keyword extraction.
 - Optionally enforce PDF render smoke test by running export route via containerised Puppeteer.
+
+## Automated backend tests (`npm test`)
+
+`npm test` runs every `tests/*.test.ts` with `node:test` + `tsx`, one file at a time
+(`--test-concurrency=1`, because DB-backed files share one database).
+
+- Redis behaviour is tested against an in-memory fake (`tests/helpers/fake-redis.ts`) injected with `setRedisClientForTesting`.
+- DB-backed tests (credits, webhook, auth, abuse controls) run only when `TEST_DATABASE_URL` is set; otherwise they are reported as skipped.
+
+Throwaway database recipe (never point this at real data; the tests `TRUNCATE users … CASCADE`):
+
+```bash
+initdb -D /tmp/rolefit-pg -U test --auth=trust
+pg_ctl -D /tmp/rolefit-pg -o "-p 55432 -c listen_addresses=127.0.0.1 -c unix_socket_directories=''" start
+psql -h 127.0.0.1 -p 55432 -U test -d postgres -c "create database rolefit_test"
+for f in drizzle/000*.sql; do sed 's/--> statement-breakpoint//' "$f" | psql -h 127.0.0.1 -p 55432 -U test -d rolefit_test -q -v ON_ERROR_STOP=1; done
+TEST_DATABASE_URL=postgres://test@127.0.0.1:55432/rolefit_test npm test
+```

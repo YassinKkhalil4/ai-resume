@@ -61,25 +61,8 @@ export async function POST(req: NextRequest) {
     }
     const user = verificationCheck.user
 
-    // Check credits
-    try {
-      // User is already authenticated and verified, continue
-    } catch (error) {
-      return NextResponse.json(
-        { code: 'unauthorized', message: 'Authentication required. Please sign in to tailor your resume.' },
-        { status: 401 }
-      )
-    }
-
     const trace = startTrace({ route: 'tailor' })
     console.log('Trace started')
-
-    // Create tailor run for tracing
-    tailorRunId = await createTailorRun({
-      userId: user.id,
-      sessionId: session_id,
-      featureFlags: {},
-    })
 
     const ct = req.headers.get('content-type') || ''
     if (!ct.includes('multipart/form-data')) {
@@ -187,6 +170,13 @@ export async function POST(req: NextRequest) {
     if (textTooLong(jd_text_raw, LIMITS.jdChars)) {
       return NextResponse.json({ code: 'input_too_large', message: 'Job description is too long' }, { status: 413 })
     }
+
+    // Create tailor run for tracing only once the request is known to be well-formed
+    tailorRunId = await createTailorRun({
+      userId: user.id,
+      sessionId: session_id,
+      featureFlags: {},
+    })
 
     let original: ResumeJSON
     let resumeText: string

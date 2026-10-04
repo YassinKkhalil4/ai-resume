@@ -72,7 +72,7 @@ Test coverage today: 6 tests (webhook signature, checkout URL, variant mapping, 
 
 **Files:** Modify `lib/guards.ts`; Test `tests/guards.test.ts`
 
-**Interfaces — Produces:** `rateLimitSessionKey(req, userId?)`: `user:<id>` if logged in, else `sid:<cookie>` if cookie, else `ip:<ip>`.
+**Interfaces — Produces:** `rateLimitSessionKey(req)`: `sid:<cookie>` if the cookie is present, else `ip:<ip>`. (Executed deviation: no `user:` tier — guards run before auth and a per-request session lookup would add a DB query to every call.)
 
 - [ ] Failing test: two requests without cookie from different IPs map to different keys; cookie wins over IP; user wins over cookie.
 - [ ] Implement, use it in `enforceGuards`; commit.
@@ -120,6 +120,14 @@ Test coverage today: 6 tests (webhook signature, checkout URL, variant mapping, 
 ### Task 9: Final verification
 
 - [ ] `npm test` (with and without `TEST_DATABASE_URL`), `npm run typecheck`, `npm run lint`; update `docs/testing.md` with the test DB recipe; record follow-ups (F13).
+
+## Execution notes (deviations)
+
+- Task 4 also made `lib/db` lazy (`db` is now a Proxy; `closeDb()` added) because importing `guards` threw without `DATABASE_URL`.
+- Task 5 also fixed `getUserCredits` returning a string (pg `sum` is numeric) and validated the webhook's `custom_data.user_id` as a UUID.
+- Task 6 added `lib/auth/users.ts#findUserByEmail` (case-insensitive) and a generic `checkNamedRateLimit`.
+- Task 7: `createTailorRun` reorder and the refund `FOR UPDATE` lock are refactors/hardening without their own red test (need a live end-to-end run / true concurrency).
+- `npm test` runs files serially (`--test-concurrency=1`) so DB-backed files do not truncate each other's rows.
 
 ## Self-review
 

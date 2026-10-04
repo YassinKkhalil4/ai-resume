@@ -2,10 +2,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from './config'
 import { db, users, creditLots } from '../db'
 import { and, eq, gt, sql } from 'drizzle-orm'
+import { TtlCache } from '../ttl-cache'
 
-// Cache user lookups per request to avoid duplicate queries
-const userCache = new Map<string, { user: any; timestamp: number }>()
-const CACHE_TTL = 1000 // 1 second cache
+// Cache user lookups for a second to avoid duplicate queries within one request burst
+const userCache = new TtlCache<any>(1000, 500)
 
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions)
@@ -15,8 +15,8 @@ export async function getCurrentUser() {
 
   // Check cache first
   const cached = userCache.get(session.user.id)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.user
+  if (cached) {
+    return cached
   }
 
   const user = await db.query.users.findFirst({
@@ -25,7 +25,7 @@ export async function getCurrentUser() {
 
   // Cache the result
   if (user) {
-    userCache.set(session.user.id, { user, timestamp: Date.now() })
+    userCache.set(session.user.id, user)
   }
 
   return user
@@ -63,8 +63,8 @@ export async function requireAuth() {
 export async function isUserAdmin(userId: string): Promise<boolean> {
   // Check cache first - if we already have the user, use it
   const cached = userCache.get(userId)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.user?.isAdmin || false
+  if (cached) {
+    return cached.isAdmin || false
   }
   
   const user = await db.query.users.findFirst({
@@ -73,7 +73,7 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
   
   // Cache the result
   if (user) {
-    userCache.set(userId, { user, timestamp: Date.now() })
+    userCache.set(userId, user)
   }
   
   return user?.isAdmin || false
