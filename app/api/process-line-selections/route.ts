@@ -5,16 +5,19 @@ import { requireEmailVerification } from '../../../lib/guards'
 import { createSession, getOwnedSession, updateSession } from '../../../lib/sessions'
 import { ResumeJSON } from '../../../lib/types'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
-import { commitCreditReservation, CreditReservation, NoCreditsError, releaseCreditReservation, reserveCredit } from '../../../lib/billing/deduct-credit'
+import { NoCreditsError } from '../../../lib/billing/deduct-credit'
+import { withCreditReservation } from '../../../lib/billing/with-credit'
+import { getUserCredits } from '../../../lib/auth/utils'
+import { LIMITS, parseTone, textTooLong } from '../../../lib/validation'
 import { createHash } from 'crypto'
+
+const MAX_SELECTED_LINES = 2000
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
-  let creditReservation: CreditReservation | null = null
-
   console.log('Process Line Selections API called:', {
     method: req.method,
     url: req.url,
@@ -35,8 +38,9 @@ export async function POST(req: NextRequest) {
       selectedLines, 
       sessionId, 
       jdText, 
-      tone = 'professional' 
+      tone: toneRaw
     } = body
+    const tone = parseTone(toneRaw)
 
     if (!resumeText || !selectedLines || !Array.isArray(selectedLines)) {
       return NextResponse.json({
@@ -45,11 +49,22 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!jdText) {
+    if (!jdText || typeof jdText !== 'string') {
       return NextResponse.json({
         code: 'missing_jd',
         message: 'Job description text is required for tailoring'
       }, { status: 400 })
+    }
+
+    if (
+      textTooLong(resumeText, LIMITS.resumeChars) ||
+      textTooLong(jdText, LIMITS.jdChars) ||
+      selectedLines.length > MAX_SELECTED_LINES
+    ) {
+      return NextResponse.json({
+        code: 'input_too_large',
+        message: 'Resume text, job description or line selection is too large'
+      }, { status: 413 })
     }
 
     console.log('Processing line selections:', {
@@ -73,16 +88,50 @@ export async function POST(req: NextRequest) {
     // Validate and clean the processed experiences
     const validatedExperiences = processedExperiences.map(validateProcessedExperience)
 
+    const resumeHash = createHash('sha256').update(resumeText).digest('hex')
+    let outcome: { session: { id: string; version: string } | null; originalResume: ResumeJSON; originalRawText: string; tailored: any; tokens: number; ats: any }
     try {
-      const resumeHash = createHash('sha256').update(resumeText).digest('hex')
-      creditReservation = await reserveCredit(user.id, resumeHash)
+      outcome = await withCreditReservation(user.id, resumeHash, async () => {
+        const existingSession = sessionId ? await getOwnedSession(sessionId, user.id) : null
+        const originalRawText = existingSession?.originalRawText || resumeText
+
+        // Reuse the existing resume structure when there is one, otherwise start minimal
+        const originalResume: ResumeJSON = existingSession
+          ? { ...existingSession.original, experience: validatedExperiences }
+          : {
+              summary: 'Professional with relevant experience',
+              skills: [],
+              experience: validatedExperiences,
+              education: [],
+              certifications: [],
+            }
+
+        console.log('Starting AI tailoring...')
+        const deadline = Date.now() + 25000
+        const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone, { deadline })
+
+        const session = existingSession
+          ? await updateSession(sessionId, {
+              original: originalResume,
+              tailored,
+              jdText,
+              keywordStats: ats,
+              originalRawText,
+            })
+          : await createSession(originalResume, tailored, jdText, ats, originalRawText, user.id)
+
+        if (!session) {
+          return { result: { session: null, originalResume, originalRawText, tailored, tokens, ats }, charge: false }
+        }
+        return { result: { session, originalResume, originalRawText, tailored, tokens, ats }, tokens }
+      })
     } catch (error) {
       if (error instanceof NoCreditsError) {
         return NextResponse.json(
           {
             code: 'no_credits',
             message: 'You have no credits remaining. Please purchase credits to continue.',
-            creditsRemaining: user.creditsRemaining,
+            creditsRemaining: await getUserCredits(user.id),
           },
           { status: 402 }
         )
@@ -90,71 +139,8 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // Create or get the original resume structure
-    let originalResume: ResumeJSON
-    let existingSession = null
-
-    if (sessionId) {
-      existingSession = await getOwnedSession(sessionId, user.id)
-    }
-
-    const originalRawText = existingSession?.originalRawText || resumeText
-
-    if (existingSession) {
-      // Use existing resume structure and update experience
-      originalResume = {
-        ...existingSession.original,
-        experience: validatedExperiences
-      }
-    } else {
-      // Create a minimal resume structure with the processed experience
-      originalResume = {
-        summary: 'Professional with relevant experience',
-        skills: [],
-        experience: validatedExperiences,
-        education: [],
-        certifications: []
-      }
-    }
-
-    console.log('Created resume structure:', {
-      hasSummary: !!originalResume.summary,
-      skillsCount: originalResume.skills.length,
-      experienceCount: originalResume.experience.length,
-      educationCount: originalResume.education.length,
-      certificationsCount: originalResume.certifications.length
-    })
-
-    // Tailor the resume with AI
-    console.log('Starting AI tailoring...')
-    const deadline = Date.now() + 25000
-    const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone, { deadline })
-    console.log('AI tailoring completed:', {
-      hasSummary: !!tailored.summary,
-      skillsCount: tailored.skills_section?.length || 0,
-      experienceCount: tailored.experience?.length || 0,
-      tokensUsed: tokens,
-      atsOriginal: ats.original.coverage,
-      atsTailored: ats.tailored.coverage
-    })
-
-    // Create or update session
-    let session
-    if (existingSession) {
-      session = await updateSession(sessionId, {
-        original: originalResume,
-        tailored: tailored,
-        jdText: jdText,
-        keywordStats: ats,
-        originalRawText
-      })
-    } else {
-      session = await createSession(originalResume, tailored, jdText, ats, originalRawText, user.id)
-    }
-
+    const { session, originalResume, originalRawText, tailored, tokens, ats } = outcome
     if (!session) {
-      await releaseCreditReservation(creditReservation)
-      creditReservation = null
       return NextResponse.json({
         code: 'session_error',
         message: 'Failed to create or update session'
@@ -163,9 +149,6 @@ export async function POST(req: NextRequest) {
 
     // Create processing summary
     const summary = createProcessingSummary(selectedLines as LineSelection[], validatedExperiences)
-
-    await commitCreditReservation(creditReservation!, tokens)
-    creditReservation = null
 
     console.log('Line selection processing completed successfully:', {
       sessionId: session.id,
@@ -186,10 +169,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    await releaseCreditReservation(creditReservation).catch((releaseError) => {
-      console.error('Failed to release reserved credit:', releaseError)
-    })
-
     console.error('Process line selections error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     const message = error instanceof Error ? error.message : String(error)

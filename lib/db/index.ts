@@ -80,3 +80,12 @@ export const db: Db = new Proxy({} as Db, {
 // Export schema for use in other files
 export * from './schema'
 
+
+/** Close the pooled connection (tests and scripts; serverless runtimes never need this). */
+export async function closeDb(): Promise<void> {
+  if (_client) {
+    await _client.end({ timeout: 2 })
+    _client = null
+    _db = null
+  }
+}

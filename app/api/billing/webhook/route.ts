@@ -189,12 +189,12 @@ export async function POST(req: NextRequest) {
       }
 
       const result = await db.transaction(async (tx) => {
-        const lots = await tx.query.creditLots.findMany({
-          where: and(
-            eq(creditLots.paymentProvider, LEMON_PROVIDER),
-            eq(creditLots.providerOrderId, orderId)
-          ),
-        })
+        // Lock the order's lots so a concurrent reserveCredit cannot interleave with the read-modify-write below.
+        const lots = await tx
+          .select()
+          .from(creditLots)
+          .where(and(eq(creditLots.paymentProvider, LEMON_PROVIDER), eq(creditLots.providerOrderId, orderId)))
+          .for('update')
 
         if (!lots.length) return { manualReviewReason: 'refund_without_credit_lot', revoked: 0 }
 

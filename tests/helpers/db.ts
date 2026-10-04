@@ -15,6 +15,7 @@ if (process.env.TEST_DATABASE_URL) {
 export async function resetDb() {
   const { db } = await import('../../lib/db')
   const { sql } = await import('drizzle-orm')
+  await db.execute(sql`set client_min_messages = warning`)
   await db.execute(sql`truncate table users, webhook_logs restart identity cascade`)
 }
 

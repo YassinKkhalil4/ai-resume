@@ -9,11 +9,14 @@ import { startTrace, logRequestTelemetry, logError } from '../../../lib/telemetr
 import { createUserFriendlyError } from '../../../lib/ai-error-handler'
 import { validateParsingResult, shouldShowExperienceBanner } from '../../../lib/parsing-validation'
 import { Tone, ResumeJSON } from '../../../lib/types'
+import { LIMITS, parseTone, textTooLong } from '../../../lib/validation'
 import { honestyScan } from '../../../lib/honesty'
 import { extractJDFromUrl, validateUrl, inferIndustry } from '../../../lib/jd'
 import { enforceUrlFetchRateLimit } from '../../../lib/guards'
 import { requireEmailVerification } from '../../../lib/guards'
-import { commitCreditReservation, CreditReservation, NoCreditsError, releaseCreditReservation, reserveCredit } from '../../../lib/billing/deduct-credit'
+import { NoCreditsError } from '../../../lib/billing/deduct-credit'
+import { withCreditReservation } from '../../../lib/billing/with-credit'
+import { getUserCredits } from '../../../lib/auth/utils'
 import { createHash } from 'crypto'
 import { db, tailoringRuns } from '../../../lib/db'
 import { trackEvent, getContext } from '../../../lib/analytics/tracker'
@@ -38,7 +41,6 @@ export async function POST(req: NextRequest) {
   let jd_text_raw: string = ''
   let tone: Tone = 'professional'
   let tailorRunId: string | null = null
-  let creditReservation: CreditReservation | null = null
 
   try {
     const guard = await enforceGuards(req)
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
     const jd_url = form.get('jd_url')?.toString()
     resume_file = form.get('resume_file') as unknown as File | null
     jd_text_raw = form.get('jd_text')?.toString() || ''
-    tone = (form.get('tone')?.toString() as Tone) || 'professional'
+    tone = parseTone(form.get('tone')?.toString())
     const strictHonestyModeRaw = form.get('strict_honesty_mode')?.toString()
     const strictHonestyMode = strictHonestyModeRaw === 'false' || strictHonestyModeRaw === '0' ? false : true
 
@@ -182,6 +184,9 @@ export async function POST(req: NextRequest) {
     })
 
     if (!jd_text_raw) return NextResponse.json({ code: 'missing_jd', message: 'Missing jd_text' }, { status: 400 })
+    if (textTooLong(jd_text_raw, LIMITS.jdChars)) {
+      return NextResponse.json({ code: 'input_too_large', message: 'Job description is too long' }, { status: 413 })
+    }
 
     let original: ResumeJSON
     let resumeText: string
@@ -339,16 +344,31 @@ export async function POST(req: NextRequest) {
 
     const resumeHash = createHash('sha256').update(resumeText).digest('hex')
     const tailorStartTime = Date.now()
+    const deadline = Date.now() + 25000
+
+    let tailored: any
+    let tokens: number
+    let ats: any
+    let session: Awaited<ReturnType<typeof createSession>>
     try {
-      creditReservation = await reserveCredit(user.id, resumeHash)
-      console.log('Credit reserved successfully for user:', user.id)
+      ;({ tailored, tokens, ats, session } = await withCreditReservation(user.id, resumeHash, async () => {
+        console.log('Tailoring resume...')
+        const tailoredResult = await getTailoredResume(resumeForTailor, jd_text_raw, tone, {
+          deadline,
+          runId: tailorRunId,
+          strictHonestyMode,
+        })
+        const created = await createSession(original, tailoredResult.tailored, jd_text_raw, tailoredResult.ats, resumeText, user.id)
+        console.log('Session created:', created.id)
+        return { result: { ...tailoredResult, session: created }, tokens: tailoredResult.tokens }
+      }))
     } catch (error) {
       if (error instanceof NoCreditsError) {
         return NextResponse.json(
           {
             code: 'no_credits',
             message: 'You have no credits remaining. Please purchase credits to continue.',
-            creditsRemaining: user.creditsRemaining,
+            creditsRemaining: await getUserCredits(user.id),
           },
           { status: 402 } // Payment Required
         )
@@ -356,17 +376,6 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    console.log('Tailoring resume...')
-    console.log('About to call getTailoredResume...')
-    const deadline = Date.now() + 25000
-
-    const { tailored, tokens, ats } = await getTailoredResume(resumeForTailor, jd_text_raw, tone, {
-      deadline,
-      runId: tailorRunId,
-      strictHonestyMode,
-    })
-
-    console.log('getTailoredResume completed successfully')
     console.log('Resume tailored successfully:', {
       hasSummary: !!tailored.summary,
       skillsCount: tailored.skills_section?.length || 0,
@@ -374,13 +383,6 @@ export async function POST(req: NextRequest) {
       atsOriginal: ats.original.coverage,
       atsTailored: ats.tailored.coverage
     })
-
-    console.log('Creating session...')
-    const session = await createSession(original, tailored, jd_text_raw, ats, resumeText, user.id)
-    console.log('Session created:', session.id)
-
-    await commitCreditReservation(creditReservation!, tokens)
-    creditReservation = null
 
     // Calculate metrics needed for response
     const timeToComplete = Math.floor((Date.now() - tailorStartTime) / 1000)
@@ -394,7 +396,6 @@ export async function POST(req: NextRequest) {
     ])
 
     // Get updated credit balance (needed for response)
-    const { getUserCredits } = await import('../../../lib/auth/utils')
     const updatedCredits = await getUserCredits(user.id)
 
     // Prepare response data
@@ -532,10 +533,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(responseData)
 
   } catch (error) {
-    await releaseCreditReservation(creditReservation).catch((releaseError) => {
-      console.error('Failed to release reserved credit:', releaseError)
-    })
-
     console.error('Rolefit API error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 

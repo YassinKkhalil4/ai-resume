@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, users, usageLogs, creditTransactions } from '../../../../lib/db'
 import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { getCurrentUser, isUserAdmin } from '../../../../lib/auth/utils'
+import { setUserCredits } from '../../../../lib/billing/deduct-credit'
+import { isUuid } from '../../../../lib/validation'
+
+const MAX_ADMIN_CREDITS = 100_000
 
 async function checkAdmin(req: NextRequest) {
   const user = await getCurrentUser()
@@ -137,15 +141,20 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ code: 'bad_request', message: 'userId is required' }, { status: 400 })
     }
 
-    const updateData: any = {}
-    if (typeof creditsRemaining === 'number') {
-      updateData.creditsRemaining = creditsRemaining
-    }
-    if (typeof newAdminStatus === 'boolean') {
-      updateData.isAdmin = newAdminStatus
+    if (!isUuid(userId)) {
+      return NextResponse.json({ code: 'bad_request', message: 'userId must be a valid id' }, { status: 400 })
     }
 
-    if (Object.keys(updateData).length === 0) {
+    const hasCredits = creditsRemaining !== undefined
+    if (hasCredits && (!Number.isInteger(creditsRemaining) || creditsRemaining < 0 || creditsRemaining > MAX_ADMIN_CREDITS)) {
+      return NextResponse.json(
+        { code: 'bad_request', message: `creditsRemaining must be an integer between 0 and ${MAX_ADMIN_CREDITS}` },
+        { status: 400 }
+      )
+    }
+
+    const hasAdminFlag = typeof newAdminStatus === 'boolean'
+    if (!hasCredits && !hasAdminFlag) {
       return NextResponse.json({ code: 'bad_request', message: 'No valid fields to update' }, { status: 400 })
     }
 
@@ -157,7 +166,12 @@ export async function PATCH(req: NextRequest) {
       )
     }
 
-    await db.update(users).set(updateData).where(eq(users.id, userId))
+    if (hasCredits) {
+      await setUserCredits(userId, creditsRemaining)
+    }
+    if (hasAdminFlag) {
+      await db.update(users).set({ isAdmin: newAdminStatus }).where(eq(users.id, userId))
+    }
 
     const updatedUser = await db.query.users.findFirst({
       where: eq(users.id, userId),

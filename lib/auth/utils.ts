@@ -37,7 +37,7 @@ export async function getUserCredits(userId: string): Promise<number> {
   // Sum active (non-expired) credits from credit_lots for this user
   const rows = await db
     .select({
-      total: sql<number>`coalesce(sum(${creditLots.creditsRemaining}), 0)`,
+      total: sql<number>`coalesce(sum(${creditLots.creditsRemaining}), 0)::int`,
     })
     .from(creditLots)
     .where(
