@@ -360,46 +360,11 @@ export async function POST(req: NextRequest) {
     console.log('About to call getTailoredResume...')
     const deadline = Date.now() + 25000
 
-    // Optionally use queue if available, otherwise use direct call
-    const { addAIJob, isQueueAvailable, waitForJob } = await import('../../../lib/ai-queue')
-    let tailored: any
-    let tokens: number
-    let ats: any
-
-    if (isQueueAvailable() && process.env.USE_AI_QUEUE !== 'false') {
-      // Use queue system
-      const jobResult = await addAIJob({
-        type: 'tailor',
-        original: resumeForTailor,
-        jdText: jd_text_raw,
-        tone,
-        options: { deadline, runId: tailorRunId, strictHonestyMode },
-      })
-
-      if (jobResult) {
-        // Wait for job completion (with timeout)
-        const result = await waitForJob(jobResult.jobId, 30000)
-        if (result) {
-          tailored = result.tailored
-          tokens = result.tokens
-          ats = result.ats
-        } else {
-          throw new Error('Job timed out or failed')
-        }
-      } else {
-        // Queue not available, fall back to direct call
-        const result = await getTailoredResume(resumeForTailor, jd_text_raw, tone, { deadline, runId: tailorRunId, strictHonestyMode })
-        tailored = result.tailored
-        tokens = result.tokens
-        ats = result.ats
-      }
-    } else {
-      // Direct call (queue not available or disabled)
-      const result = await getTailoredResume(resumeForTailor, jd_text_raw, tone, { deadline, runId: tailorRunId, strictHonestyMode })
-      tailored = result.tailored
-      tokens = result.tokens
-      ats = result.ats
-    }
+    const { tailored, tokens, ats } = await getTailoredResume(resumeForTailor, jd_text_raw, tone, {
+      deadline,
+      runId: tailorRunId,
+      strictHonestyMode,
+    })
 
     console.log('getTailoredResume completed successfully')
     console.log('Resume tailored successfully:', {
