@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enforceGuards } from '../../../lib/guards'
 import { requireEmailVerification } from '../../../lib/guards'
-import { createSession, getSession, updateSession } from '../../../lib/sessions'
+import { createSession, getOwnedSession, updateSession } from '../../../lib/sessions'
 import { ResumeJSON } from '../../../lib/types'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
 import { extractBulletsFromFreeText } from '../../../lib/ai-response-parser'
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     let existingSession = null
 
     if (sessionId) {
-      existingSession = await getSession(sessionId)
+      existingSession = await getOwnedSession(sessionId, user.id)
     }
 
     const originalRawText = existingSession?.originalRawText || experienceText
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         originalRawText
       })
     } else {
-      session = await createSession(originalResume, tailored, jdText, ats, originalRawText)
+      session = await createSession(originalResume, tailored, jdText, ats, originalRawText, user.id)
     }
 
     if (!session) {

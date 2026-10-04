@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { extractTextFromFile, heuristicParseResume, validateResumeUpload } from '../../../lib/parsers'
 import { getTailoredResume, normalizeExperienceForTailor, createFallbackResponse } from '../../../lib/ai-response-parser'
-import { createSession, getSession, RedisUnavailableError } from '../../../lib/sessions'
+import { createSession, getOwnedSession, RedisUnavailableError } from '../../../lib/sessions'
 import { atsCheck, compareKeywordStats } from '../../../lib/ats'
 import { enforceGuards } from '../../../lib/guards'
 import { getConfig } from '../../../lib/config'
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
 
     // Session-based flow: resume already confirmed via Confirm Experience; no file needed
     if (session_id && !resume_file) {
-      const existingSession = await getSession(session_id)
+      const existingSession = await getOwnedSession(session_id, user.id)
       if (!existingSession?.original) {
         return NextResponse.json(
           { code: 'missing_resume', message: 'Upload a resume or provide experience first.' },
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
       const baselineATS = atsCheck(original, jd_text_raw)
       const fallback = createFallbackResponse(original, jd_text_raw, baselineATS)
       const ats = compareKeywordStats(baselineATS, atsCheck(fallback as ResumeJSON, jd_text_raw))
-      const draftSession = await createSession(original, fallback, jd_text_raw, ats, resumeText)
+      const draftSession = await createSession(original, fallback, jd_text_raw, ats, resumeText, user.id)
       return NextResponse.json(
         {
           code,
@@ -376,7 +376,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('Creating session...')
-    const session = await createSession(original, tailored, jd_text_raw, ats, resumeText)
+    const session = await createSession(original, tailored, jd_text_raw, ats, resumeText, user.id)
     console.log('Session created:', session.id)
 
     await commitCreditReservation(creditReservation!, tokens)
