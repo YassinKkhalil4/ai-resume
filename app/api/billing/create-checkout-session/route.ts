@@ -3,12 +3,18 @@ import { requireEmailVerification } from '../../../../lib/guards'
 import { trackEvent, getContext } from '../../../../lib/analytics/tracker'
 import { assertValidPackageId, buildLemonCheckoutUrl } from '../../../../lib/billing/lemon-squeezy'
 import { getCreditPackage } from '../../../../lib/billing/checkout-links'
+import { checkPurchaseRateLimit } from '../../../../lib/billing/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
     const verificationCheck = await requireEmailVerification(req)
     if (!verificationCheck.ok) {
       return verificationCheck.res
+    }
+
+    const purchaseLimit = await checkPurchaseRateLimit(verificationCheck.user.id)
+    if (!purchaseLimit.allowed) {
+      return purchaseLimit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many checkout attempts' }, { status: 429 })
     }
 
     const body = await req.json()

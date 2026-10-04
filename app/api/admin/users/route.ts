@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, users, usageLogs, creditTransactions } from '../../../../lib/db'
 import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { getCurrentUser, isUserAdmin } from '../../../../lib/auth/utils'
+import { clampPage } from '../../../../lib/validation'
 import { setUserCredits } from '../../../../lib/billing/deduct-credit'
 import { isUuid } from '../../../../lib/validation'
 
@@ -29,9 +30,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = new URL(req.url)
-    const page = parseInt(url.searchParams.get('page') || '1')
-    const limit = parseInt(url.searchParams.get('limit') || '50')
-    const offset = (page - 1) * limit
+    const { page, limit, offset } = clampPage(url.searchParams.get('page'), url.searchParams.get('limit'))
 
     // Get all users first
     const allUsers = await db.query.users.findMany({

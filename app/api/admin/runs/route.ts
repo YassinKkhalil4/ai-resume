@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, tailorRuns, users } from '../../../../lib/db'
 import { sql, desc, asc, eq, and, gte, lte, like, or } from 'drizzle-orm'
 import { getCurrentUser, isUserAdmin } from '../../../../lib/auth/utils'
+import { clampPage } from '../../../../lib/validation'
 
 async function checkAdmin(req: NextRequest) {
   const user = await getCurrentUser()
@@ -25,9 +26,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = new URL(req.url)
-    const page = parseInt(url.searchParams.get('page') || '1')
-    const limit = parseInt(url.searchParams.get('limit') || '50')
-    const offset = (page - 1) * limit
+    const { page, limit, offset } = clampPage(url.searchParams.get('page'), url.searchParams.get('limit'))
 
     // Filter parameters
     const errorStage = url.searchParams.get('error_stage')

@@ -4,6 +4,7 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID_RE.test(value)
 }
 
+import { z } from 'zod'
 import type { Tone } from './types'
 
 const TONES: readonly Tone[] = ['professional', 'concise', 'impact-heavy']
@@ -34,4 +35,42 @@ export function clampPage(pageRaw: string | null, limitRaw: string | null, maxLi
   const parsedLimit = Number.parseInt(limitRaw ?? '', 10)
   const limit = Number.isNaN(parsedLimit) ? defaultLimit : Math.min(maxLimit, Math.max(1, parsedLimit))
   return { page, limit, offset: (page - 1) * limit }
+}
+
+const EVENT_NAME_RE = /^[a-zA-Z0-9_.:-]{1,64}$/
+
+export function isValidEventName(value: unknown): value is string {
+  return typeof value === 'string' && EVENT_NAME_RE.test(value)
+}
+
+/** True when the JSON-serialised value exceeds `maxChars` (or cannot be serialised). */
+export function payloadTooLarge(value: unknown, maxChars: number): boolean {
+  try {
+    return JSON.stringify(value ?? null).length > maxChars
+  } catch {
+    return true
+  }
+}
+
+const adminConfigSchema = z
+  .object({
+    pauseTailor: z.boolean().optional(),
+    pauseExport: z.boolean().optional(),
+    rate: z
+      .object({
+        ipPerMin: z.number().int().min(1).max(1000).optional(),
+        sessionPerMin: z.number().int().min(1).max(1000).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+
+export type AdminConfigUpdate = z.infer<typeof adminConfigSchema>
+
+/** Validates the admin config POST body. Secrets (e.g. openaiKey) are deliberately not accepted. */
+export function parseAdminConfigUpdate(body: unknown): { ok: true; value: AdminConfigUpdate } | { ok: false; message: string } {
+  const parsed = adminConfigSchema.safeParse(body)
+  if (parsed.success) return { ok: true, value: parsed.data }
+  return { ok: false, message: parsed.error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ') }
 }

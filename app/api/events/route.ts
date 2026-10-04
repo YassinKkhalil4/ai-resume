@@ -3,6 +3,9 @@ import { trackEvent, getContext } from '../../../lib/analytics/tracker'
 import { trackPostHogEvent } from '../../../lib/analytics/posthog'
 import { getCurrentUser } from '../../../lib/auth/utils'
 import { hasAnalyticsConsent } from '../../../lib/analytics/consent'
+import { checkNamedRateLimit } from '../../../lib/rate-limiter'
+import { clientIP } from '../../../lib/guards'
+import { LIMITS, isValidEventName, payloadTooLarge } from '../../../lib/validation'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -26,18 +29,25 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
 
-    let body: any
-    try {
-      body = await req.json()
-    } catch (parseError) {
-      throw parseError
+    const limit = await checkNamedRateLimit('events', clientIP(req), 60, 60 * 1000)
+    if (!limit.allowed) {
+      return limit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many events' }, { status: 429 })
     }
-    const { eventName, properties = {}, context = {} } = body
 
-    if (!eventName || typeof eventName !== 'string') {
+    const body: any = await req.json().catch(() => null)
+    const { eventName, properties = {}, context = {} } = body || {}
+
+    if (!isValidEventName(eventName)) {
       return NextResponse.json(
         { code: 'bad_request', message: 'eventName is required' },
         { status: 400 }
+      )
+    }
+
+    if (payloadTooLarge(properties, LIMITS.eventPayloadChars) || payloadTooLarge(context, LIMITS.eventPayloadChars)) {
+      return NextResponse.json(
+        { code: 'input_too_large', message: 'Event payload is too large' },
+        { status: 413 }
       )
     }
 

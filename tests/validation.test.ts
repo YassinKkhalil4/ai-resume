@@ -37,3 +37,32 @@ test('clampPage keeps pagination inside sane bounds even for junk input', async 
   assert.deepEqual(clampPage('-5', '-1'), { page: 1, limit: 1, offset: 0 })
   assert.deepEqual(clampPage(null, null), { page: 1, limit: 50, offset: 0 })
 })
+
+test('isValidEventName allows short slug-like names only', async () => {
+  const { isValidEventName } = await import('../lib/validation')
+  assert.equal(isValidEventName('ats_score_calculated'), true)
+  assert.equal(isValidEventName('page.view'), true)
+  assert.equal(isValidEventName(''), false)
+  assert.equal(isValidEventName('a'.repeat(65)), false)
+  assert.equal(isValidEventName('<script>alert(1)</script>'), false)
+  assert.equal(isValidEventName({}), false)
+})
+
+test('payloadTooLarge measures serialized size', async () => {
+  const { payloadTooLarge } = await import('../lib/validation')
+  assert.equal(payloadTooLarge({ a: 'x' }, 100), false)
+  assert.equal(payloadTooLarge({ a: 'x'.repeat(200) }, 100), true)
+})
+
+test('parseAdminConfigUpdate accepts known keys in range and rejects the rest', async () => {
+  const { parseAdminConfigUpdate } = await import('../lib/validation')
+  assert.deepEqual(parseAdminConfigUpdate({ pauseTailor: true, rate: { ipPerMin: 20 } }), {
+    ok: true,
+    value: { pauseTailor: true, rate: { ipPerMin: 20 } },
+  })
+  assert.equal(parseAdminConfigUpdate({ rate: { ipPerMin: -5 } }).ok, false)
+  assert.equal(parseAdminConfigUpdate({ rate: { sessionPerMin: 'lots' } }).ok, false)
+  assert.equal(parseAdminConfigUpdate({ openaiKey: 'sk-evil' }).ok, false) // secrets never come from this endpoint
+  assert.equal(parseAdminConfigUpdate({ pauseTailor: 'yes' }).ok, false)
+  assert.equal(parseAdminConfigUpdate(null).ok, false)
+})
