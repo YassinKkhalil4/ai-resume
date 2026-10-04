@@ -1,137 +1,59 @@
-'use client'
+import { useId } from 'react'
+import { MARK, MARK_SIZE } from './brand/geometry'
+import { LOCKUP_HEIGHT, LOCKUP_WIDTH, WORDMARK_PATH } from './brand/wordmark.generated'
 
-import Image from 'next/image'
-
-type LogoVariant = 'full' | 'icon' | 'text'
-type LogoSize = 'sm' | 'md' | 'lg' | 'xl'
-
-interface LogoProps {
-  variant?: LogoVariant
-  size?: LogoSize
+type LogoProps = {
+  /** `full` is the mark plus wordmark; `mark` is the icon alone. */
+  variant?: 'full' | 'mark'
+  /** Height in px; width follows the artwork's aspect ratio. */
+  height?: number
   className?: string
-  showText?: boolean
 }
 
-const sizeMap: Record<LogoSize, { icon: number; text: number; full: { width: number; height: number } }> = {
-  sm: { icon: 24, text: 60, full: { width: 80, height: 24 } },
-  md: { icon: 40, text: 100, full: { width: 140, height: 40 } },
-  lg: { icon: 56, text: 140, full: { width: 200, height: 56 } },
-  xl: { icon: 72, text: 180, full: { width: 260, height: 72 } },
-}
+/**
+ * Rolefit logo as inline SVG. Colors come from Tailwind fill utilities so the logo
+ * follows the page theme without a second asset. Static exports live in /public/brand.
+ */
+export default function Logo({ variant = 'full', height = 32, className = '' }: LogoProps) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '')
+  const full = variant === 'full'
+  const width = full ? (LOCKUP_WIDTH / LOCKUP_HEIGHT) * height : height
+  const c = MARK.cutouts
+  const b = MARK.badge
 
-export default function Logo({ variant = 'full', size = 'md', className = '', showText = true }: LogoProps) {
-  const dimensions = sizeMap[size]
-
-  if (variant === 'icon') {
-    return (
-      <div className={`flex items-center ${className}`}>
-        <Image
-          src="/favicon.png"
-          alt="Rolefit"
-          width={dimensions.icon}
-          height={dimensions.icon}
-          className="object-contain w-auto h-auto"
-          style={{ 
-            maxWidth: `${dimensions.icon}px`, 
-            maxHeight: `${dimensions.icon}px`,
-            filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
-          }}
-          priority
-        />
-      </div>
-    )
-  }
-
-  if (variant === 'text') {
-    return (
-      <div className={`flex items-center ${className}`}>
-        <Image
-          src="/logos/textonly_nobuffer.png"
-          alt="Rolefit"
-          width={dimensions.text}
-          height={dimensions.icon}
-          className="object-contain w-auto h-auto"
-          style={{ 
-            maxWidth: `${dimensions.text}px`, 
-            height: 'auto',
-            filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
-          }}
-          priority
-        />
-      </div>
-    )
-  }
-
-  // Full logo
   return (
-    <div className={`flex items-center ${className}`}>
-      <Image
-        src="/logos/fulllogo_transparent_nobuffer.png"
-        alt="Rolefit"
-        width={dimensions.full.width}
-        height={dimensions.full.height}
-        className="object-contain w-auto h-auto"
-        style={{ 
-          maxWidth: `${dimensions.full.width}px`, 
-          maxHeight: `${dimensions.full.height}px`,
-          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
-        }}
-        priority
-      />
-    </div>
+    <svg
+      role="img"
+      aria-label="Rolefit"
+      viewBox={`0 0 ${full ? LOCKUP_WIDTH : MARK_SIZE} ${MARK_SIZE}`}
+      width={width}
+      height={height}
+      className={className}
+    >
+      <defs>
+        <mask id={`${id}-doc`} maskUnits="userSpaceOnUse" x="0" y="0" width={MARK_SIZE} height={MARK_SIZE}>
+          <rect width={MARK_SIZE} height={MARK_SIZE} fill="#fff" />
+          {c.lines.map((l) => (
+            <rect key={l.y} x={l.x} y={l.y} width={l.w} height={l.h} rx={l.h / 2} fill="#000" />
+          ))}
+          <circle cx={c.head.cx} cy={c.head.cy} r={c.head.r} fill="#000" />
+          <path d={c.shoulders} fill="#000" />
+          <circle cx={b.cx} cy={b.cy} r={MARK.badgeGap} fill="#000" />
+        </mask>
+        <mask id={`${id}-badge`} maskUnits="userSpaceOnUse" x="0" y="0" width={MARK_SIZE} height={MARK_SIZE}>
+          <rect width={MARK_SIZE} height={MARK_SIZE} fill="#fff" />
+          <path d={MARK.check} fill="none" stroke="#000" strokeWidth={MARK.checkWidth} strokeLinecap="round" strokeLinejoin="round" />
+        </mask>
+      </defs>
+      <path d={MARK.doc} mask={`url(#${id}-doc)`} className="fill-blue-600 dark:fill-blue-400" />
+      <path d={MARK.fold} className="fill-blue-300 dark:fill-blue-200" />
+      <circle cx={b.cx} cy={b.cy} r={b.r} mask={`url(#${id}-badge)`} className="fill-blue-500 dark:fill-blue-300" />
+      {full && <path d={WORDMARK_PATH} className="fill-slate-900 dark:fill-slate-50" />}
+    </svg>
   )
 }
 
-// Compact logo for header (icon + text side by side) - properly sized and responsive
-export function LogoCompact({ size = 'md', className = '' }: { size?: LogoSize; className?: string }) {
-  const dimensions = sizeMap[size]
-  
-  return (
-    <div className={`flex items-center gap-2 sm:gap-3 ${className}`}>
-      <div 
-        className="flex-shrink-0 relative" 
-        style={{ 
-          width: `${dimensions.icon}px`, 
-          height: `${dimensions.icon}px`,
-          minWidth: `${dimensions.icon}px`
-        }}
-      >
-        <Image
-          src="/favicon.png"
-          alt="Rolefit icon"
-          width={dimensions.icon}
-          height={dimensions.icon}
-          className="object-contain"
-          style={{ 
-            width: '100%', 
-            height: '100%',
-            filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05))'
-          }}
-          priority
-        />
-      </div>
-      <div 
-        className="hidden sm:block flex-shrink-0 relative"
-        style={{ 
-          width: `${dimensions.text}px`,
-          height: `${dimensions.icon * 0.5}px`,
-          minWidth: `${dimensions.text}px`
-        }}
-      >
-        <Image
-          src="/logos/textonly_nobuffer.png"
-          alt="Rolefit"
-          width={dimensions.text}
-          height={dimensions.icon * 0.5}
-          className="object-contain"
-          style={{ 
-            width: '100%', 
-            height: 'auto',
-            filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05))'
-          }}
-          priority
-        />
-      </div>
-    </div>
-  )
+/** Mark only, for tight spaces. */
+export function LogoCompact({ height = 28, className = '' }: { height?: number; className?: string }) {
+  return <Logo variant="mark" height={height} className={className} />
 }

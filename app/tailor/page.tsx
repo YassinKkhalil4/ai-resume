@@ -1,5 +1,6 @@
 "use client"
 
+import { Check } from '@phosphor-icons/react'
 import { useEffect, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useSession, signOut } from 'next-auth/react'
@@ -442,7 +443,7 @@ export default function TailorPage() {
                               : 'border-slate-300 dark:border-slate-700'
                         }`}
                       >
-                        {step.complete ? '✓' : index + 1}
+                        {step.complete ? <Check weight="bold" className="h-3 w-3" aria-hidden="true" /> : index + 1}
                       </span>
                       {step.label}
                     </li>

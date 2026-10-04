@@ -1,5 +1,6 @@
 'use client'
 
+import { Check, CheckCircle, CircleNotch, Warning, WarningCircle, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 
 type ValidationInfo = {
@@ -160,9 +161,7 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
       {error && (
         <div className="rounded-2xl border border-red-200/60 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/30 dark:text-red-300">
           <div className="flex items-start gap-2">
-            <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <WarningCircle className="h-5 w-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <div className="font-medium">Failed to fetch job description</div>
               <div className="mt-1 text-xs">{error}</div>
@@ -174,9 +173,7 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
               }}
               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -192,13 +189,11 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
             : 'border-red-200/60 bg-red-50/80 text-red-700 dark:border-red-500/30 dark:bg-red-950/30 dark:text-red-300'
         }`}>
           <div className="flex items-start gap-2">
-            <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <div className="font-medium">
                 Extraction Quality: {validation.score}/100
-                {validation.valid ? ' ✓' : ' ⚠'}
+                {validation.valid ? <Check weight="bold" className="ml-1 inline h-4 w-4" aria-label="passed" /> : <Warning className="ml-1 inline h-4 w-4" aria-label="needs review" />}
               </div>
               {validation.issues.length > 0 && (
                 <div className="mt-1 text-xs">
@@ -215,9 +210,7 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
       {truncated && (
         <div className="rounded-2xl border border-amber-200/60 bg-amber-50/80 px-4 py-3 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-300">
           <div className="flex items-start gap-2">
-            <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <Warning className="h-5 w-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <div className="font-medium">Content truncated</div>
               <div className="mt-1 text-xs">
@@ -259,10 +252,7 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <CircleNotch className="h-4 w-4 animate-spin" aria-hidden="true" weight="bold" />
                 {getStatusText()}
               </span>
             ) : (
@@ -275,7 +265,7 @@ export default function JDInput({ value, onChange }:{ value:string, onChange:(v:
       {/* Status indicator */}
       {status !== 'idle' && status !== 'error' && (
         <div className={`text-xs ${getStatusColor()}`}>
-          {status === 'success' && '✓ '}
+          {status === 'success' && <Check weight="bold" className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />}
           {getStatusText()}
         </div>
       )}

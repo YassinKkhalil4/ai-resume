@@ -1,9 +1,10 @@
 'use client'
 
+import { List, X } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import Image from 'next/image'
+import Logo from './Logo'
 import { useState, useEffect } from 'react'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
@@ -74,14 +75,7 @@ export default function Navigation() {
         <nav aria-label="Primary" className="container">
           <div className="flex h-16 items-center justify-between gap-6">
             <Link href="/" className="flex shrink-0 items-center" aria-label="Rolefit home">
-              <Image
-                src="/logos/fulllogo_transparent_nobuffer.png"
-                alt="Rolefit"
-                width={200}
-                height={48}
-                className="h-11 w-auto object-contain"
-                priority
-              />
+              <Logo height={32} />
             </Link>
 
             {/* Desktop navigation: one line from lg up */}
@@ -132,9 +126,7 @@ export default function Navigation() {
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
             >
-              <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                {mobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-              </svg>
+              {mobileMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <List className="h-6 w-6" aria-hidden="true" />}
             </button>
           </div>
         </nav>

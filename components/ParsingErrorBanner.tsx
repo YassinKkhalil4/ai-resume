@@ -1,5 +1,6 @@
 'use client'
 
+import { Info, Warning } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { ParsingValidationResult, createErrorState } from '../lib/parsing-validation'
 
@@ -39,41 +40,9 @@ export default function ParsingErrorBanner({ validation, onAction, onDismiss }: 
               }`}
             >
               {isBlocking ? (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <path
-                    d="M9.88 4.17L3.94 14.04C3.35 15.02 4.06 16.29 5.18 16.29H18.82C19.94 16.29 20.65 15.02 20.06 14.04L14.12 4.17C13.55 3.23 12.45 3.23 11.88 4.17L9.88 4.17Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path d="M12 9V12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M12 15.5H12.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Warning className="h-5 w-5" aria-hidden="true" />
               ) : (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <path
-                    d="M12 6V13"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M9 10H15"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Info className="h-5 w-5" aria-hidden="true" />
               )}
             </div>
             <div>

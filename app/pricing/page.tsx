@@ -1,5 +1,6 @@
 'use client'
 
+import { Check } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
@@ -104,7 +105,7 @@ export default function PricingPage() {
               <ul className="space-y-1.5 text-sm text-slate-600 dark:text-slate-400 md:col-span-4">
                 {pkg.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
-                    <span aria-hidden="true" className="mt-0.5 text-blue-600 dark:text-blue-400">✓</span>
+                    <Check weight="bold" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                     <span>{feature}</span>
                   </li>
                 ))}

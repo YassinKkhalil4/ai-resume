@@ -1,6 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import Image from 'next/image'
+import Logo from '../components/Logo'
 import AuthProvider from '../components/auth/AuthProvider'
 import Navigation from '../components/Navigation'
 import CookieConsent from '../components/CookieConsent'
@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   description: 'Rolefit rewrites your resume to any job in seconds. ATS-safe and integrity-first.',
   icons: {
     icon: [
-      { url: '/favicon.png', sizes: 'any' },
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon.png', sizes: '16x16', type: 'image/png' },
+      { url: '/brand/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon.png', sizes: '64x64', type: 'image/png' },
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180' },
@@ -30,10 +30,10 @@ export const metadata: Metadata = {
     description: 'Tailor your resume to any job in seconds. ATS-safe and integrity-first.',
     images: [
       {
-        url: '/logos/rolefit-logo.png',
-        width: 1024,
-        height: 1024,
-        alt: 'Rolefit logo',
+        url: '/brand/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Rolefit: tailor your resume to any role. Nothing invented.',
       },
     ],
   },
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Rolefit - AI Resume Tailor',
     description: 'Tailor your resume to any job in seconds. ATS-safe and integrity-first.',
-    images: ['/logos/rolefit-logo.png'],
+    images: ['/brand/og.png'],
   },
 }
 
@@ -90,7 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <footer className="border-t border-slate-200 dark:border-slate-800">
             <div className="container flex flex-col gap-6 py-8 text-sm text-slate-600 dark:text-slate-400 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2.5">
-                <Image src="/favicon.png" alt="" width={18} height={18} className="h-[18px] w-[18px] object-contain opacity-80" />
+                <Logo variant="mark" height={20} className="opacity-90" />
                 <span>© {new Date().getFullYear()} Rolefit. Built for honest professionals.</span>
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">

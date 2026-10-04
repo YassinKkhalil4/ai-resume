@@ -1,5 +1,6 @@
 'use client'
 
+import { Info } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { KeywordStatsComparison } from '../lib/types'
 import { getATSStatusInfo, getATSTooltipText, getStatusColors } from '../lib/ats-status'
@@ -75,9 +76,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
               onClick={() => setShowTooltip(!showTooltip)}
               aria-label="Why not optimize further?"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <Info className="h-4 w-4" aria-hidden="true" />
             </button>
             {showTooltip && (
               <div className="absolute right-0 top-6 z-20 w-72 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:w-80">
