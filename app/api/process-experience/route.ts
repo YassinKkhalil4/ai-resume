@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enforceGuards } from '../../../lib/guards'
 import { requireEmailVerification } from '../../../lib/guards'
-import { createSession, getSession, updateSession } from '../../../lib/sessions'
+import { createSession, getOwnedSession, updateSession } from '../../../lib/sessions'
 import { ResumeJSON } from '../../../lib/types'
 import { getTailoredResume } from '../../../lib/ai-response-parser'
 import { extractBulletsFromFreeText } from '../../../lib/ai-response-parser'
-import { commitCreditReservation, CreditReservation, NoCreditsError, releaseCreditReservation, reserveCredit } from '../../../lib/billing/deduct-credit'
+import { NoCreditsError } from '../../../lib/billing/deduct-credit'
+import { withCreditReservation } from '../../../lib/billing/with-credit'
+import { getUserCredits } from '../../../lib/auth/utils'
+import { LIMITS, parseTone, textTooLong } from '../../../lib/validation'
 import { createHash } from 'crypto'
 
 // extractBulletsFromFreeText is only called here on explicit user action ("Paste your experience") — never automatic (AI hallucination prevention).
+
+type Outcome =
+  | { kind: 'empty' }
+  | { kind: 'no_session' }
+  | {
+      kind: 'ok'
+      session: { id: string; version: string }
+      originalResume: ResumeJSON
+      originalRawText: string
+      tailored: any
+      tokens: number
+      ats: any
+      extractedExperience: ResumeJSON['experience']
+    }
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
-  let creditReservation: CreditReservation | null = null
-
   console.log('Process Experience API called:', {
     method: req.method,
     url: req.url,
@@ -36,26 +51,76 @@ export async function POST(req: NextRequest) {
       experienceText, 
       sessionId, 
       jdText, 
-      tone = 'professional' 
+      tone: toneRaw
     } = body
+    const tone = parseTone(toneRaw)
 
-    if (!experienceText || !jdText) {
+    if (!experienceText || !jdText || typeof experienceText !== 'string' || typeof jdText !== 'string') {
       return NextResponse.json({
         code: 'invalid_input',
         message: 'Missing experience text or job description'
       }, { status: 400 })
     }
 
+    if (textTooLong(experienceText, LIMITS.experienceChars) || textTooLong(jdText, LIMITS.jdChars)) {
+      return NextResponse.json({
+        code: 'input_too_large',
+        message: 'Experience text or job description is too long'
+      }, { status: 413 })
+    }
+
+    const resumeHash = createHash('sha256').update(experienceText).digest('hex')
+    let outcome: Outcome
     try {
-      const resumeHash = createHash('sha256').update(experienceText).digest('hex')
-      creditReservation = await reserveCredit(user.id, resumeHash)
+      outcome = await withCreditReservation<Outcome>(user.id, resumeHash, async () => {
+        const extractedExperience = await extractBulletsFromFreeText(experienceText)
+        if (extractedExperience.length === 0) {
+          return { result: { kind: 'empty' as const }, charge: false }
+        }
+
+        const existingSession = sessionId ? await getOwnedSession(sessionId, user.id) : null
+        const originalRawText = existingSession?.originalRawText || experienceText
+
+        // Reuse the existing resume structure when there is one, otherwise start minimal
+        const originalResume: ResumeJSON = existingSession
+          ? { ...existingSession.original, experience: extractedExperience }
+          : {
+              summary: 'Professional with relevant experience',
+              skills: [],
+              experience: extractedExperience,
+              education: [],
+              certifications: [],
+            }
+
+        console.log('Starting AI tailoring...')
+        const deadline = Date.now() + 25000
+        const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone, { deadline })
+
+        const session = existingSession
+          ? await updateSession(sessionId, {
+              original: originalResume,
+              tailored,
+              jdText,
+              keywordStats: ats,
+              originalRawText,
+            })
+          : await createSession(originalResume, tailored, jdText, ats, originalRawText, user.id)
+
+        if (!session) {
+          return { result: { kind: 'no_session' as const }, charge: false }
+        }
+        return {
+          result: { kind: 'ok' as const, session, originalResume, originalRawText, tailored, tokens, ats, extractedExperience },
+          tokens,
+        }
+      })
     } catch (error) {
       if (error instanceof NoCreditsError) {
         return NextResponse.json(
           {
             code: 'no_credits',
             message: 'You have no credits remaining. Please purchase credits to continue.',
-            creditsRemaining: user.creditsRemaining,
+            creditsRemaining: await getUserCredits(user.id),
           },
           { status: 402 }
         )
@@ -63,104 +128,20 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    console.log('Processing experience text:', {
-      experienceTextLength: experienceText.length,
-      hasSessionId: !!sessionId,
-      jdTextLength: jdText.length,
-      tone
-    })
-
-    // Extract structured experience from the free text
-    console.log('Extracting experience from free text...')
-    const extractedExperience = await extractBulletsFromFreeText(experienceText)
-    
-    if (extractedExperience.length === 0) {
-      await releaseCreditReservation(creditReservation)
-      creditReservation = null
+    if (outcome.kind === 'empty') {
       return NextResponse.json({
         code: 'no_experience_extracted',
         message: 'Could not extract structured experience from the provided text'
       }, { status: 400 })
     }
-
-    console.log('Extracted experience:', {
-      experienceCount: extractedExperience.length,
-      totalBullets: extractedExperience.reduce((total, exp) => total + exp.bullets.length, 0)
-    })
-
-    // Create or get the original resume structure
-    let originalResume: ResumeJSON
-    let existingSession = null
-
-    if (sessionId) {
-      existingSession = await getSession(sessionId)
-    }
-
-    const originalRawText = existingSession?.originalRawText || experienceText
-
-    if (existingSession) {
-      // Use existing resume structure and update experience
-      originalResume = {
-        ...existingSession.original,
-        experience: extractedExperience
-      }
-    } else {
-      // Create a minimal resume structure with the extracted experience
-      originalResume = {
-        summary: 'Professional with relevant experience',
-        skills: [],
-        experience: extractedExperience,
-        education: [],
-        certifications: []
-      }
-    }
-
-    console.log('Created resume structure:', {
-      hasSummary: !!originalResume.summary,
-      skillsCount: originalResume.skills.length,
-      experienceCount: originalResume.experience.length,
-      educationCount: originalResume.education.length,
-      certificationsCount: originalResume.certifications.length
-    })
-
-    // Tailor the resume with AI
-    console.log('Starting AI tailoring...')
-    const deadline = Date.now() + 25000
-    const { tailored, tokens, ats } = await getTailoredResume(originalResume, jdText, tone, { deadline })
-    console.log('AI tailoring completed:', {
-      hasSummary: !!tailored.summary,
-      skillsCount: tailored.skills_section?.length || 0,
-      experienceCount: tailored.experience?.length || 0,
-      tokensUsed: tokens,
-      atsOriginal: ats.original.coverage,
-      atsTailored: ats.tailored.coverage
-    })
-
-    // Create or update session
-    let session
-    if (existingSession) {
-      session = await updateSession(sessionId, {
-        original: originalResume,
-        tailored: tailored,
-        jdText: jdText,
-        keywordStats: ats,
-        originalRawText
-      })
-    } else {
-      session = await createSession(originalResume, tailored, jdText, ats, originalRawText)
-    }
-
-    if (!session) {
-      await releaseCreditReservation(creditReservation)
-      creditReservation = null
+    if (outcome.kind === 'no_session') {
       return NextResponse.json({
         code: 'session_error',
         message: 'Failed to create or update session'
       }, { status: 500 })
     }
 
-    await commitCreditReservation(creditReservation!, tokens)
-    creditReservation = null
+    const { session, originalResume, originalRawText, tailored, tokens, ats, extractedExperience } = outcome
 
     console.log('Experience processing completed successfully:', {
       sessionId: session.id,
@@ -181,10 +162,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    await releaseCreditReservation(creditReservation).catch((releaseError) => {
-      console.error('Failed to release reserved credit:', releaseError)
-    })
-
     console.error('Process experience error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     const message = error instanceof Error ? error.message : String(error)

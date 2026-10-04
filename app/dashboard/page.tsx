@@ -61,7 +61,7 @@ function DashboardContent() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-blue-600"></div>
       </div>
     )
@@ -69,9 +69,9 @@ function DashboardContent() {
 
   if (status !== 'authenticated') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <div className="text-center">
-          <h1 className="mb-4 text-2xl font-bold text-slate-900 dark:text-slate-100">Please sign in</h1>
+          <h1 className="mb-4 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Please sign in</h1>
           <p className="text-slate-600 dark:text-slate-400">You need to be signed in to view your dashboard.</p>
         </div>
       </div>
@@ -79,10 +79,10 @@ function DashboardContent() {
   }
 
   return (
-    <main className="container mx-auto max-w-6xl space-y-8 py-12">
+    <main className="space-y-10">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+          <h1 className="text-4xl font-semibold tracking-tighter">Dashboard</h1>
           <p className="mt-2 text-slate-600 dark:text-slate-400">Manage your credits and view usage history</p>
         </div>
         <div className="flex items-center gap-4">
@@ -92,10 +92,10 @@ function DashboardContent() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Credit Balance</h2>
+        <div className="card p-6">
+          <h2 className="mb-4 text-lg font-semibold tracking-tight">Credit Balance</h2>
           <div className="flex items-baseline gap-2">
-            <span className={`text-4xl font-bold ${isAdmin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+            <span className={`text-4xl font-semibold tracking-tighter ${isAdmin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
               {isAdmin ? 'Unlimited' : credits ?? 0}
             </span>
             {!isAdmin && <span className="text-slate-600 dark:text-slate-400">credits</span>}
@@ -111,25 +111,25 @@ function DashboardContent() {
               track('pricing_page_viewed', { source: 'dashboard' })
               setShowBuyModal(true)
             }}
-            className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+            className="button mt-4 w-full"
           >
             Buy More Credits
           </button>
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Quick Stats</h2>
+        <div className="card p-6">
+          <h2 className="mb-4 text-lg font-semibold tracking-tight">Quick Stats</h2>
           <div className="space-y-4">
             <div>
               <div className="text-sm text-slate-600 dark:text-slate-400">Total Tailorings</div>
-              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <div className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
                 {usageLogs.length}
               </div>
             </div>
             <div>
               <div className="text-sm text-slate-600 dark:text-slate-400">Credits Purchased</div>
-              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <div className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
                 {transactions.reduce((sum, t) => sum + t.creditsAdded, 0)}
               </div>
             </div>
@@ -137,16 +137,16 @@ function DashboardContent() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Transaction History</h2>
+      <div className="card p-6">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight">Transaction History</h2>
         {transactions.length === 0 ? (
           <p className="text-sm text-slate-600 dark:text-slate-400">No transactions yet.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {transactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800"
+                className="flex items-center justify-between py-3"
               >
                 <div>
                   <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -165,16 +165,16 @@ function DashboardContent() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Usage History</h2>
+      <div className="card p-6">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight">Usage History</h2>
         {usageLogs.length === 0 ? (
           <p className="text-sm text-slate-600 dark:text-slate-400">No usage history yet.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {usageLogs.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800"
+                className="flex items-center justify-between py-3"
               >
                 <div>
                   <div className="font-semibold text-slate-900 dark:text-slate-100">Resume Tailored</div>
@@ -207,7 +207,7 @@ function DashboardContent() {
 export default function Dashboard() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-blue-600"></div>
       </div>
     }>

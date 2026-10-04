@@ -1,5 +1,6 @@
 'use client'
 
+import { Info } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { KeywordStatsComparison } from '../lib/types'
 import { getATSStatusInfo, getATSTooltipText, getStatusColors } from '../lib/ats-status'
@@ -69,15 +70,13 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
           <div className="relative">
             <button
               type="button"
-              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+              className="text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
               onClick={() => setShowTooltip(!showTooltip)}
               aria-label="Why not optimize further?"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <Info className="h-4 w-4" aria-hidden="true" />
             </button>
             {showTooltip && (
               <div className="absolute right-0 top-6 z-20 w-72 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:w-80">
@@ -110,7 +109,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
         {/* Progress bar */}
         <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full rounded-full transition-[width] duration-500 ease-out"
             style={{ width: `${tailoredCoverage}%`, background: barColor(tailoredCoverage) }}
           />
         </div>
@@ -119,39 +118,39 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
       {/* Original vs Tailored Comparison */}
       <div className="grid gap-4 rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 md:grid-cols-2">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             Original resume
           </div>
           <div className="mt-2 flex items-end gap-3">
             <span className="text-3xl font-semibold text-slate-900 dark:text-slate-100">
               {originalCoverage}%
             </span>
-            <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               coverage
             </span>
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
               style={{ width: `${originalCoverage}%`, background: barColor(originalCoverage) }}
             />
           </div>
         </div>
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             Tailored resume
           </div>
           <div className="mt-2 flex items-end gap-3">
             <span className="text-3xl font-semibold text-slate-900 dark:text-slate-100">
               {tailoredCoverage}%
             </span>
-            <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               coverage
             </span>
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/80">
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
               style={{ width: `${tailoredCoverage}%`, background: barColor(tailoredCoverage) }}
             />
           </div>
@@ -164,37 +163,37 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
       <div className="grid gap-4 rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Must-have keywords
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {mustTailored}%
               </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">({mustOriginal}% → {mustTailored}%)</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">({mustOriginal}% → {mustTailored}%)</span>
             </div>
-            <div className={`text-[11px] ${mustDelta >= 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>
+            <div className={`text-xs ${mustDelta >= 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>
               {mustDelta >= 0 ? '+' : ''}{mustDelta} pts
             </div>
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Nice-to-have keywords
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {niceTailored}%
               </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">({niceOriginal}% → {niceTailored}%)</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">({niceOriginal}% → {niceTailored}%)</span>
             </div>
-            <div className={`text-[11px] ${niceDelta >= 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>
+            <div className={`text-xs ${niceDelta >= 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>
               {niceDelta >= 0 ? '+' : ''}{niceDelta} pts
             </div>
           </div>
         </div>
         {newlyMatched.length > 0 && (
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Newly matched keywords
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -211,7 +210,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
         )}
         {resolvedMissing.length > 0 && (
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Missing keywords now covered
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -232,7 +231,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
         <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Industry alignment
               </div>
               <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -257,7 +256,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
           </div>
           {industry.remainingMissing.length > 0 && (
             <div className="mt-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Remaining domain gaps
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -278,7 +277,7 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
       <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Remaining gaps
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -292,12 +291,12 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
                   </span>
                 ))
               ) : (
-                <span className="text-slate-400 dark:text-slate-500">All priority keywords covered.</span>
+                <span className="text-slate-500 dark:text-slate-400">All priority keywords covered.</span>
               )}
             </div>
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Potential regressions
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -311,14 +310,14 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
                   </span>
                 ))
               ) : (
-                <span className="text-slate-400 dark:text-slate-500">No regressions detected.</span>
+                <span className="text-slate-500 dark:text-slate-400">No regressions detected.</span>
               )}
             </div>
           </div>
         </div>
         {tailoredTopMissing.length > 0 && (
           <div className="mt-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Highest-priority keywords still absent
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -336,9 +335,9 @@ export default function ATSCheck({ stats }: ATSCheckProps) {
       </div>
 
       {originalWarnings.length > 0 && (
-        <div className="rounded-3xl border border-amber-400/30 bg-amber-100/60 p-3 text-[11px] text-amber-700 dark:border-amber-400/30 dark:bg-amber-900/30 dark:text-amber-200">
+        <div className="rounded-3xl border border-amber-400/30 bg-amber-100/60 p-3 text-xs text-amber-700 dark:border-amber-400/30 dark:bg-amber-900/30 dark:text-amber-200">
           {originalWarnings.map((warning, idx) => (
-            <div key={idx}>⚠️ {warning}</div>
+            <div key={idx}>{warning}</div>
           ))}
         </div>
       )}

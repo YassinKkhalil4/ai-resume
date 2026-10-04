@@ -82,14 +82,14 @@ export default function CookieConsent() {
       {/* Backdrop */}
       {(showBanner || isOpen) && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
+          className="modal-scrim"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Banner */}
       {showBanner && !isOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6">
+        <div className="sheet-bottom fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6">
           <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
               <div className="flex-1">
@@ -130,7 +130,7 @@ export default function CookieConsent() {
                 </button>
                 <button
                   onClick={handleAccept}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="button"
                 >
                   Accept All
                 </button>
@@ -224,7 +224,7 @@ export default function CookieConsent() {
                     window.location.reload()
                   }
                 }}
-                className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                className="button"
               >
                 Save Preferences
               </button>

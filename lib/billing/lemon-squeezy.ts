@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { isUuid } from '../validation'
 import {
   CREDIT_PACKAGE_DEFINITIONS,
   CreditPackageId,
@@ -93,7 +94,9 @@ export function getLemonVariantId(payload: any): string | null {
 
 export function getLemonUserId(payload: any): string | null {
   const userId = payload?.meta?.custom_data?.user_id
-  return typeof userId === 'string' && userId.trim() ? userId.trim() : null
+  const trimmed = typeof userId === 'string' ? userId.trim() : ''
+  // users.id is a uuid column: a malformed id would make Postgres throw and the webhook 500 forever.
+  return isUuid(trimmed) ? trimmed : null
 }
 
 export function getLemonOrderStatus(payload: any): string {

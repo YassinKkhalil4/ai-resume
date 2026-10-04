@@ -1,5 +1,6 @@
 'use client'
 
+import { Check, X } from '@phosphor-icons/react'
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -69,9 +70,7 @@ function VerifyContent() {
         {status === 'success' && (
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
-              <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <Check className="h-6 w-6 text-green-600 dark:text-green-400" aria-hidden="true" />
             </div>
             <h1 className="mb-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Email Verified!</h1>
             <p className="text-slate-600 dark:text-slate-400">{message}</p>
@@ -81,15 +80,13 @@ function VerifyContent() {
         {status === 'error' && (
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-              <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
             </div>
             <h1 className="mb-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Verification Failed</h1>
             <p className="mb-4 text-slate-600 dark:text-slate-400">{message}</p>
             <button
               onClick={() => router.push('/')}
-              className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+              className="button"
             >
               Go to Home
             </button>

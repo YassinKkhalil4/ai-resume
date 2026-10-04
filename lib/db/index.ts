@@ -65,9 +65,27 @@ function getDb() {
   return _db
 }
 
-// Export database instance - connection is created on first use (not during build)
-export const db = getDb()
+type Db = ReturnType<typeof drizzle<typeof schema>>
+
+// Export database instance - the connection is created on first property access,
+// so importing this module never requires a database (build, unit tests, edge cases).
+export const db: Db = new Proxy({} as Db, {
+  get(_target, prop) {
+    const real = getDb() as any
+    const value = real[prop]
+    return typeof value === 'function' ? value.bind(real) : value
+  },
+})
 
 // Export schema for use in other files
 export * from './schema'
 
+
+/** Close the pooled connection (tests and scripts; serverless runtimes never need this). */
+export async function closeDb(): Promise<void> {
+  if (_client) {
+    await _client.end({ timeout: 2 })
+    _client = null
+    _db = null
+  }
+}

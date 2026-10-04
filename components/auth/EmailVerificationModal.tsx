@@ -1,5 +1,6 @@
 'use client'
 
+import Modal, { ModalClose } from '../Modal'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -91,28 +92,10 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
   const displayEmail = email || session?.user?.email || 'your email'
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={(e) => {
-        // Allow closing when clicking backdrop
-        if (e.target === e.currentTarget) {
-          onClose()
-        }
-      }}
-    >
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-        <button
-          onClick={() => {
-            onClose()
-          }}
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <Modal onClose={onClose} labelledBy="verify-title" size="md" closeOnScrim>
+      <ModalClose onClick={onClose} />
 
-        <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Verify Your Email</h2>
+        <h2 id="verify-title" className="mb-2 text-2xl font-semibold tracking-tight">Verify Your Email</h2>
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
           We&apos;ve sent a verification code to <span className="font-semibold">{displayEmail}</span>
         </p>
@@ -131,7 +114,7 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
 
         <form onSubmit={handleVerify} className="space-y-4">
           <div>
-            <label htmlFor="verification-code" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor="verification-code" className="label block mb-1">
               Verification Code
             </label>
             <input
@@ -145,7 +128,7 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
               placeholder="000000"
               maxLength={6}
               required
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-center text-2xl font-mono tracking-widest text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="input font-mono"
             />
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
               Enter the 6-digit code sent to your email, or click the verification link in the email.
@@ -155,7 +138,7 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
           <button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="button w-full"
           >
             {loading ? 'Verifying...' : 'Verify Email'}
           </button>
@@ -170,8 +153,7 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
             {resendLoading ? 'Sending...' : 'Resend verification email'}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

@@ -54,11 +54,11 @@ export default function LineSelector({
 
   const getLineTypeColor = (type: LineSelection['type']): string => {
     switch (type) {
-      case 'company': return 'bg-blue-50 border-blue-200 text-blue-800'
-      case 'role': return 'bg-green-50 border-green-200 text-green-800'
-      case 'date': return 'bg-purple-50 border-purple-200 text-purple-800'
-      case 'bullet': return 'bg-yellow-50 border-yellow-200 text-yellow-800'
-      default: return 'bg-gray-50 border-gray-200 text-gray-800'
+      case 'company': return 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950 dark:border-blue-900 dark:text-blue-200'
+      case 'role': return 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950 dark:border-emerald-900 dark:text-emerald-200'
+      case 'date': return 'bg-slate-100 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+      case 'bullet': return 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950 dark:border-amber-900 dark:text-amber-200'
+      default: return 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400'
     }
   }
 
@@ -105,7 +105,7 @@ export default function LineSelector({
           <div
             key={index}
             className={`
-              flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-all
+              flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors
               ${isSelected 
                 ? 'bg-blue-100 border-blue-300 shadow-sm' 
                 : 'hover:bg-gray-50 border-gray-200'
@@ -131,7 +131,7 @@ export default function LineSelector({
                   {lineType}
                 </span>
                 {groupId && (
-                  <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full">
+                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 rounded-full">
                     Group {groupId.split('_')[1]}
                   </span>
                 )}

@@ -1,6 +1,7 @@
 import { db, users, usageLogs, creditLots } from '../db'
 import { and, eq, gt, sql } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
+import { planDeduction } from './credit-plan'
 
 export class NoCreditsError extends Error {
   constructor() {
@@ -90,4 +91,55 @@ export async function releaseCreditReservation(reservation: CreditReservation | 
 export async function deductCredit(userId: string, resumeHash?: string, tokensUsed?: number): Promise<void> {
   const reservation = await reserveCredit(userId, resumeHash)
   await commitCreditReservation(reservation, tokensUsed)
+}
+
+function oneYearFromNow() {
+  const expiresAt = new Date()
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1)
+  return expiresAt
+}
+
+/**
+ * Admin override: make the user's spendable balance exactly `target`.
+ * Works on credit_lots (the source of truth for spending) and then refreshes the
+ * denormalised users.credits_remaining cache. Raising adds an 'admin' lot;
+ * lowering drains soonest-expiring lots first.
+ */
+export async function setUserCredits(userId: string, target: number): Promise<{ before: number; after: number }> {
+  if (!Number.isInteger(target) || target < 0) {
+    throw new Error('Credit target must be a non-negative integer')
+  }
+
+  return db.transaction(async (tx) => {
+    const now = new Date()
+    const lots = await tx
+      .select({ id: creditLots.id, creditsRemaining: creditLots.creditsRemaining })
+      .from(creditLots)
+      .where(and(eq(creditLots.userId, userId), gt(creditLots.expiresAt, now), gt(creditLots.creditsRemaining, 0)))
+      .orderBy(creditLots.expiresAt, creditLots.createdAt)
+      .for('update')
+
+    const before = lots.reduce((sum, lot) => sum + lot.creditsRemaining, 0)
+    const delta = target - before
+
+    if (delta > 0) {
+      await tx.insert(creditLots).values({
+        userId,
+        source: 'admin',
+        creditsTotal: delta,
+        creditsRemaining: delta,
+        expiresAt: oneYearFromNow(),
+      })
+    } else if (delta < 0) {
+      for (const { id, take } of planDeduction(lots, -delta)) {
+        await tx
+          .update(creditLots)
+          .set({ creditsRemaining: sql`${creditLots.creditsRemaining} - ${take}` })
+          .where(eq(creditLots.id, id))
+      }
+    }
+
+    await tx.update(users).set({ creditsRemaining: target }).where(eq(users.id, userId))
+    return { before, after: target }
+  })
 }

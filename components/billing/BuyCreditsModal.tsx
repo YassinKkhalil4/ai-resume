@@ -1,5 +1,6 @@
 'use client'
 
+import Modal, { ModalClose } from '../Modal'
 import { useState } from 'react'
 import CreditPackages from './CreditPackages'
 import { CreditPackageId } from '../../lib/billing/checkout-links'
@@ -43,18 +44,10 @@ export default function BuyCreditsModal({ isOpen, onClose, onSuccess }: BuyCredi
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <Modal onClose={onClose} labelledBy="buy-title" size="lg">
+      <ModalClose onClick={onClose} />
 
-        <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Buy Credits</h2>
+        <h2 id="buy-title" className="mb-2 text-2xl font-semibold tracking-tight">Buy Credits</h2>
         <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
           Each credit allows you to tailor one resume. Choose a package below:
         </p>
@@ -70,7 +63,6 @@ export default function BuyCreditsModal({ isOpen, onClose, onSuccess }: BuyCredi
         <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
           Secure checkout is handled by Lemon Squeezy. Sign in and verify your email before purchasing credits.
         </p>
-      </div>
-    </div>
+    </Modal>
   )
 }

@@ -166,7 +166,7 @@ export default function Preview({ session }:{ session:any }) {
       </div>
 
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
           Template style
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -199,10 +199,10 @@ export default function Preview({ session }:{ session:any }) {
           <div className="mb-4 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>
               {tab === 'tailored'
-                ? 'Tailored version — fully editable and ATS compliant'
-                : 'Original resume — parsed view with full text reference'}
+                ? 'Tailored version: fully editable and ATS compliant'
+                : 'Original resume: parsed view with full text reference'}
             </span>
-            <span className="rounded-full border border-slate-200/60 bg-white/70 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-slate-400 dark:border-slate-700 dark:bg-slate-900/70">
+            <span className="rounded-full border border-slate-200/60 bg-white/70 px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">
               {tpl}
             </span>
           </div>
@@ -213,11 +213,11 @@ export default function Preview({ session }:{ session:any }) {
               <>
                 <div dangerouslySetInnerHTML={{ __html: original }} />
                 {originalRawText && (
-                  <div className="mt-4 border-t border-slate-200 pt-3 text-[11px] leading-relaxed text-slate-500 dark:border-slate-700 dark:text-slate-300">
-                    <div className="mb-2 font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  <div className="mt-4 border-t border-slate-200 pt-3 text-xs leading-relaxed text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                    <div className="mb-2 font-semibold text-slate-500 dark:text-slate-400">
                       Full upload text
                     </div>
-                    <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                    <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                       {originalRawText}
                     </pre>
                   </div>
@@ -229,7 +229,7 @@ export default function Preview({ session }:{ session:any }) {
 
         <div className="space-y-6">
           <div className="glass-panel rounded-3xl p-5 shadow-lg">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Changes</div>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Changes</div>
             <div className="mt-3">
               <DiffView diffs={diffs} />
             </div>
@@ -252,7 +252,7 @@ export default function Preview({ session }:{ session:any }) {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">Honesty scan results</div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
                 Proof each bullet traces back to your original resume
               </div>
             </div>
@@ -264,8 +264,8 @@ export default function Preview({ session }:{ session:any }) {
               }`}
             >
               {honesty.flags?.length
-                ? `${honesty.flags.length} bullet${honesty.flags.length > 1 ? 's' : ''} — review suggested`
-                : 'Reviewed for accuracy — no unsupported claims detected.'}
+                ? `${honesty.flags.length} bullet${honesty.flags.length > 1 ? 's' : ''}: review suggested`
+                : 'Reviewed for accuracy. No unsupported claims detected.'}
             </span>
           </div>
 
@@ -283,23 +283,23 @@ export default function Preview({ session }:{ session:any }) {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="font-semibold text-slate-800 dark:text-slate-100">
-                      {isFlagged ? 'Manual review recommended' : 'Reviewed for accuracy — no unsupported claims detected.'}
+                      {isFlagged ? 'Manual review recommended' : 'Reviewed for accuracy. No unsupported claims detected.'}
                     </div>
-                    <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       Match score: {result.score?.toFixed(2)}
                     </div>
                   </div>
                   <div className="mt-1 text-slate-500 dark:text-slate-400">{result.role}</div>
 
                   <div className="mt-2 rounded-xl bg-white/70 p-2 text-slate-700 shadow-inner dark:bg-slate-900/60 dark:text-slate-200">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       Tailored bullet
                     </div>
                     <div className="mt-1 leading-relaxed">{result.bullet}</div>
                   </div>
 
                   <div className="mt-2 rounded-xl bg-white/80 p-2 text-slate-600 shadow-inner dark:bg-slate-900/50 dark:text-slate-300">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       Backing evidence
                     </div>
                     {result.backing?.length ? (
@@ -320,7 +320,7 @@ export default function Preview({ session }:{ session:any }) {
                       {result.overlap.map((tok: string, i: number) => (
                         <span
                           key={i}
-                          className="rounded-full border border-slate-200/60 bg-white/80 px-2 py-[2px] text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400"
+                          className="rounded-full border border-slate-200/60 bg-white/80 px-2 py-[2px] text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400"
                         >
                           {tok}
                         </span>

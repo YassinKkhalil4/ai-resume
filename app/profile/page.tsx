@@ -133,7 +133,7 @@ export default function ProfilePage() {
         <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Account Information</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label block mb-1">
               Email
             </label>
             <div className="text-slate-900 dark:text-slate-100">{session?.user?.email}</div>
@@ -141,7 +141,7 @@ export default function ProfilePage() {
           <div className="flex gap-3 pt-4">
             <Link
               href="/dashboard"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+              className="button"
             >
               Go to Dashboard
             </Link>
@@ -162,7 +162,7 @@ export default function ProfilePage() {
         ) : (
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label block mb-1">
                 Current Password
               </label>
               <input
@@ -174,7 +174,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label block mb-1">
                 New Password
               </label>
               <input
@@ -190,7 +190,7 @@ export default function ProfilePage() {
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label block mb-1">
                 Confirm New Password
               </label>
               <input
@@ -215,7 +215,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={passwordLoading}
-              className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="button w-full sm:w-auto"
             >
               {passwordLoading ? 'Changing Password...' : 'Change Password'}
             </button>
@@ -228,7 +228,7 @@ export default function ProfilePage() {
         <h2 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Preferences</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <label className="label block mb-2">
               Cookie Preferences
             </label>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">

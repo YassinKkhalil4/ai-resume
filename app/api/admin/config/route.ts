@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getConfig, updateConfig } from '../../../../lib/config'
 import { getCurrentUser } from '../../../../lib/auth/utils'
+import { parseAdminConfigUpdate } from '../../../../lib/validation'
 
 async function checkAdmin(_req: NextRequest) {
   const user = await getCurrentUser()
@@ -26,7 +27,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const adminCheck = await checkAdmin(req)
   if (!adminCheck.ok) return adminCheck.res
-  const body = await req.json()
-  const updated = await updateConfig(body || {})
+  const body = await req.json().catch(() => null)
+  const parsed = parseAdminConfigUpdate(body)
+  if (parsed.ok === false) {
+    return NextResponse.json({ code: 'bad_request', message: parsed.message }, { status: 400 })
+  }
+  const updated = await updateConfig(parsed.value)
   return NextResponse.json({ ok: true, config: updated })
 }

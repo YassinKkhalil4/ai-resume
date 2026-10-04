@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, contactMessages } from '../../../lib/db'
 import { getCurrentUser } from '../../../lib/auth/utils'
+import { checkNamedRateLimit } from '../../../lib/rate-limiter'
+import { clientIP } from '../../../lib/guards'
+import { LIMITS, textTooLong } from '../../../lib/validation'
 
 const VALID_SUBJECTS = ['support', 'feedback', 'billing', 'feature', 'other']
 
@@ -11,6 +14,11 @@ function isValidEmail(email: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
+    const limit = await checkNamedRateLimit('contact', clientIP(req), 5, 60 * 60 * 1000)
+    if (!limit.allowed) {
+      return limit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many messages. Please try again later.' }, { status: 429 })
+    }
+
     const body = await req.json()
     const { name, email, subject, message } = body
 
@@ -19,6 +27,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { code: 'missing_fields', message: 'Name, email, subject, and message are required' },
         { status: 400 }
+      )
+    }
+
+    if (
+      textTooLong(name, LIMITS.contactName) ||
+      textTooLong(email, 254) ||
+      textTooLong(subject, 50) ||
+      textTooLong(message, LIMITS.contactMessage)
+    ) {
+      return NextResponse.json(
+        { code: 'input_too_large', message: 'One of the fields is too long' },
+        { status: 413 }
       )
     }
 

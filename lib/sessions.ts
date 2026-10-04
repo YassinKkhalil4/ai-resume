@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid'
 import { ResumeJSON, TailoredResult, KeywordStatsComparison } from './types'
 import { getRedisClient } from './redis'
 import { NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 
 type Session = {
   id: string
@@ -12,6 +13,8 @@ type Session = {
   jdText: string
   keywordStats: KeywordStatsComparison
   originalRawText?: string
+  /** User who created the session; sessions without an owner are not readable through getOwnedSession. */
+  ownerId?: string
 }
 
 // Session TTL: 60 minutes
@@ -43,9 +46,9 @@ function requireRedis() {
   return redis
 }
 
-function generateSessionVersion(original: ResumeJSON, tailored: TailoredResult): string {
-  const content = JSON.stringify({ original, tailored })
-  return Buffer.from(content, 'utf8').toString('base64').slice(0, 16)
+/** Content hash of the resume pair; changes whenever original or tailored content changes. */
+export function computeSessionVersion(original: ResumeJSON, tailored: TailoredResult): string {
+  return createHash('sha256').update(JSON.stringify({ original, tailored })).digest('hex').slice(0, 16)
 }
 
 export async function createSession(
@@ -53,12 +56,13 @@ export async function createSession(
   tailored: TailoredResult,
   jdText: string,
   keywordStats: KeywordStatsComparison,
-  originalRawText?: string
+  originalRawText: string | undefined,
+  ownerId: string
 ): Promise<Session> {
   const redis = requireRedis()
   const id = uuid()
-  const version = generateSessionVersion(original, tailored)
-  const s: Session = { id, version, createdAt: Date.now(), original, tailored, jdText, keywordStats, originalRawText }
+  const version = computeSessionVersion(original, tailored)
+  const s: Session = { id, version, createdAt: Date.now(), original, tailored, jdText, keywordStats, originalRawText, ownerId }
   await redis.setex(getSessionKey(id), SESSION_TTL, JSON.stringify(s))
   return s
 }
@@ -76,6 +80,13 @@ export async function getSession(id: string): Promise<Session | null> {
   return s
 }
 
+/** Returns the session only if it exists and belongs to `userId`. */
+export async function getOwnedSession(id: string, userId: string): Promise<Session | null> {
+  const s = await getSession(id)
+  if (!s || !s.ownerId || s.ownerId !== userId) return null
+  return s
+}
+
 export async function updateSession(id: string, updates: Partial<Session>): Promise<Session | null> {
   const redis = requireRedis()
   const s = await getSession(id)
@@ -83,7 +94,7 @@ export async function updateSession(id: string, updates: Partial<Session>): Prom
 
   const updated = { ...s, ...updates }
   if (updates.original || updates.tailored) {
-    updated.version = generateSessionVersion(updated.original, updated.tailored)
+    updated.version = computeSessionVersion(updated.original, updated.tailored)
   }
 
   const key = getSessionKey(id)

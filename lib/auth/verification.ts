@@ -2,9 +2,12 @@ import { db, emailVerificationTokens, users } from '../db'
 import { eq, and, gt, lt, isNull } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import crypto from 'crypto'
+import { checkNamedRateLimit } from '../rate-limiter'
 
 const CODE_EXPIRY_HOURS = 24
 const TOKEN_EXPIRY_HOURS = 24
+const CODE_ATTEMPT_LIMIT = 5
+const CODE_ATTEMPT_WINDOW_MS = 15 * 60 * 1000
 
 export type VerificationType = 'code' | 'link'
 
@@ -39,7 +42,7 @@ export async function generateVerificationToken(userId: string, type: Verificati
 }
 
 function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  return crypto.randomInt(100000, 1_000_000).toString()
 }
 
 export async function validateVerificationToken(token: string) {
@@ -55,20 +58,11 @@ export async function validateVerificationToken(token: string) {
     return { valid: false, error: 'Invalid or expired verification token' }
   }
 
-  // Mark token as used
-  await db
-    .update(emailVerificationTokens)
-    .set({ usedAt: new Date() })
-    .where(eq(emailVerificationTokens.id, verificationToken.id))
+  if (!(await consumeToken(verificationToken.id))) {
+    return { valid: false, error: 'Invalid or expired verification token' }
+  }
 
-  // Mark user as verified
-  await db
-    .update(users)
-    .set({
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-    })
-    .where(eq(users.id, verificationToken.userId))
+  await markUserVerified(verificationToken.userId)
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, verificationToken.userId),
@@ -77,7 +71,33 @@ export async function validateVerificationToken(token: string) {
   return { valid: true, user }
 }
 
-export async function validateVerificationCode(userId: string, code: string) {
+/** Atomically marks a token used; false if someone else consumed it first. */
+async function consumeToken(id: string): Promise<boolean> {
+  const rows = await db
+    .update(emailVerificationTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(emailVerificationTokens.id, id), isNull(emailVerificationTokens.usedAt)))
+    .returning({ id: emailVerificationTokens.id })
+  return rows.length > 0
+}
+
+async function markUserVerified(userId: string) {
+  await db
+    .update(users)
+    .set({ emailVerified: true, emailVerifiedAt: new Date() })
+    .where(eq(users.id, userId))
+}
+
+export async function validateVerificationCode(userId: string, code: string): Promise<
+  | { valid: true; user: typeof users.$inferSelect | undefined }
+  | { valid: false; error: string; rateLimited?: boolean }
+> {
+  // 6 digits is only 1M possibilities: cap guesses per user before comparing anything.
+  const attempt = await checkNamedRateLimit('verify-code', userId, CODE_ATTEMPT_LIMIT, CODE_ATTEMPT_WINDOW_MS)
+  if (!attempt.allowed) {
+    return { valid: false, error: 'Too many attempts. Please wait a few minutes or request a new code.', rateLimited: true }
+  }
+
   const verificationToken = await db.query.emailVerificationTokens.findFirst({
     where: and(
       eq(emailVerificationTokens.userId, userId),
@@ -92,20 +112,11 @@ export async function validateVerificationCode(userId: string, code: string) {
     return { valid: false, error: 'Invalid or expired verification code' }
   }
 
-  // Mark token as used
-  await db
-    .update(emailVerificationTokens)
-    .set({ usedAt: new Date() })
-    .where(eq(emailVerificationTokens.id, verificationToken.id))
+  if (!(await consumeToken(verificationToken.id))) {
+    return { valid: false, error: 'Invalid or expired verification code' }
+  }
 
-  // Mark user as verified
-  await db
-    .update(users)
-    .set({
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-    })
-    .where(eq(users.id, userId))
+  await markUserVerified(userId)
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),

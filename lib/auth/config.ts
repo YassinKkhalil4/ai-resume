@@ -4,6 +4,9 @@ import GoogleProvider from 'next-auth/providers/google'
 import { db, users, creditLots } from '../db'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+import { normalizeEmail } from './email'
+import { findUserByEmail } from './users'
+import { checkNamedRateLimit } from '../rate-limiter'
 import { detectUniversity } from '../analytics/university-detector'
 import { trackEvent } from '../analytics/tracker'
 
@@ -37,14 +40,23 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+      async authorize(credentials, req) {
+        const email = normalizeEmail(credentials?.email)
+        if (!email || !credentials?.password) {
           return null
         }
 
-        const user = await db.query.users.findFirst({
-          where: eq(users.email, credentials.email),
-        })
+        // Throttle password guessing per account and per client address
+        const forwarded = String((req?.headers as any)?.['x-forwarded-for'] || '').split(',').pop()?.trim() || 'unknown'
+        const [perAccount, perClient] = await Promise.all([
+          checkNamedRateLimit('login:email', email, 10, 15 * 60 * 1000),
+          checkNamedRateLimit('login:ip', forwarded, 30, 15 * 60 * 1000),
+        ])
+        if (!perAccount.allowed || !perClient.allowed) {
+          return null
+        }
+
+        const user = await findUserByEmail(email)
 
         if (!user || !user.passwordHash) {
           return null
@@ -74,11 +86,14 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
+        // Only trust the address if Google itself has verified it
+        if ((profile as any)?.email_verified !== true || !user.email) {
+          return false
+        }
+        const email = normalizeEmail(user.email)
+
         try {
-          // Check if user exists
-          const existingUser = await db.query.users.findFirst({
-            where: eq(users.email, user.email || ''),
-          })
+          const existingUser = await findUserByEmail(email)
 
           if (!existingUser) {
             // Create new user with 1 free credit and auto-verify email (Google OAuth)
@@ -86,7 +101,7 @@ export const authOptions: NextAuthOptions = {
               const [created] = await tx
                 .insert(users)
                 .values({
-                  email: user.email || '',
+                  email,
                   creditsRemaining: 1,
                   emailVerified: true,
                   emailVerifiedAt: new Date(),
@@ -106,13 +121,16 @@ export const authOptions: NextAuthOptions = {
 
             user.id = newUser.id
           } else {
-            // Update existing user to verified if not already (in case they signed up with email first)
+            // An account that was never email-verified may have been registered by someone
+            // who does not own the address. Google has now proven ownership, so take over
+            // the account and drop any password the squatter chose.
             if (!existingUser.emailVerified) {
               await db
                 .update(users)
                 .set({
                   emailVerified: true,
                   emailVerifiedAt: new Date(),
+                  passwordHash: null,
                 })
                 .where(eq(users.id, existingUser.id))
             }

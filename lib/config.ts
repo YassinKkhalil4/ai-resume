@@ -90,7 +90,9 @@ export async function getConfig(): Promise<AppConfig> {
   return loadConfig()
 }
 
-export async function updateConfig(partial: Partial<AppConfig>): Promise<AppConfig> {
+export async function updateConfig(
+  partial: Omit<Partial<AppConfig>, 'rate'> & { rate?: Partial<AppConfig['rate']> }
+): Promise<AppConfig> {
   const current = await loadConfig()
   const updated: AppConfig = {
     ...current,

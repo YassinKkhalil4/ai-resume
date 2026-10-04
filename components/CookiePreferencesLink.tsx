@@ -8,7 +8,7 @@ export default function CookiePreferencesLink() {
           window.dispatchEvent(new Event('openCookiePreferences'))
         }
       }}
-      className="hover:text-slate-700 dark:hover:text-slate-300"
+      className="transition-colors hover:text-slate-900 dark:hover:text-slate-100"
     >
       Cookie Preferences
     </button>
