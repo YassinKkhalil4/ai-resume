@@ -5,8 +5,14 @@
 
 let _redisClient: any = null
 let _redisType: 'standard' | 'upstash' | null = null
+let _testClient: RedisClient | null = null
 
-interface RedisClient {
+/** Test seam: route all Redis access to an in-memory fake. Pass null to restore env-based resolution. */
+export function setRedisClientForTesting(client: RedisClient | null): void {
+  _testClient = client
+}
+
+export interface RedisClient {
   get(key: string): Promise<string | null>
   set(key: string, value: string, expiryMode?: string, expiryTime?: number): Promise<string | null>
   del(key: string): Promise<number>
@@ -29,6 +35,8 @@ interface RedisClient {
  * Supports both standard Redis (ioredis) and Upstash Redis
  */
 export function getRedisClient(): RedisClient | null {
+  if (_testClient) return _testClient
+
   // Skip Redis initialization during build
   if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-development-build') {
     return null
