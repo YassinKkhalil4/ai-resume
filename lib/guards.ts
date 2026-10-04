@@ -32,14 +32,20 @@ export function clientIP(req: NextRequest): string {
   return publicIp || ips[0] || '0.0.0.0'
 }
 
-export function sessionID(req: NextRequest) {
-  return cookieValue(req, 'sid') || 'anon'
+/**
+ * Key for the per-session rate-limit bucket. Nothing in the app sets the `sid`
+ * cookie, so falling back to a constant would put every visitor in one shared
+ * bucket; fall back to the client IP instead.
+ */
+export function rateLimitSessionKey(req: NextRequest): string {
+  const sid = cookieValue(req, 'sid')
+  return sid ? `sid:${sid}` : `ip:${clientIP(req)}`
 }
 
 export async function enforceGuards(req: NextRequest) {
   const cfg = await getConfig()
   const ip = clientIP(req)
-  const sid = sessionID(req)
+  const sid = rateLimitSessionKey(req)
 
   const rateLimitResult = await checkRateLimit(ip, sid, cfg.rate.ipPerMin, cfg.rate.sessionPerMin, 60_000)
   if (!rateLimitResult.allowed) {
@@ -52,7 +58,7 @@ export async function enforceGuards(req: NextRequest) {
 // Rate limiting specifically for URL fetching (more restrictive)
 export async function enforceUrlFetchRateLimit(req: NextRequest) {
   const ip = clientIP(req)
-  const sid = sessionID(req)
+  const sid = rateLimitSessionKey(req)
 
   const rateLimitResult = await checkUrlFetchRateLimit(ip, sid, 10, 5, 3600_000)
   if (!rateLimitResult.allowed) {
