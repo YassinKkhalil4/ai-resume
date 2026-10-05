@@ -3,6 +3,8 @@
  * Handles connection pooling, error handling, and graceful fallback
  */
 
+import type { Redis as UpstashClient } from '@upstash/redis'
+
 let _redisClient: any = null
 let _redisType: 'standard' | 'upstash' | null = null
 let _testClient: RedisClient | null = null
@@ -57,10 +59,13 @@ export function getRedisClient(): RedisClient | null {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
       const { Redis } = require('@upstash/redis')
-      _redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      })
+      _redisClient = createUpstashAdapter(
+        new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN,
+          automaticDeserialization: false,
+        })
+      )
       _redisType = 'upstash'
       console.log('Redis client initialized (Upstash)')
       return _redisClient
@@ -133,3 +138,48 @@ export async function testRedisConnection(): Promise<boolean> {
   }
 }
 
+
+/**
+ * Wraps an @upstash/redis client in the ioredis-style surface the rest of the app uses.
+ *
+ * Upstash differs from ioredis in ways that silently break callers:
+ *  - zadd takes `{ score, member }`, not `(score, member)` (the number form throws a TypeError)
+ *  - set takes `{ ex }`, not `'EX', seconds` (the string form throws a TypeError)
+ *  - get auto-parses JSON strings into objects, so `JSON.parse(await get(k))` throws
+ * Normalising here keeps every call site client-agnostic.
+ */
+export function createUpstashAdapter(client: UpstashClient): RedisClient {
+  return {
+    async get(key) {
+      const value = await client.get<unknown>(key)
+      if (value === null || value === undefined) return null
+      return typeof value === 'string' ? value : JSON.stringify(value)
+    },
+    async set(key, value, expiryMode, expiryTime) {
+      const result =
+        expiryMode === 'EX' && expiryTime ? await client.set(key, value, { ex: expiryTime }) : await client.set(key, value)
+      return result as string | null
+    },
+    del: (key) => client.del(key),
+    exists: (key) => client.exists(key),
+    expire: (key, seconds) => client.expire(key, seconds),
+    async setex(key, seconds, value) {
+      return (await client.setex(key, seconds, value)) as string | null
+    },
+    incr: (key) => client.incr(key),
+    decr: (key) => client.decr(key),
+    keys: (pattern) => client.keys(pattern),
+    ttl: (key) => client.ttl(key),
+    lpush: (key, ...values) => client.lpush(key, ...values),
+    async rpop(key) {
+      const value = await client.rpop<unknown>(key)
+      if (value === null || value === undefined) return null
+      return typeof value === 'string' ? value : JSON.stringify(value)
+    },
+    async zadd(key, score, member) {
+      return (await client.zadd(key, { score, member })) ?? 0
+    },
+    zcard: (key) => client.zcard(key),
+    zremrangebyscore: (key, min, max) => client.zremrangebyscore(key, min, max),
+  }
+}

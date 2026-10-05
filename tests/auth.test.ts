@@ -130,3 +130,43 @@ test('signup is rate limited per client address', opts, async () => {
   assert.equal((await signup('user6@example.com', 'long enough pw', '7.7.7.7')).status, 429)
   assert.equal((await signup('user7@example.com', 'long enough pw', '6.6.6.6')).status, 200)
 })
+
+// ---- a Redis outage must not lock people out of auth ----
+
+test('checkNamedRateLimit fails open only when asked to, and closed by default', async () => {
+  const { setRedisClientForTesting } = await import('../lib/redis')
+  setRedisClientForTesting(null) // Redis unavailable
+  const { checkNamedRateLimit } = await import('../lib/rate-limiter')
+  assert.equal((await checkNamedRateLimit('x', 'y', 1, 1000)).allowed, false)
+  assert.equal((await checkNamedRateLimit('x', 'y', 1, 1000, { failOpen: true })).allowed, true)
+})
+
+test('signup still works while Redis is down', opts, async () => {
+  const { setRedisClientForTesting } = await import('../lib/redis')
+  setRedisClientForTesting(null)
+  const res = await signup('outage.user@example.com', 'long enough pw', '3.3.3.3')
+  assert.equal(res.status, 200)
+})
+
+test('login still works while Redis is down', opts, async () => {
+  const bcrypt = (await import('bcryptjs')).default
+  const { setRedisClientForTesting } = await import('../lib/redis')
+  const { authOptions } = await import('../lib/auth/config')
+  const user = await createUser({ email: 'login.user@example.com', passwordHash: await bcrypt.hash('correct horse', 10) })
+  setRedisClientForTesting(null)
+  const authorize = (authOptions.providers[0] as any).options.authorize
+  const result = await authorize({ email: 'Login.User@Example.com', password: 'correct horse' }, { headers: {} })
+  assert.equal(result?.id, user.id)
+})
+
+test('login throttling still applies when Redis is up', opts, async () => {
+  const bcrypt = (await import('bcryptjs')).default
+  const { authOptions } = await import('../lib/auth/config')
+  await createUser({ email: 'throttle.user@example.com', passwordHash: await bcrypt.hash('right password', 10) })
+  const authorize = (authOptions.providers[0] as any).options.authorize
+  for (let i = 0; i < 10; i++) {
+    assert.equal(await authorize({ email: 'throttle.user@example.com', password: 'wrong' }, { headers: {} }), null)
+  }
+  // the 11th attempt is throttled even with the right password
+  assert.equal(await authorize({ email: 'throttle.user@example.com', password: 'right password' }, { headers: {} }), null)
+})

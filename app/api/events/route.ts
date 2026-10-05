@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
 
-    const limit = await checkNamedRateLimit('events', clientIP(req), 60, 60 * 1000)
+    const limit = await checkNamedRateLimit('events', clientIP(req), 60, 60 * 1000, { failOpen: true })
     if (!limit.allowed) {
       return limit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many events' }, { status: 429 })
     }

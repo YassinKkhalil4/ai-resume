@@ -12,6 +12,8 @@ export interface RateLimitResult {
   remaining: number
   resetAt: number
   error?: NextResponse
+  /** True when the limiter could not reach Redis (as opposed to the caller being over the limit). */
+  unavailable?: boolean
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -46,7 +48,7 @@ function tooManyResponse(limit: number, remaining: number, resetAt: number): Nex
 async function checkRedisRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   const redis = getRedisClient()
   if (!redis) {
-    return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, error: unavailableResponse() }
+    return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, error: unavailableResponse(), unavailable: true }
   }
 
   const now = Date.now()
@@ -77,7 +79,7 @@ async function checkRedisRateLimit(key: string, limit: number, windowMs: number)
   } catch (err) {
     console.error('[rate-limiter] Redis error:', err)
     // On Redis error return 503 rather than silently allow or silently block
-    return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, error: unavailableResponse() }
+    return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, error: unavailableResponse(), unavailable: true }
   }
 }
 
@@ -165,7 +167,15 @@ export async function checkNamedRateLimit(
   type: string,
   identifier: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
+  options: { failOpen?: boolean } = {}
 ): Promise<RateLimitResult> {
-  return checkRedisRateLimit(rateLimitKey(type, identifier), limit, windowMs)
+  const result = await checkRedisRateLimit(rateLimitKey(type, identifier), limit, windowMs)
+  if (result.unavailable && options.failOpen) {
+    // A throttle must not be able to take login/signup/contact down with it. Use only for
+    // low-stakes controls; paths that spend money (AI calls, purchases) stay fail-closed.
+    console.warn(`[rate-limiter] Redis unavailable, allowing '${type}' request (fail-open)`)
+    return { allowed: true, remaining: limit, resetAt: Date.now() + windowMs }
+  }
+  return result
 }

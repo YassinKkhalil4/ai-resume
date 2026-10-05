@@ -49,8 +49,8 @@ export const authOptions: NextAuthOptions = {
         // Throttle password guessing per account and per client address
         const forwarded = String((req?.headers as any)?.['x-forwarded-for'] || '').split(',').pop()?.trim() || 'unknown'
         const [perAccount, perClient] = await Promise.all([
-          checkNamedRateLimit('login:email', email, 10, 15 * 60 * 1000),
-          checkNamedRateLimit('login:ip', forwarded, 30, 15 * 60 * 1000),
+          checkNamedRateLimit('login:email', email, 10, 15 * 60 * 1000, { failOpen: true }),
+          checkNamedRateLimit('login:ip', forwarded, 30, 15 * 60 * 1000, { failOpen: true }),
         ])
         if (!perAccount.allowed || !perClient.allowed) {
           return null

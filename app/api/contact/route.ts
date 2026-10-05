@@ -14,7 +14,7 @@ function isValidEmail(email: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const limit = await checkNamedRateLimit('contact', clientIP(req), 5, 60 * 60 * 1000)
+    const limit = await checkNamedRateLimit('contact', clientIP(req), 5, 60 * 60 * 1000, { failOpen: true })
     if (!limit.allowed) {
       return limit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many messages. Please try again later.' }, { status: 429 })
     }
