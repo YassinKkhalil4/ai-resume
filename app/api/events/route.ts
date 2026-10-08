@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
 
     const limit = await checkNamedRateLimit('events', clientIP(req), 60, 60 * 1000)
     if (!limit.allowed) {
+      // Analytics must never produce an error page or a failed request. If the limiter itself is down
+      // (no Redis), drop the event quietly instead of answering 503. A real rate-limit hit still gets 429.
+      if (limit.error?.status === 503) return new NextResponse(null, { status: 202 })
       return limit.error ?? NextResponse.json({ code: 'rate_limit', message: 'Too many events' }, { status: 429 })
     }
 
