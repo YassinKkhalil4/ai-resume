@@ -100,6 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/privacy" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Privacy</a>
                 <a href="/terms" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Terms</a>
                 <CookiePreferencesLink />
+                <a href="https://ykhalil.com/" rel="noopener" className="transition-colors hover:text-slate-900 dark:hover:text-slate-100">Built by Yassin Khalil</a>
               </div>
             </div>
           </footer>
