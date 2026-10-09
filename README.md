@@ -61,3 +61,7 @@ npm run dev
 
 ## License
 You own and can ship this. Keep privacy and integrity promises intact.
+
+---
+
+Built by [Yassin Khalil](https://ykhalil.com)
