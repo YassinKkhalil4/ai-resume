@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Logo from '../components/Logo'
 import AuthProvider from '../components/auth/AuthProvider'
 import Navigation from '../components/Navigation'
+import VerifyEmailBanner from '../components/auth/VerifyEmailBanner'
 import CookieConsent from '../components/CookieConsent'
 import CookiePreferencesLink from '../components/CookiePreferencesLink'
 import ThemeProvider from '../components/ThemeProvider'
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider />
         <AuthProvider>
           <Navigation />
+          <VerifyEmailBanner />
 
           <div className="container pb-16 pt-10 md:pt-14">
             {children}

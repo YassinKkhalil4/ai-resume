@@ -81,7 +81,7 @@ export async function requireEmailVerification(req: NextRequest) {
       return { ok: false, res: NextResponse.json({ code: 'unauthorized', message: 'You must be logged in' }, { status: 401 }) }
     }
 
-    if (!user.emailVerified) {
+    if (!user.emailVerified && !user.isAdmin) {
       return { ok: false, res: NextResponse.json({ code: 'email_not_verified', message: 'Please verify your email address before continuing.' }, { status: 403 }) }
     }
 
