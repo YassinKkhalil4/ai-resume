@@ -3,8 +3,10 @@ import htmlDocx from 'html-docx-js'
 
 export async function htmlToDocxSafe(html: string): Promise<Buffer> {
   const clean = sanitizeHtmlForDocx(html)
-  const buf = htmlDocx.asBlob(clean) as unknown as Buffer
-  if (!buf || buf.length < 1024*5) {
+  // html-docx-js returns a Blob on Node 18+, not a Buffer
+  const blob = htmlDocx.asBlob(clean) as unknown as Blob
+  const buf = Buffer.from(await blob.arrayBuffer())
+  if (!buf || buf.length < 1024) {
     throw new Error('docx_generation_failed_too_small')
   }
   return buf

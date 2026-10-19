@@ -70,6 +70,9 @@
   },
   "overrides": {
     "jszip": "^3.10.1",
-    "lodash.merge": "^4.6.2"
+    "lodash.merge": "^4.6.2",
+    "html-docx-js": {
+      "jszip": "^2.3.0"
+    }
   }
 }
